@@ -1,0 +1,92 @@
+services:
+  - type: web
+    name: wardrobe-ai-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.10"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Phase 3+
+      - key: OPENWEATHERMAP_API_KEY
+        sync: false
+      - key: WEATHER_LAT
+        sync: false
+      - key: WEATHER_LON
+        sync: false
+      # Phase 4
+      - key: GMAIL_SENDER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: EMAIL_RECIPIENT
+        sync: false
+
+  # Phase 4 — daily 7am email cron. Render runs cron in UTC.
+  # 0 14 * * *  = 7am Pacific (PDT, UTC-7). Adjust if your timezone differs.
+  - type: cron
+    name: wardrobe-ai-daily-email
+    runtime: python
+    rootDir: backend
+    plan: free
+    schedule: "0 14 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python ../jobs/daily_outfit.py
+    envVars:
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: SUPABASE_URL
+        key: SUPABASE_URL
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: SUPABASE_SERVICE_ROLE_KEY
+        key: SUPABASE_SERVICE_ROLE_KEY
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: ANTHROPIC_API_KEY
+        key: ANTHROPIC_API_KEY
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: OPENWEATHERMAP_API_KEY
+        key: OPENWEATHERMAP_API_KEY
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: WEATHER_LAT
+        key: WEATHER_LAT
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: WEATHER_LON
+        key: WEATHER_LON
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: GMAIL_SENDER
+        key: GMAIL_SENDER
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: GMAIL_APP_PASSWORD
+        key: GMAIL_APP_PASSWORD
+      - fromService:
+          name: wardrobe-ai-backend
+          type: web
+          envVarKey: EMAIL_RECIPIENT
+        key: EMAIL_RECIPIENT

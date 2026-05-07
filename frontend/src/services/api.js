@@ -1,0 +1,31 @@
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const PASSWORD_KEY = 'wardrobe_app_password';
+
+export function getStoredPassword() {
+  return localStorage.getItem(PASSWORD_KEY) || '';
+}
+
+export function setStoredPassword(pw) {
+  if (pw) localStorage.setItem(PASSWORD_KEY, pw);
+  else localStorage.removeItem(PASSWORD_KEY);
+}
+
+async function request(path, { method = 'GET', body, headers = {}, auth = true } = {}) {
+  const finalHeaders = { ...headers };
+  if (auth) finalHeaders['X-App-Password'] = getStoredPassword();
+  if (body && !(body instanceof FormData)) {
+    finalHeaders['Content-Type'] = 'application/json';
+    body = JSON.stringify(body);
+  }
+  const res = await fetch(`${BASE_URL}${path}`, { method, headers: finalHeaders, body });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return res.json();
+}
+
+export const api = {
+  health: () => request('/health', { auth: false }),
+  healthAuth: () => request('/health/auth'),
+};
