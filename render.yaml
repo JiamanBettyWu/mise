@@ -34,59 +34,34 @@ services:
       - key: EMAIL_RECIPIENT
         sync: false
 
-  # Phase 4 — daily 7am email cron. Render runs cron in UTC.
-  # 0 14 * * *  = 7am Pacific (PDT, UTC-7). Adjust if your timezone differs.
-  - type: cron
-    name: wardrobe-ai-daily-email
-    runtime: python
-    rootDir: backend
-    plan: free
-    schedule: "0 14 * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python ../jobs/daily_outfit.py
-    envVars:
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: SUPABASE_URL
-        key: SUPABASE_URL
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: SUPABASE_SERVICE_ROLE_KEY
-        key: SUPABASE_SERVICE_ROLE_KEY
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: ANTHROPIC_API_KEY
-        key: ANTHROPIC_API_KEY
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: OPENWEATHERMAP_API_KEY
-        key: OPENWEATHERMAP_API_KEY
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: WEATHER_LAT
-        key: WEATHER_LAT
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: WEATHER_LON
-        key: WEATHER_LON
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: GMAIL_SENDER
-        key: GMAIL_SENDER
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: GMAIL_APP_PASSWORD
-        key: GMAIL_APP_PASSWORD
-      - fromService:
-          name: wardrobe-ai-backend
-          type: web
-          envVarKey: EMAIL_RECIPIENT
-        key: EMAIL_RECIPIENT
+# Phase 4 — daily email cron. Re-enable when we ship jobs/daily_outfit.py.
+# Render cron services don't support the free plan, so this is commented out
+# until we're ready to pay (~$1/mo) for the cron worker.
+#
+#  - type: cron
+#    name: wardrobe-ai-daily-email
+#    runtime: python
+#    rootDir: backend
+#    plan: starter
+#    schedule: "0 14 * * *"   # 7am Pacific (PDT). Adjust per timezone.
+#    buildCommand: pip install -r requirements.txt
+#    startCommand: python ../jobs/daily_outfit.py
+#    envVars:
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: SUPABASE_URL }
+#        key: SUPABASE_URL
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: SUPABASE_SERVICE_ROLE_KEY }
+#        key: SUPABASE_SERVICE_ROLE_KEY
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: ANTHROPIC_API_KEY }
+#        key: ANTHROPIC_API_KEY
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: OPENWEATHERMAP_API_KEY }
+#        key: OPENWEATHERMAP_API_KEY
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: WEATHER_LAT }
+#        key: WEATHER_LAT
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: WEATHER_LON }
+#        key: WEATHER_LON
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: GMAIL_SENDER }
+#        key: GMAIL_SENDER
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: GMAIL_APP_PASSWORD }
+#        key: GMAIL_APP_PASSWORD
+#      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: EMAIL_RECIPIENT }
+#        key: EMAIL_RECIPIENT
