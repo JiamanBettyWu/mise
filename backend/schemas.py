@@ -8,12 +8,14 @@ Season = Literal["spring", "summer", "fall", "winter", "all-season"]
 
 
 class ClothingItemBase(BaseModel):
-    name: str
+    name: str = Field(..., max_length=80)
     type: str
     color: str
     formality: Formality
     season: Season
     fabric: str
+    description: str = ""
+    brand: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -24,12 +26,14 @@ class ClothingItemCreate(ClothingItemBase):
 
 
 class ClothingItemUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=80)
     type: Optional[str] = None
     color: Optional[str] = None
     formality: Optional[Formality] = None
     season: Optional[Season] = None
     fabric: Optional[str] = None
+    description: Optional[str] = None
+    brand: Optional[str] = None
     notes: Optional[str] = None
     available: Optional[bool] = None
     in_travel_bag: Optional[bool] = None
