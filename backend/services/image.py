@@ -7,7 +7,9 @@ register_heif_opener()
 
 MAX_DIM = 1600
 JPEG_QUALITY = 85
-TARGET_BYTES = 4_500_000
+# Anthropic's 5 MB limit is on the base64-encoded payload (4/3 inflation),
+# so cap raw bytes at ~3.5 MB to keep encoded size safely under 5 MB.
+TARGET_BYTES = 3_500_000
 
 
 def ensure_under_limit(image_bytes: bytes, mime_type: str) -> tuple[bytes, str]:

@@ -1,6 +1,8 @@
 const MAX_DIM = 1600;
 const QUALITY = 0.85;
-const TARGET_BYTES = 4_500_000; // stay safely under Claude's 5MB limit
+// Claude's 5MB limit is on the base64-encoded payload (4/3 inflation),
+// so cap raw bytes at ~3.5MB to keep encoded size safely under 5MB.
+const TARGET_BYTES = 3_500_000;
 
 export async function compressImage(file) {
   if (!file.type.startsWith('image/') || file.size <= TARGET_BYTES) return file;
