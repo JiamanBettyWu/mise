@@ -216,3 +216,45 @@ textarea {
 }
 .modal__actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
 .danger { border-color: #c0392b; color: #c0392b; }
+
+.weather {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #2222;
+  border-radius: 8px;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.outfit {
+  border: 1px solid #2222;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+.outfit__header h3 { margin: 0 0 0.25rem; }
+.outfit__reasoning { margin: 0 0 0.75rem; }
+.outfit__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+@media (min-width: 600px) {
+  .outfit__items { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+.outfit__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+.outfit__item img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #1112;
+}
+.outfit__item-name { line-height: 1.2; }

@@ -74,8 +74,64 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
         ],
     )
 
+    return _parse_json(resp)
+
+
+OUTFIT_SYSTEM_PROMPT = """You are a personal stylist. Given today's weather and
+a wardrobe inventory, recommend complete outfits.
+
+Each outfit should:
+- Be weather-appropriate (layers for cold, breathable for heat, water-resistant
+  if rain is likely).
+- Be coherent in color, formality, and style.
+- Include all the pieces a person would actually wear: top + bottom (or dress)
+  + shoes, plus outerwear if needed and any standout accessories.
+- Use ONLY items from the inventory. Reference each item by its `id`.
+
+Return ONLY a JSON object of the shape:
+{
+  "outfits": [
+    { "item_ids": ["<uuid>", "<uuid>", ...], "reasoning": "1-2 sentences" },
+    ...
+  ]
+}
+
+No commentary, no markdown fences. The JSON must be parseable.
+"""
+
+
+def recommend_outfits(weather: dict, wardrobe: list[dict], n: int, notes: str = "") -> list[dict]:
+    """Ask Claude for `n` outfit suggestions. Returns list of {item_ids, reasoning}."""
+    user_blocks = [
+        f"Weather: high {weather['temp_high_c']}°C, low {weather['temp_low_c']}°C, "
+        f"{weather['conditions']}, "
+        f"{int(weather['precip_chance'] * 100)}% precipitation chance, "
+        f"wind {weather['wind_kmh']} km/h.",
+        f"Please return exactly {n} outfit{'s' if n != 1 else ''}.",
+    ]
+    if notes.strip():
+        user_blocks.append(f"User notes for today: {notes.strip()}")
+    user_blocks.append("Wardrobe inventory (JSON):")
+    user_blocks.append(json.dumps(wardrobe, ensure_ascii=False))
+
+    resp = client().messages.create(
+        model=MODEL,
+        max_tokens=1024,
+        system=[
+            {
+                "type": "text",
+                "text": OUTFIT_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
+    )
+    parsed = _parse_json(resp)
+    return parsed.get("outfits", [])
+
+
+def _parse_json(resp) -> dict:
     text = "".join(block.text for block in resp.content if block.type == "text").strip()
-    # Strip any accidental code fences just in case.
     if text.startswith("```"):
         text = text.split("```", 2)[1]
         if text.startswith("json"):
