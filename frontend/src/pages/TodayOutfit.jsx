@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
+import { getCurrentPosition } from '../services/geo.js';
 
 export default function TodayOutfit() {
   const [travelMode, setTravelMode] = useState(false);
@@ -7,12 +8,23 @@ export default function TodayOutfit() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [usingMyLocation, setUsingMyLocation] = useState(false);
+  const coordsRef = useRef(null);
 
   const generate = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const result = await api.recommend({ travel_mode: travelMode, notes, n: 3 });
+      const coords = coordsRef.current || (await getCurrentPosition());
+      coordsRef.current = coords;
+      setUsingMyLocation(!!coords);
+      const result = await api.recommend({
+        travel_mode: travelMode,
+        notes,
+        n: 3,
+        lat: coords?.lat ?? null,
+        lon: coords?.lon ?? null,
+      });
       setData(result);
     } catch (e) {
       setError(String(e));
@@ -46,7 +58,7 @@ export default function TodayOutfit() {
         </div>
       </div>
 
-      {data?.weather && <WeatherStrip w={data.weather} />}
+      {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
 
       <label className="field" style={{ marginTop: '1rem' }}>
         <span className="muted">
@@ -79,13 +91,14 @@ export default function TodayOutfit() {
   );
 }
 
-function WeatherStrip({ w }) {
+function WeatherStrip({ w, usingMyLocation }) {
   return (
     <div className="weather">
       <span><strong>{w.temp_high_c}°C</strong> high · <strong>{w.temp_low_c}°C</strong> low</span>
       <span>· {w.conditions}</span>
       <span>· {Math.round(w.precip_chance * 100)}% precip</span>
       <span>· {w.wind_kmh} km/h wind</span>
+      <span className="muted">· {usingMyLocation ? 'your location' : 'home'}</span>
     </div>
   );
 }

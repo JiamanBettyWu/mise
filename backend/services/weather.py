@@ -23,10 +23,11 @@ class TodayWeather(TypedDict):
 _cache: dict[tuple[float, float], tuple[float, TodayWeather]] = {}
 
 
-def get_today() -> TodayWeather:
-    lat = float(os.environ["WEATHER_LAT"])
-    lon = float(os.environ["WEATHER_LON"])
-    key = (lat, lon)
+def get_today(lat: float | None = None, lon: float | None = None) -> TodayWeather:
+    if lat is None or lon is None:
+        lat = float(os.environ["WEATHER_LAT"])
+        lon = float(os.environ["WEATHER_LON"])
+    key = (round(lat, 2), round(lon, 2))
     now = time.time()
     cached = _cache.get(key)
     if cached and now - cached[0] < CACHE_TTL:

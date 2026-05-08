@@ -46,6 +46,9 @@ export const api = {
   patchClothing: (id, patch) => request(`/clothes/${id}`, { method: 'PATCH', body: patch }),
   deleteClothing: (id) => request(`/clothes/${id}`, { method: 'DELETE' }),
 
-  recommend: ({ travel_mode = false, notes = '', n = 3 } = {}) =>
-    request('/outfits/recommend', { method: 'POST', body: { travel_mode, notes, n } }),
+  recommend: ({ travel_mode = false, notes = '', n = 3, lat = null, lon = null } = {}) =>
+    request('/outfits/recommend', {
+      method: 'POST',
+      body: { travel_mode, notes, n, lat, lon },
+    }),
 };

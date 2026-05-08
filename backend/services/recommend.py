@@ -9,8 +9,14 @@ WARDROBE_FIELDS = (
 )
 
 
-def recommend(travel_mode: bool = False, notes: str = "", n: int = 3) -> dict:
-    weather = get_today()
+def recommend(
+    travel_mode: bool = False,
+    notes: str = "",
+    n: int = 3,
+    lat: float | None = None,
+    lon: float | None = None,
+) -> dict:
+    weather = get_today(lat=lat, lon=lon)
 
     q = supabase().table("clothing_items").select(WARDROBE_FIELDS).eq("available", True)
     if travel_mode:
