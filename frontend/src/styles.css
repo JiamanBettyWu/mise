@@ -15,7 +15,7 @@ body {
 #root {
   width: 100%;
   max-width: 960px;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem 4rem;
 }
 
 button {
@@ -26,14 +26,19 @@ button {
   background: transparent;
   font-size: 0.95rem;
 }
+button:disabled { opacity: 0.5; cursor: default; }
 
-input[type="password"], input[type="text"] {
+input[type="password"], input[type="text"], input:not([type]), select {
   padding: 0.5rem;
   border-radius: 6px;
   border: 1px solid #888;
   font-size: 1rem;
   width: 100%;
+  background: transparent;
+  color: inherit;
 }
+
+a { color: inherit; }
 
 .gate {
   max-width: 320px;
@@ -45,3 +50,98 @@ input[type="password"], input[type="text"] {
 
 .error { color: #c0392b; font-size: 0.9rem; }
 .muted { color: #888; font-size: 0.85rem; }
+
+.nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #2222;
+  margin-bottom: 1.5rem;
+}
+.nav__lock { margin-left: auto; }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #888;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.page-header__actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.card {
+  border: 1px solid #2222;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.card--unavailable { opacity: 0.5; }
+.card__photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #1112;
+}
+.card__body { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.card__name { font-weight: 600; }
+.card__tags { font-size: 0.8rem; }
+.card__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+.card__actions label { display: flex; align-items: center; gap: 0.25rem; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 480px;
+}
+.form__preview {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.form__actions { display: flex; gap: 0.75rem; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.file-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed #888;
+  border-radius: 6px;
+  cursor: pointer;
+  width: fit-content;
+}
+.file-input input { display: none; }
