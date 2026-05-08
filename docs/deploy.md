@@ -23,10 +23,11 @@ create table if not exists public.clothing_items (
   created_at timestamptz not null default now()
 );
 
--- We use the service_role key from the backend, which bypasses RLS.
--- Disable RLS so reads/writes work without per-user policies.
--- (Single-user app — auth is enforced by APP_PASSWORD in the FastAPI layer.)
-alter table public.clothing_items disable row level security;
+-- Enable RLS with no policies. Our backend uses the service_role key, which
+-- bypasses RLS — so the app keeps working. But the anon key (which Supabase
+-- exposes by default) gets blocked from reading or writing.
+-- Auth for the actual app is enforced by APP_PASSWORD in the FastAPI layer.
+alter table public.clothing_items enable row level security;
 ```
 
 Then in **Storage** → Create bucket:
@@ -34,11 +35,14 @@ Then in **Storage** → Create bucket:
 - Name: `clothes-photos`
 - **Public bucket**: ON (so we can embed photo URLs in emails without signed URLs)
 
-Run this to make sure uploads via service_role work cleanly:
+If you toggled **Public bucket: ON**, you're done — Supabase creates the
+public-read policy for you. Skip the SQL below.
+
+Only run this if the bucket isn't public for some reason:
 
 ```sql
--- Allow public read of bucket objects (already implied by public bucket toggle, but explicit is safer):
-create policy if not exists "Public read clothes-photos"
+drop policy if exists "Public read clothes-photos" on storage.objects;
+create policy "Public read clothes-photos"
 on storage.objects for select
 using ( bucket_id = 'clothes-photos' );
 ```
