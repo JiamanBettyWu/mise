@@ -180,4 +180,4 @@ VITE_API_BASE_URL=https://your-render-app.onrender.com
 - Multiple users
 - Outfit history / "don't repeat outfits"
 - Full-body outfit preview / virtual try-on
-- Purchasing suggestions
+- Purchasing recommendations
