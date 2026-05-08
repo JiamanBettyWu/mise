@@ -5,6 +5,8 @@ from functools import lru_cache
 
 from anthropic import Anthropic
 
+from services.image import ensure_under_limit
+
 MODEL = "claude-sonnet-4-6"
 
 TAGGING_SYSTEM_PROMPT = """You are a clothing-tagging assistant for a personal wardrobe app.
@@ -41,6 +43,7 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
 
     Uses prompt caching on the system prompt so repeat tagging is cheaper.
     """
+    image_bytes, mime_type = ensure_under_limit(image_bytes, mime_type)
     image_b64 = base64.standard_b64encode(image_bytes).decode("ascii")
 
     resp = client().messages.create(

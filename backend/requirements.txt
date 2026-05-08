@@ -6,3 +6,5 @@ supabase>=2.9
 anthropic>=0.39
 httpx>=0.27
 python-dotenv>=1.0
+pillow>=10.4
+pillow-heif>=0.18
