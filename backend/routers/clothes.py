@@ -1,6 +1,11 @@
+import logging
+import traceback
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from auth import require_password
+
+log = logging.getLogger("wardrobe.clothes")
 from db.supabase import client as supabase
 from schemas import ClothingItem, ClothingItemCreate, ClothingItemUpdate, TagSuggestion
 from services.claude import tag_clothing_photo
@@ -33,8 +38,10 @@ async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
     try:
         tags = tag_clothing_photo(image_bytes, file.content_type)
     except Exception as e:
+        log.error("Tagging failed:\n%s", traceback.format_exc())
         delete_photo(public_url)
-        raise HTTPException(status_code=502, detail=f"Tagging failed: {e}")
+        detail = f"Tagging failed: {type(e).__name__}: {e}"
+        raise HTTPException(status_code=502, detail=detail)
 
     return TagSuggestion(photo_url=public_url, **tags)
 
