@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ClothingCard from '../components/ClothingCard.jsx';
 import ItemDetailModal from '../components/ItemDetailModal.jsx';
@@ -10,6 +10,7 @@ export default function Catalog() {
   const [error, setError] = useState('');
   const [travelMode, setTravelMode] = useState(false);
   const [openItem, setOpenItem] = useState(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -27,7 +28,17 @@ export default function Catalog() {
     setItems((arr) => arr.filter((i) => i.id !== id));
   }
 
-  const visible = travelMode ? items.filter((i) => i.in_travel_bag) : items;
+  const visible = useMemo(() => {
+    let list = travelMode ? items.filter((i) => i.in_travel_bag) : items;
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((i) =>
+        [i.name, i.type, i.color, i.brand, i.fabric, i.description, i.notes]
+          .some((f) => (f || '').toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [items, travelMode, query]);
 
   return (
     <div>
@@ -46,11 +57,23 @@ export default function Catalog() {
         </div>
       </div>
 
+      <input
+        className="search-bar"
+        type="search"
+        placeholder="Search name, type, color, brand…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+
       {loading && <p className="muted">Loading…</p>}
       {error && <p className="error">{error}</p>}
       {!loading && visible.length === 0 && (
         <p className="muted">
-          {travelMode ? 'Nothing packed yet.' : 'No items yet — add your first.'}
+          {query
+            ? `No matches for "${query}".`
+            : travelMode
+              ? 'Nothing packed yet.'
+              : 'No items yet — add your first.'}
         </p>
       )}
 

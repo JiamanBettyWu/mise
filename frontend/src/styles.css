@@ -28,7 +28,7 @@ button {
 }
 button:disabled { opacity: 0.5; cursor: default; }
 
-input[type="password"], input[type="text"], input:not([type]), select {
+input[type="password"], input[type="text"], input[type="search"], input:not([type]), select {
   padding: 0.5rem;
   border-radius: 6px;
   border: 1px solid #888;
@@ -86,9 +86,17 @@ a { color: inherit; }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+@media (min-width: 600px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+}
+
+.search-bar {
+  width: 100%;
+  margin-top: 1rem;
 }
 
 .card {
@@ -105,9 +113,9 @@ a { color: inherit; }
   object-fit: cover;
   background: #1112;
 }
-.card__body { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
-.card__name { font-weight: 600; }
-.card__tags { font-size: 0.8rem; }
+.card__body { padding: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.card__name { font-weight: 600; font-size: 0.9rem; line-height: 1.25; }
+.card__tags { font-size: 0.75rem; }
 .card__actions {
   display: flex;
   gap: 0.75rem;
