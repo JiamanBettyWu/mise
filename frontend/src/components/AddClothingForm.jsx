@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api.js';
+import { compressImage } from '../services/image.js';
 import ClothingFields from './ClothingFields.jsx';
 
 export default function AddClothingForm({ onSaved }) {
@@ -8,11 +9,12 @@ export default function AddClothingForm({ onSaved }) {
   const [draft, setDraft] = useState(null);
 
   async function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    if (!picked) return;
     setError('');
     setStage('tagging');
     try {
+      const file = await compressImage(picked);
       const tags = await api.uploadAndTag(file);
       setDraft({
         ...tags,
