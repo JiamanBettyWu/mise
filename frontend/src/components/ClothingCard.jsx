@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { api } from '../services/api.js';
 
-export default function ClothingCard({ item, onChange, onDelete }) {
+export default function ClothingCard({ item, onChange, onOpen }) {
   const [busy, setBusy] = useState(false);
 
-  async function patch(fields) {
+  async function patch(fields, e) {
+    e?.stopPropagation();
     setBusy(true);
     try {
       const updated = await api.patchClothing(item.id, fields);
@@ -14,31 +15,26 @@ export default function ClothingCard({ item, onChange, onDelete }) {
     }
   }
 
-  async function remove() {
-    if (!confirm(`Delete "${item.name}"?`)) return;
-    setBusy(true);
-    try {
-      await api.deleteClothing(item.id);
-      onDelete?.(item.id);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <div className={`card ${item.available ? '' : 'card--unavailable'}`}>
+    <div
+      className={`card ${item.available ? '' : 'card--unavailable'}`}
+      onClick={() => onOpen?.(item)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onOpen?.(item); }}
+    >
       <img src={item.photo_url} alt={item.name} className="card__photo" />
       <div className="card__body">
         <div className="card__name">{item.name}</div>
         <div className="card__tags muted">
-          {item.type} · {item.color} · {item.formality} · {item.season}
+          {item.type} · {item.color}
         </div>
-        <div className="card__actions">
+        <div className="card__actions" onClick={(e) => e.stopPropagation()}>
           <label>
             <input
               type="checkbox"
               checked={!item.available}
-              onChange={(e) => patch({ available: !e.target.checked })}
+              onChange={(e) => patch({ available: !e.target.checked }, e)}
               disabled={busy}
             />
             In laundry
@@ -47,14 +43,11 @@ export default function ClothingCard({ item, onChange, onDelete }) {
             <input
               type="checkbox"
               checked={item.in_travel_bag}
-              onChange={(e) => patch({ in_travel_bag: e.target.checked })}
+              onChange={(e) => patch({ in_travel_bag: e.target.checked }, e)}
               disabled={busy}
             />
             Packed
           </label>
-          <button onClick={remove} disabled={busy} className="link-btn">
-            Delete
-          </button>
         </div>
       </div>
     </div>

@@ -145,3 +145,66 @@ a { color: inherit; }
   width: fit-content;
 }
 .file-input input { display: none; }
+
+textarea {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #888;
+  font: inherit;
+  background: transparent;
+  color: inherit;
+  resize: vertical;
+  width: 100%;
+}
+
+.card { cursor: pointer; transition: transform 0.05s ease; }
+.card:hover { transform: translateY(-1px); }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+.modal {
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid #2222;
+  border-radius: 10px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.modal__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border: none;
+  background: transparent;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+.modal__photo {
+  width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+  background: #1112;
+}
+.modal__body {
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.modal__actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+.danger { border-color: #c0392b; color: #c0392b; }

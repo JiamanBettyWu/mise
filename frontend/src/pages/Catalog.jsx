@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ClothingCard from '../components/ClothingCard.jsx';
+import ItemDetailModal from '../components/ItemDetailModal.jsx';
 import { api } from '../services/api.js';
 
 export default function Catalog() {
@@ -8,6 +9,7 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [travelMode, setTravelMode] = useState(false);
+  const [openItem, setOpenItem] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -19,6 +21,7 @@ export default function Catalog() {
 
   function handleChange(updated) {
     setItems((arr) => arr.map((i) => (i.id === updated.id ? updated : i)));
+    if (openItem?.id === updated.id) setOpenItem(updated);
   }
   function handleDelete(id) {
     setItems((arr) => arr.filter((i) => i.id !== id));
@@ -57,10 +60,19 @@ export default function Catalog() {
             key={item.id}
             item={item}
             onChange={handleChange}
-            onDelete={handleDelete}
+            onOpen={setOpenItem}
           />
         ))}
       </div>
+
+      {openItem && (
+        <ItemDetailModal
+          item={openItem}
+          onClose={() => setOpenItem(null)}
+          onChange={handleChange}
+          onDelete={handleDelete}
+        />
+      )}
     </div>
   );
 }
