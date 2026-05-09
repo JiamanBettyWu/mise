@@ -1,0 +1,49 @@
+name: Daily outfit email
+
+on:
+  # Fires at 11:00 and 12:00 UTC. Only the one matching 7am America/New_York
+  # actually sends — the other no-ops. This handles DST automatically.
+  schedule:
+    - cron: "0 11 * * *"
+    - cron: "0 12 * * *"
+  # Allow manual trigger from the Actions tab for testing.
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force send regardless of current hour"
+        type: boolean
+        default: true
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Run daily outfit job
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENWEATHERMAP_API_KEY: ${{ secrets.OPENWEATHERMAP_API_KEY }}
+          WEATHER_LAT: ${{ secrets.WEATHER_LAT }}
+          WEATHER_LON: ${{ secrets.WEATHER_LON }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            python jobs/daily_outfit.py --force
+          else
+            python jobs/daily_outfit.py
+          fi
