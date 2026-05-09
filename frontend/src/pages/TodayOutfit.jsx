@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { getCurrentPosition } from '../services/geo.js';
 
@@ -33,12 +33,6 @@ export default function TodayOutfit() {
     }
   }, [travelMode, notes]);
 
-  // Auto-generate on first mount only. Re-runs are user-triggered (toggle / regenerate).
-  useEffect(() => {
-    generate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div>
       <div className="page-header">
@@ -53,12 +47,10 @@ export default function TodayOutfit() {
             Travel mode
           </label>
           <button onClick={generate} disabled={loading}>
-            {loading ? 'Thinking…' : 'Regenerate'}
+            {loading ? 'Thinking…' : data ? 'Regenerate' : 'Generate'}
           </button>
         </div>
       </div>
-
-      {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
 
       <label className="field" style={{ marginTop: '1rem' }}>
         <span className="muted">
@@ -68,13 +60,21 @@ export default function TodayOutfit() {
           type="text"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => { if (notes) generate(); }}
-          placeholder="Press Tab/click out to apply"
+          placeholder="Describe the occasion, then click Generate"
         />
       </label>
 
+      {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
+
       {error && <p className="error">{error}</p>}
       {loading && <p className="muted">Picking outfits…</p>}
+
+      {!data && !loading && !error && (
+        <p className="muted" style={{ marginTop: '1rem' }}>
+          Click <strong>Generate</strong> to get suggestions for today. For your
+          regular daily picks, check your morning email.
+        </p>
+      )}
 
       {data?.outfits?.length === 0 && !loading && (
         <p className="muted">
@@ -104,10 +104,11 @@ function WeatherStrip({ w, usingMyLocation }) {
 }
 
 function Outfit({ index, outfit }) {
+  const heading = outfit.label || `Option ${index + 1}`;
   return (
     <div className="outfit">
       <div className="outfit__header">
-        <h3>Option {index + 1}</h3>
+        <h3>{heading}</h3>
         <p className="outfit__reasoning muted">{outfit.reasoning}</p>
       </div>
       <div className="outfit__items">

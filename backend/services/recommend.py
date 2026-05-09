@@ -15,6 +15,7 @@ def recommend(
     n: int = 3,
     lat: float | None = None,
     lon: float | None = None,
+    modes: list[dict] | None = None,
 ) -> dict:
     weather = get_today(lat=lat, lon=lon)
 
@@ -24,7 +25,9 @@ def recommend(
     res = q.execute()
     wardrobe = res.data or []
 
-    outfits = recommend_outfits(weather=weather, wardrobe=wardrobe, n=n, notes=notes)
+    outfits = recommend_outfits(
+        weather=weather, wardrobe=wardrobe, n=n, notes=notes, modes=modes
+    )
 
     # Hydrate with full item objects so the frontend can show photos without re-querying.
     full = (
@@ -38,6 +41,7 @@ def recommend(
 
     hydrated = [
         {
+            "label": o.get("label", ""),
             "items": [by_id[iid] for iid in o.get("item_ids", []) if iid in by_id],
             "reasoning": o.get("reasoning", ""),
         }

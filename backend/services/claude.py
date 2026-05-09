@@ -88,10 +88,19 @@ Each outfit should:
   + shoes, plus outerwear if needed and any standout accessories.
 - Use ONLY items from the inventory. Reference each item by its `id`.
 
+If the user provides a list of MODES, return exactly one outfit per mode in the
+SAME ORDER. Each outfit must fit the mode's vibe. Repeat the mode name in the
+outfit's `label` field. If no modes are provided, set `label` to an empty string
+and return the requested count.
+
 Return ONLY a JSON object of the shape:
 {
   "outfits": [
-    { "item_ids": ["<uuid>", "<uuid>", ...], "reasoning": "1-2 sentences" },
+    {
+      "label": "<mode name or empty string>",
+      "item_ids": ["<uuid>", "<uuid>", ...],
+      "reasoning": "1-2 sentences"
+    },
     ...
   ]
 }
@@ -100,15 +109,30 @@ No commentary, no markdown fences. The JSON must be parseable.
 """
 
 
-def recommend_outfits(weather: dict, wardrobe: list[dict], n: int, notes: str = "") -> list[dict]:
-    """Ask Claude for `n` outfit suggestions. Returns list of {item_ids, reasoning}."""
+def recommend_outfits(
+    weather: dict,
+    wardrobe: list[dict],
+    n: int,
+    notes: str = "",
+    modes: list[dict] | None = None,
+) -> list[dict]:
+    """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
+
+    If `modes` is provided, returns one outfit per mode in order; `n` is ignored.
+    Each mode is a dict with keys `name` and `description`.
+    """
     user_blocks = [
         f"Weather: high {weather['temp_high_c']}°C, low {weather['temp_low_c']}°C, "
         f"{weather['conditions']}, "
         f"{int(weather['precip_chance'] * 100)}% precipitation chance, "
         f"wind {weather['wind_kmh']} km/h.",
-        f"Please return exactly {n} outfit{'s' if n != 1 else ''}.",
     ]
+    if modes:
+        user_blocks.append("Modes (return one outfit per mode, in this order):")
+        for m in modes:
+            user_blocks.append(f"- {m['name']}: {m['description']}")
+    else:
+        user_blocks.append(f"Please return exactly {n} outfit{'s' if n != 1 else ''}.")
     if notes.strip():
         user_blocks.append(f"User notes for today: {notes.strip()}")
     user_blocks.append("Wardrobe inventory (JSON):")
