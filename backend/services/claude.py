@@ -93,6 +93,13 @@ SAME ORDER. Each outfit must fit the mode's vibe. Repeat the mode name in the
 outfit's `label` field. If no modes are provided, set `label` to an empty string
 and return the requested count.
 
+If no suitable outfit can be assembled for a given mode under today's weather
+(e.g. the wardrobe lacks elevated pieces, or every option would be wildly
+inappropriate for the conditions), DO NOT force a bad suggestion. Instead,
+return the entry with `item_ids: []` and a brief `reasoning` that begins with
+"No <mode-name> recommendation available today" and explains why in one
+sentence. Keep the entry in the same position; do not drop modes.
+
 Return ONLY a JSON object of the shape:
 {
   "outfits": [

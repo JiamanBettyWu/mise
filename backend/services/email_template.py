@@ -32,6 +32,18 @@ def render_outfit_email(weather: dict, outfits: list[dict], date_label: str) -> 
 
 
 def _render_outfit(index: int, outfit: dict) -> str:
+    reasoning = escape(outfit.get("reasoning", ""))
+    label = outfit.get("label") or f"Option {index + 1}"
+
+    if not outfit.get("items"):
+        return f"""\
+<div style="border:1px dashed #ccc;border-radius:10px;padding:12px;
+            margin-bottom:12px;background:#fafafa;">
+  <h3 style="margin:0 0 4px;color:#999;">{escape(label)}</h3>
+  <p style="margin:0;color:#777;font-size:14px;">{reasoning}</p>
+</div>
+"""
+
     items_html = "".join(
         f"""<td style="padding:4px;text-align:center;vertical-align:top;width:33%;">
           <img src="{escape(item['photo_url'])}" alt="{escape(item['name'])}"
@@ -43,8 +55,6 @@ def _render_outfit(index: int, outfit: dict) -> str:
         </td>"""
         for item in outfit["items"]
     )
-    reasoning = escape(outfit.get("reasoning", ""))
-    label = outfit.get("label") or f"Option {index + 1}"
     return f"""\
 <div style="border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:12px;">
   <h3 style="margin:0 0 4px;">{escape(label)}</h3>
