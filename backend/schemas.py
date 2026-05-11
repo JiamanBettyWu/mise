@@ -1,10 +1,20 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
 Formality = Literal["casual", "smart-casual", "formal"]
 Season = Literal["spring", "summer", "fall", "winter", "all-season"]
+
+TripCategory = Literal[
+    "tops",
+    "bottoms",
+    "dresses",
+    "outerwear",
+    "shoes",
+    "accessories",
+    "other",
+]
 
 
 class ClothingItemBase(BaseModel):
@@ -48,3 +58,56 @@ class TagSuggestion(ClothingItemBase):
     """What Claude returns from a vision tagging call."""
 
     photo_url: str = Field(..., description="Public URL of the uploaded photo")
+
+
+# ---- Trip planner ---------------------------------------------------------
+
+
+class TripPlanRequest(BaseModel):
+    destination: str = Field(..., min_length=1, max_length=200)
+    start_date: date
+    end_date: date
+    additional_notes: str = ""
+
+
+class TripWeatherDay(BaseModel):
+    date: date
+    high_c: float
+    low_c: float
+    conditions: str
+    precip_chance: float = Field(..., ge=0, le=1)
+
+
+class TripWeather(BaseModel):
+    summary: str
+    daily: list[TripWeatherDay] = []
+
+
+class PackingCategory(BaseModel):
+    category: TripCategory
+    items: list[ClothingItem]
+
+
+class PurchaseResult(BaseModel):
+    title: str
+    url: str
+    image_url: Optional[str] = None
+    price: Optional[str] = None
+    retailer: Optional[str] = None
+
+
+class PurchaseSuggestion(BaseModel):
+    gap: str
+    results: list[PurchaseResult] = []
+
+
+class TripPlanResponse(BaseModel):
+    destination: str
+    start_date: date
+    end_date: date
+    duration_days: int
+    weather: TripWeather
+    packing_list: list[PackingCategory]
+    gaps: list[str] = []
+    purchase_suggestions: list[PurchaseSuggestion] = []
+    reasoning: str = ""

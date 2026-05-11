@@ -234,6 +234,11 @@ textarea {
   padding: 1rem;
   margin-top: 1rem;
 }
+.outfit--empty {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.outfit--empty .outfit__header h3 { color: #888; }
 .outfit__header h3 { margin: 0 0 0.25rem; }
 .outfit__reasoning { margin: 0 0 0.75rem; }
 .outfit__items {
@@ -258,3 +263,75 @@ textarea {
   background: #1112;
 }
 .outfit__item-name { line-height: 1.2; }
+
+/* Trip planner ----------------------------------------------------------- */
+
+.trip-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  max-width: 560px;
+}
+.trip-form__dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.trip-form__actions { margin-top: 0.25rem; }
+
+.trip-result { margin-top: 1.5rem; }
+.trip-result__header { margin-top: 1rem; }
+.trip-result__header h2 { margin: 0 0 0.25rem; }
+.trip-result__reasoning {
+  background: #1112;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+
+.trip-section { margin-top: 1.25rem; }
+.trip-section h3 { margin: 0 0 0.5rem; }
+.trip-section h4 { margin: 0.5rem 0 0.35rem; font-size: 0.95rem; }
+
+.trip-gaps { margin: 0; padding-left: 1.25rem; }
+.trip-gaps li { margin: 0.2rem 0; }
+
+.purchase-block { margin-top: 0.75rem; }
+.purchase-block__gap { margin: 0 0 0.4rem; font-size: 0.85rem; }
+
+.purchase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.6rem;
+}
+@media (min-width: 600px) {
+  .purchase-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+
+.purchase-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #2222;
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: transparent;
+}
+.purchase-card:hover { border-color: #888; }
+.purchase-card__img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #1112;
+}
+.purchase-card__body { padding: 0.5rem 0.6rem; }
+.purchase-card__title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.25;
+  margin-bottom: 0.15rem;
+}
+.purchase-card__meta { font-size: 0.75rem; }

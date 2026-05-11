@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import Catalog from './pages/Catalog.jsx';
 import AddItem from './pages/AddItem.jsx';
 import TodayOutfit from './pages/TodayOutfit.jsx';
+import TripPlan from './pages/TripPlan.jsx';
 import { api, getStoredPassword, setStoredPassword } from './services/api.js';
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
       <nav className="nav">
         <Link to="/">Catalog</Link>
         <Link to="/today">Today</Link>
+        <Link to="/trip">Trip</Link>
         <Link to="/add">Add</Link>
         <button
           className="link-btn nav__lock"
@@ -62,6 +64,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Catalog />} />
         <Route path="/today" element={<TodayOutfit />} />
+        <Route path="/trip" element={<TripPlan />} />
         <Route path="/add" element={<AddItem />} />
       </Routes>
     </BrowserRouter>

@@ -105,20 +105,23 @@ function WeatherStrip({ w, usingMyLocation }) {
 
 function Outfit({ index, outfit }) {
   const heading = outfit.label || `Option ${index + 1}`;
+  const empty = !outfit.items?.length;
   return (
-    <div className="outfit">
+    <div className={`outfit ${empty ? 'outfit--empty' : ''}`}>
       <div className="outfit__header">
         <h3>{heading}</h3>
         <p className="outfit__reasoning muted">{outfit.reasoning}</p>
       </div>
-      <div className="outfit__items">
-        {outfit.items.map((item) => (
-          <div key={item.id} className="outfit__item">
-            <img src={item.photo_url} alt={item.name} />
-            <div className="outfit__item-name">{item.name}</div>
-          </div>
-        ))}
-      </div>
+      {!empty && (
+        <div className="outfit__items">
+          {outfit.items.map((item) => (
+            <div key={item.id} className="outfit__item">
+              <img src={item.photo_url} alt={item.name} />
+              <div className="outfit__item-name">{item.name}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import require_password
 from db.supabase import client as supabase
-from routers import clothes, outfits
+from routers import clothes, outfits, trips
 
 load_dotenv()
 
@@ -28,6 +28,7 @@ app.add_middleware(
 
 app.include_router(clothes.router)
 app.include_router(outfits.router)
+app.include_router(trips.router)
 
 
 @app.get("/health")

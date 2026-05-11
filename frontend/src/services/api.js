@@ -51,4 +51,10 @@ export const api = {
       method: 'POST',
       body: { travel_mode, notes, n, lat, lon },
     }),
+
+  planTrip: ({ destination, start_date, end_date, additional_notes = '' }) =>
+    request('/trips/plan', {
+      method: 'POST',
+      body: { destination, start_date, end_date, additional_notes },
+    }),
 };
