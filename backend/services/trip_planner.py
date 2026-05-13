@@ -28,6 +28,8 @@ from schemas import (
     TripWeatherDay,
 )
 
+from services.weather import get_today, DestinationNotFound, get_weather_for_destination
+
 # ---- Public entrypoint ----------------------------------------------------
 
 
@@ -72,19 +74,12 @@ def _mock_response(req: TripPlanRequest) -> TripPlanResponse:
         if bucket:
             packing_list.append(PackingCategory(category=cat, items=bucket[:4]))
 
-    weather = TripWeather(
-        summary="Sunny, 26–30°C during the day, cool 14–17°C in the evening. No precipitation expected.",
-        daily=[
-            TripWeatherDay(
-                date=req.start_date + timedelta(days=i),
-                high_c=29.0,
-                low_c=14.0,
-                conditions="Sunny",
-                precip_chance=0.0,
-            )
-            for i in range(duration_days)
-        ],
+    weather = get_weather_for_destination(
+        destination=req.destination,
+        start_date=req.start_date,
+        end_date=req.end_date,
     )
+                
 
     return TripPlanResponse(
         destination=req.destination,

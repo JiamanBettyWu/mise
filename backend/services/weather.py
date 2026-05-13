@@ -3,13 +3,18 @@
 import os
 import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import TypedDict
+from schemas import TripWeather, TripWeatherDay
 
 import httpx
 
 OWM_URL = "https://api.openweathermap.org/data/2.5/forecast"
+OWM_GEO_URL = "https://api.openweathermap.org/geo/1.0/direct"
 CACHE_TTL = 30 * 60  # 30 minutes
+
+_FORECAST_CACHE: dict[tuple[float, float], tuple[float, dict]] = {}
+_FORECAST_TTL = 30 * 60  # 30 minutes
 
 
 class TodayWeather(TypedDict):
@@ -19,6 +24,8 @@ class TodayWeather(TypedDict):
     precip_chance: float  # 0..1
     wind_kmh: float
 
+class DestinationNotFound(ValueError):
+    """OpenWeatherMap couldn't geocode this destination string."""
 
 _cache: dict[tuple[float, float], tuple[float, TodayWeather]] = {}
 
@@ -68,3 +75,113 @@ def _entry_local_date(entry: dict, data: dict):
     tz_offset_seconds = data.get("city", {}).get("timezone", 0)
     dt = datetime.fromtimestamp(entry["dt"] + tz_offset_seconds, tz=timezone.utc)
     return dt.date()
+
+
+def _destination_to_coords(destination: str) -> tuple[float, float]:
+    """Convert a user-friendly location (e.g. "Paris, France") to lat/lon."""
+
+    api_key = os.environ["OPENWEATHERMAP_API_KEY"]
+    resp = httpx.get(
+        OWM_GEO_URL,
+        params={"q": destination, "limit": 1, "appid": api_key},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    if not data:
+        raise DestinationNotFound(f"No location found for {destination!r}")
+
+    lat = data[0]["lat"]
+    lon = data[0]["lon"]
+    return lat, lon
+
+
+def _rollup_day(entries: list[dict], date: date) -> TripWeatherDay:
+    temps = [e["main"]["temp"] for e in entries]
+
+    return TripWeatherDay(
+        date=date,
+        high_c=round(max(temps), 1),
+        low_c=round(min(temps), 1),
+        conditions=Counter(e["weather"][0]["main"] for e in entries).most_common(1)[0][
+            0
+        ],
+        precip_chance=round(max(e.get("pop", 0.0) for e in entries), 2),
+    )
+
+
+def _fetch_forecast(lat: float, lon: float) -> dict:
+    key = (round(lat, 2), round(lon, 2))
+    now = time.time()
+    cached = _FORECAST_CACHE.get(key)
+    if cached and now - cached[0] < _FORECAST_TTL:
+        return cached[1]
+
+
+    api_key = os.environ["OPENWEATHERMAP_API_KEY"]
+    resp = httpx.get(
+        OWM_URL,
+        params={"lat": lat, "lon": lon, "units": "metric", "appid": api_key},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    _FORECAST_CACHE[key] = (now, data)
+    return data
+
+
+def _date_range(start_date: date, end_date: date) -> list[date]:
+    return [
+        start_date + timedelta(days=i)
+        for i in range((end_date - start_date).days + 1)
+    ]
+
+
+def _summarize_conditions(daily: list[TripWeatherDay]) -> str:
+
+    max_temp = max(d.high_c for d in daily)
+    min_temp = min(d.low_c for d in daily)
+    most_common_conditions = Counter(d.conditions for d in daily).most_common(1)[
+        0
+    ][0]
+    max_precip = max(d.precip_chance for d in daily)
+
+    if max_precip > 0.5:    percip_summary = f"High chance of precipitation: {max_precip*100:.0f}%"
+    elif max_precip > 0.2:  percip_summary = f"Moderate chance: {max_precip*100:.0f}%"
+    elif max_precip > 0.05: percip_summary = f"Low chance: {max_precip*100:.0f}%"
+    else:                   percip_summary = "No precipitation expected."
+
+
+    return (
+        f"Trip weather: high {max_temp}°C, low {min_temp}°C, "
+        f"mostly {most_common_conditions}. {percip_summary}"
+    )
+
+
+def get_weather_for_destination(
+    destination: str,
+    start_date: date,
+    end_date: date,
+) -> TripWeather:
+    lat, lon = _destination_to_coords(destination)
+    raw = _fetch_forecast(lat, lon)
+
+    by_date: dict[date, list[dict]] = {}
+
+    for entry in raw["list"]:
+        local_date = _entry_local_date(entry, raw)
+
+        by_date.setdefault(local_date, []).append(entry)
+
+    daily = [
+        _rollup_day(by_date[d], d)
+        for d in _date_range(start_date, end_date)
+        if d in by_date
+    ]
+
+    summary = _summarize_conditions(daily)
+    if len(daily) < len(_date_range(start_date, end_date)):
+        summary += f" (Forecast only available for the first {len(daily)} days.)"
+
+    return TripWeather(daily=daily, summary=summary)
