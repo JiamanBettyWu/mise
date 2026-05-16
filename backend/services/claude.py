@@ -74,7 +74,7 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
         ],
     )
 
-    return _parse_json(resp)
+    return parse_json(resp)
 
 
 OUTFIT_SYSTEM_PROMPT = """You are a personal stylist. Given today's weather and
@@ -157,11 +157,11 @@ def recommend_outfits(
         ],
         messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
     )
-    parsed = _parse_json(resp)
+    parsed = parse_json(resp)
     return parsed.get("outfits", [])
 
 
-def _parse_json(resp) -> dict:
+def parse_json(resp) -> dict:
     text = "".join(block.text for block in resp.content if block.type == "text").strip()
     if text.startswith("```"):
         text = text.split("```", 2)[1]

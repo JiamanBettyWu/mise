@@ -298,6 +298,32 @@ textarea {
 .trip-gaps { margin: 0; padding-left: 1.25rem; }
 .trip-gaps li { margin: 0.2rem 0; }
 
+.trip-inline-gaps {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.trip-inline-gaps li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  background: #b8860b15;
+  border-left: 3px solid #b8860b;
+  font-size: 0.9rem;
+}
+.trip-inline-gaps__icon { flex-shrink: 0; }
+
+.trip-essentials { margin: 0; padding-left: 1.25rem; }
+.trip-essentials li { margin: 0.2rem 0; }
+
+.purchase-block__header { margin-bottom: 0.5rem; }
+.purchase-block__rationale { margin: 0.1rem 0 0; font-size: 0.85rem; }
+
 .purchase-block { margin-top: 0.75rem; }
 .purchase-block__gap { margin: 0 0 0.4rem; font-size: 0.85rem; }
 

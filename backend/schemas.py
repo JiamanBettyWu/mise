@@ -100,6 +100,10 @@ class PurchaseSuggestion(BaseModel):
     gap: str
     results: list[PurchaseResult] = []
 
+class Gap(BaseModel):
+    item: str
+    rationale: str
+    category: TripCategory
 
 class TripPlanResponse(BaseModel):
     destination: str
@@ -108,6 +112,12 @@ class TripPlanResponse(BaseModel):
     duration_days: int
     weather: TripWeather
     packing_list: list[PackingCategory]
-    gaps: list[str] = []
+    gaps: list[Gap] = []
     purchase_suggestions: list[PurchaseSuggestion] = []
     reasoning: str = ""
+    essentials: list[str] = []
+
+
+class PurchaseSuggestion(BaseModel):
+    gap: Gap
+    results: list[PurchaseResult] = []
