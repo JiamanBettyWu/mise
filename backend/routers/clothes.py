@@ -9,6 +9,7 @@ log = logging.getLogger("wardrobe.clothes")
 from db.supabase import client as supabase
 from schemas import ClothingItem, ClothingItemCreate, ClothingItemUpdate, TagSuggestion
 from services.claude import tag_clothing_photo
+from services.image import ensure_under_limit
 from services.storage import delete_photo, upload_photo
 
 router = APIRouter(
@@ -33,10 +34,14 @@ async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
     if len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large (max 10MB)")
 
-    _, public_url = upload_photo(image_bytes, file.filename or "photo", file.content_type)
+    # Normalize once: transcodes HEIC -> JPEG and shrinks oversized images.
+    # Storage and Claude both get the same browser-safe bytes.
+    image_bytes, mime_type = ensure_under_limit(image_bytes, file.content_type)
+
+    _, public_url = upload_photo(image_bytes, file.filename or "photo", mime_type)
 
     try:
-        tags = tag_clothing_photo(image_bytes, file.content_type)
+        tags = tag_clothing_photo(image_bytes, mime_type)
     except Exception as e:
         log.error("Tagging failed:\n%s", traceback.format_exc())
         delete_photo(public_url)

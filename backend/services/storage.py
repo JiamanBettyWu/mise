@@ -9,7 +9,10 @@ BUCKET = "clothes-photos"
 
 def upload_photo(image_bytes: bytes, filename: str, mime_type: str) -> tuple[str, str]:
     """Upload an image to Supabase Storage. Returns (storage_path, public_url)."""
-    ext = PurePosixPath(filename).suffix.lower() or _ext_from_mime(mime_type)
+    # Prefer the mime type for the extension so the file path matches the
+    # actual bytes — e.g. when HEIC was transcoded to JPEG upstream, we want
+    # ".jpg", not the original ".heic" the user uploaded.
+    ext = _ext_from_mime(mime_type) or PurePosixPath(filename).suffix.lower()
     storage_path = f"{uuid.uuid4()}{ext}"
 
     client().storage.from_(BUCKET).upload(
