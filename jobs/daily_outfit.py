@@ -6,7 +6,7 @@ no-ops. This way DST is handled automatically.
 
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -55,7 +55,9 @@ DAILY_MODES = [
 
 def main() -> int:
     force = FORCE_FLAG in sys.argv
+    utc_now = datetime.now(timezone.utc)
     now = datetime.now(TZ)
+    print(f"[debug] utc={utc_now.isoformat()} local={now.isoformat()} target_hour={TARGET_HOUR}")
     if not force and now.hour != TARGET_HOUR:
         print(f"[skip] local hour={now.hour} != target={TARGET_HOUR} ({TZ})")
         return 0
