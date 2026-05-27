@@ -1,12 +1,14 @@
-"""Daily outfit email — runs from GitHub Actions cron at 11:00 + 12:00 UTC.
+"""Daily outfit email — runs once a day from a GitHub Actions cron.
 
-Only the run that lands at 7am America/New_York actually sends; the other
-no-ops. This way DST is handled automatically.
+The cron is nominally 7am America/New_York, but GitHub's scheduled runs are
+best-effort and routinely delayed 1-3h, so the email actually lands mid-morning.
+We send unconditionally whenever the job runs; one cron line means one run means
+one email. `TZ` is only used to label the email with the local date.
 """
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -22,8 +24,6 @@ from services.email_template import render_outfit_email  # noqa: E402
 from services.recommend import recommend  # noqa: E402
 
 TZ = ZoneInfo("America/New_York")
-TARGET_HOUR = 7
-FORCE_FLAG = "--force"
 
 DAILY_MODES = [
     {
@@ -54,14 +54,7 @@ DAILY_MODES = [
 
 
 def main() -> int:
-    force = FORCE_FLAG in sys.argv
-    utc_now = datetime.now(timezone.utc)
     now = datetime.now(TZ)
-    print(f"[debug] utc={utc_now.isoformat()} local={now.isoformat()} target_hour={TARGET_HOUR}")
-    if not force and now.hour != TARGET_HOUR:
-        print(f"[skip] local hour={now.hour} != target={TARGET_HOUR} ({TZ})")
-        return 0
-
     print(f"[run] generating outfit for {now.isoformat()}")
     result = recommend(travel_mode=False, notes="", modes=DAILY_MODES)
     weather = result["weather"]
