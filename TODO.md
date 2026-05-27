@@ -29,6 +29,7 @@ issues #2/#3/#4 and created this file.
 - [#2 Speed up trip planner generation](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)
 - [#3 Complete LangGraph V1: search_purchases + check_gaps](https://github.com/JiamanBettyWu/wardrobe-ai/issues/3)
 - [#4 Tune trip planner prompts based on real-trip usage](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)
+- [#5 Prepare repo for public release (portfolio)](https://github.com/JiamanBettyWu/wardrobe-ai/issues/5)
 
 See the [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/projects)
 for status (Todo / In Progress / Done).
