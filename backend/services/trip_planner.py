@@ -20,11 +20,11 @@ import json
 from datetime import date
 from typing import TypedDict
 
-from langgraph.graph import END, StateGraph
-
 from db.supabase import client as supabase
-from schemas import (ClothingItem, Gap, PackingCategory, PurchaseSuggestion,
-                     TripPlanRequest, TripPlanResponse, TripWeather)
+from langgraph.graph import END, StateGraph
+from schemas import (ClothingItem, Gap, PackingCategory, PurchaseResult,
+                     PurchaseSuggestion, TripPlanRequest, TripPlanResponse,
+                     TripWeather)
 from services.claude import client, parse_json
 from services.weather import get_weather_for_destination
 
@@ -169,9 +169,6 @@ def _build_packing_prompt(
 def recommend_packing_plan(
     user_blocks: list[str],
 ):
-    # prompt = "\n\n".join(user_blocks)
-    # print(prompt)
-    # print(f"--- prompt length: {len(prompt)} chars ---")
 
     resp = client().messages.create(
         model=MODEL,
@@ -189,6 +186,31 @@ def recommend_packing_plan(
     return resp
 
 
+def check_gaps(state: PackingState) -> str:
+    return "has_gaps" if state.get("gaps") else "no_gaps"
+
+
+def search_purchases_node(state: PackingState) -> dict:
+
+    suggestions = []
+    for gap in state["gaps"]:
+        suggestions.append(
+            PurchaseSuggestion(
+                gap=gap,
+                results=[
+                    PurchaseResult(
+                        title=f"{gap.item} (example)",
+                        url="https://example.com",
+                        image_url="https://placehold.co/300x400",
+                        price="$—",
+                        retailer="Example",
+                    )
+                ],
+            )
+        )
+    return {"purchase_suggestions": suggestions}
+
+
 def build_graph():
 
     g = StateGraph(PackingState)
@@ -197,11 +219,22 @@ def build_graph():
     g.add_node("generate_output", generate_output_node)
     g.add_node("get_catalog", get_catalog_node)
     g.add_node("reason_and_select", reason_and_select_node)
+    g.add_node("search_purchases", search_purchases_node)
 
     g.set_entry_point("get_weather")
     g.add_edge("get_weather", "get_catalog")
     g.add_edge("get_catalog", "reason_and_select")
-    g.add_edge("reason_and_select", "generate_output")
+
+    g.add_conditional_edges(
+        "reason_and_select",
+        check_gaps,
+        {
+            "has_gaps": "search_purchases",
+            "no_gaps": "generate_output",
+        },
+    )
+    g.add_edge("search_purchases", "generate_output")
+
     g.add_edge("generate_output", END)
 
     return g.compile()

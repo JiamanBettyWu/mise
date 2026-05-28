@@ -27,3 +27,6 @@ dist/
 
 # Logs
 *.log
+
+# Local scratch / manual test scripts
+backend/test_graph.py
