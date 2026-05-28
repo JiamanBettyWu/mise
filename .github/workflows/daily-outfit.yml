@@ -1,18 +1,15 @@
 name: Daily outfit email
 
 on:
-  # Fires at 11:00 and 12:00 UTC. Only the one matching 7am America/New_York
-  # actually sends — the other no-ops. This handles DST automatically.
+  # Nominal 4:20am America/New_York (08:20 UTC during EDT, 3:20am during EST).
+  # GitHub's scheduled runs are best-effort and routinely delayed 1-3h, so we
+  # schedule early to offset that — the email lands ~5:30-7:45am ET. The :20
+  # minute deliberately dodges :00, the platform's most congested (slowest) slot.
+  # One cron line = one run = one email.
   schedule:
-    - cron: "0 11 * * *"
-    - cron: "0 12 * * *"
+    - cron: "20 8 * * *"
   # Allow manual trigger from the Actions tab for testing.
   workflow_dispatch:
-    inputs:
-      force:
-        description: "Force send regardless of current hour"
-        type: boolean
-        default: true
 
 jobs:
   send-email:
@@ -41,9 +38,4 @@ jobs:
           GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
-        run: |
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python jobs/daily_outfit.py --force
-          else
-            python jobs/daily_outfit.py
-          fi
+        run: python jobs/daily_outfit.py
