@@ -95,11 +95,6 @@ class PurchaseResult(BaseModel):
     price: Optional[str] = None
     retailer: Optional[str] = None
 
-
-class PurchaseSuggestion(BaseModel):
-    gap: str
-    results: list[PurchaseResult] = []
-
 class Gap(BaseModel):
     item: str
     rationale: str
