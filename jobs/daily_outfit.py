@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load the single repo-root .env regardless of cwd.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from services.email import send_html_email  # noqa: E402
 from services.email_template import render_outfit_email  # noqa: E402
