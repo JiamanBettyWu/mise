@@ -1,11 +1,13 @@
 name: Daily outfit email
 
 on:
-  # Nominal 7am America/New_York (11:00 UTC during EDT, 6am during EST).
-  # GitHub's scheduled runs are best-effort and routinely delayed 1-3h, so the
-  # email actually lands mid-morning. One cron line = one run = one email.
+  # Nominal 4:20am America/New_York (08:20 UTC during EDT, 3:20am during EST).
+  # GitHub's scheduled runs are best-effort and routinely delayed 1-3h, so we
+  # schedule early to offset that — the email lands ~5:30-7:45am ET. The :20
+  # minute deliberately dodges :00, the platform's most congested (slowest) slot.
+  # One cron line = one run = one email.
   schedule:
-    - cron: "0 11 * * *"
+    - cron: "20 8 * * *"
   # Allow manual trigger from the Actions tab for testing.
   workflow_dispatch:
 
