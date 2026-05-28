@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
@@ -8,7 +9,8 @@ from auth import require_password
 from db.supabase import client as supabase
 from routers import clothes, outfits, trips
 
-load_dotenv()
+# Load the single repo-root .env regardless of cwd. See ENV setup in README.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 app = FastAPI(title="Wardrobe AI")
 
