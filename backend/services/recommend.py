@@ -42,10 +42,27 @@ def recommend(
     hydrated = [
         {
             "label": o.get("label", ""),
-            "items": [by_id[iid] for iid in o.get("item_ids", []) if iid in by_id],
+            "items": (
+                []
+                if _is_skip(o.get("reasoning", ""))
+                else [by_id[iid] for iid in o.get("item_ids", []) if iid in by_id]
+            ),
             "reasoning": o.get("reasoning", ""),
         }
         for o in outfits
     ]
 
     return {"weather": weather, "outfits": hydrated, "wardrobe_size": len(wardrobe)}
+
+
+def _is_skip(reasoning: str) -> bool:
+    """True when Claude signaled 'no recommendation' for this mode.
+
+    The outfit prompt instructs Claude to skip a mode by returning empty
+    item_ids and a reasoning that begins with 'No <mode> recommendation
+    available today'. Some responses follow the *text* convention but still
+    return item_ids — we defensively drop the items so the email template's
+    empty-state branch fires. Anchor on the prompt's exact phrasing.
+    """
+    r = reasoning.strip().lower()
+    return r.startswith("no ") and "recommendation available" in r

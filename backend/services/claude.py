@@ -98,7 +98,9 @@ If no suitable outfit can be assembled for a given mode under today's weather
 inappropriate for the conditions), DO NOT force a bad suggestion. Instead,
 return the entry with `item_ids: []` and a brief `reasoning` that begins with
 "No <mode-name> recommendation available today" and explains why in one
-sentence. Keep the entry in the same position; do not drop modes.
+sentence. Keep the entry in the same position; do not drop modes. When you
+skip a mode this way, `item_ids` MUST be the empty list — never combine the
+"No … recommendation available today" reasoning with non-empty item_ids.
 
 Return ONLY a JSON object of the shape:
 {
