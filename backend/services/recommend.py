@@ -1,8 +1,11 @@
 """Shared outfit recommendation logic — used by the API router and the daily cron."""
 
+from datetime import date
+
 from db.supabase import client as supabase
 from services.claude import recommend_outfits
-from services.weather import TodayWeather, get_today
+from services.outfit_history import log_outfits, sample_wardrobe
+from services.weather import get_today
 
 WARDROBE_FIELDS = (
     "id, name, type, color, formality, season, fabric, brand, description"
@@ -24,9 +27,19 @@ def recommend(
         q = q.eq("in_travel_bag", True)
     res = q.execute()
     wardrobe = res.data or []
+    wardrobe_size = len(wardrobe)
+
+    # Recency-weighted subset (issue #15). Items recently recommended in any of
+    # today's modes are less likely but never excluded.
+    candidate_pool = sample_wardrobe(wardrobe, modes=modes)
 
     outfits = recommend_outfits(
-        weather=weather, wardrobe=wardrobe, n=n, notes=notes, modes=modes
+        weather=weather, wardrobe=candidate_pool, n=n, notes=notes, modes=modes
+    )
+
+    log_outfits(
+        date.today(),
+        [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
     )
 
     # Hydrate with full item objects so the frontend can show photos without re-querying.
@@ -52,7 +65,7 @@ def recommend(
         for o in outfits
     ]
 
-    return {"weather": weather, "outfits": hydrated, "wardrobe_size": len(wardrobe)}
+    return {"weather": weather, "outfits": hydrated, "wardrobe_size": wardrobe_size}
 
 
 def _is_skip(reasoning: str) -> bool:
