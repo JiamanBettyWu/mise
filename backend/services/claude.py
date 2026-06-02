@@ -87,6 +87,9 @@ Each outfit should:
 - Include all the pieces a person would actually wear: top + bottom (or dress)
   + shoes, plus outerwear if needed and any standout accessories.
 - Use ONLY items from the inventory. Reference each item by its `id`.
+- Favor variety across days. The inventory order is randomized and does not
+  imply preference; explore the full set rather than defaulting to the first
+  few items, unless weather or mode genuinely require a specific piece.
 
 If the user provides a list of MODES, return exactly one outfit per mode in the
 SAME ORDER. Each outfit must fit the mode's vibe. Repeat the mode name in the
