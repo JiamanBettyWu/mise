@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TripPlanResult from '../components/TripPlanResult.jsx';
 import { api } from '../services/api.js';
+
+const STORAGE_KEY = 'trip_state';
 
 function todayPlus(days) {
   const d = new Date();
@@ -8,14 +10,62 @@ function todayPlus(days) {
   return d.toISOString().slice(0, 10);
 }
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Pull persisted state on mount. Silent expiry: trips whose end_date has
+// passed are dropped (the empty form is signal enough). Anything unparseable
+// also resets — let the user start over rather than crash on stale shapes.
+function hydrate() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.plan?.end_date && parsed.plan.end_date < todayISO()) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
+
 export default function TripPlan() {
-  const [destination, setDestination] = useState('');
-  const [startDate, setStartDate] = useState(todayPlus(1));
-  const [endDate, setEndDate] = useState(todayPlus(5));
-  const [notes, setNotes] = useState('');
-  const [plan, setPlan] = useState(null);
+  const persisted = hydrate();
+  const [destination, setDestination] = useState(persisted?.form?.destination ?? '');
+  const [startDate, setStartDate] = useState(persisted?.form?.startDate ?? todayPlus(1));
+  const [endDate, setEndDate] = useState(persisted?.form?.endDate ?? todayPlus(5));
+  const [notes, setNotes] = useState(persisted?.form?.notes ?? '');
+  const [plan, setPlan] = useState(persisted?.plan ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const isEmpty = !destination && !notes && !plan;
+    if (isEmpty) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        form: { destination, startDate, endDate, notes },
+        plan,
+      })
+    );
+  }, [destination, startDate, endDate, notes, plan]);
+
+  function planAnotherTrip() {
+    setDestination('');
+    setStartDate(todayPlus(1));
+    setEndDate(todayPlus(5));
+    setNotes('');
+    setPlan(null);
+    setError('');
+  }
 
   async function generate(e) {
     e?.preventDefault();
@@ -100,7 +150,16 @@ export default function TripPlan() {
 
       {loading && <p className="muted">Thinking through weather, catalog, and gaps…</p>}
 
-      {plan && !loading && <TripPlanResult plan={plan} />}
+      {plan && !loading && (
+        <>
+          <div className="trip-form__actions trip-form__actions--reset">
+            <button type="button" onClick={planAnotherTrip}>
+              Plan another trip
+            </button>
+          </div>
+          <TripPlanResult plan={plan} />
+        </>
+      )}
     </div>
   );
 }
