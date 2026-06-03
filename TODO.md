@@ -11,19 +11,19 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 
 ## Where I left off
 
-**Last session (2026-06-02):** Two PRs shipped + one UX bug logged.
+**Last session (2026-06-03):** Quick login-error UX fix shipped ([#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21) → [PR #23](https://github.com/JiamanBettyWu/wardrobe-ai/pull/23)). Unlock screen now branches on the thrown error's status prefix: 401 → "Wrong password.", 500 → "Server misconfigured.", anything else → "Could not reach the server." No more debugging confusion when the backend is just down.
 
-- **Outfit diversity sampler shipped** ([#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) → [PR #19](https://github.com/JiamanBettyWu/wardrobe-ai/pull/19)). New `outfit_history` Supabase table tracks per-(date, mode) recommendations. `sample_wardrobe()` returns ~70% of items weighted by exponentially-decayed recency (`p ∝ 1/(1+s)`), then shuffles. Tunables (`HISTORY_WINDOW_DAYS=7`, `DAILY_DECAY=0.85`, `SAMPLE_FRACTION=0.7`) at the top of [`outfit_history.py`](backend/services/outfit_history.py). Real signal lands over the next few days of cron emails — eyeball whether outfits visibly vary.
-- **Trip planner persistence shipped** ([#20](https://github.com/JiamanBettyWu/wardrobe-ai/issues/20) → [PR #22](https://github.com/JiamanBettyWu/wardrobe-ai/pull/22)). Form + result now persist in `localStorage` across navigation/reload until either "Plan another trip" is clicked or the plan's `end_date` is past (silent expiry).
-- **Misleading login error logged** ([#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21)). Backend-down vs. wrong-password both show "Wrong password." — small fix, ~5 lines in [`App.jsx`](frontend/src/App.jsx).
+**Previous session (2026-06-02):** Two PRs shipped.
+
+- **Outfit diversity sampler** ([#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) → [PR #19](https://github.com/JiamanBettyWu/wardrobe-ai/pull/19)). New `outfit_history` Supabase table tracks per-(date, mode) recommendations. `sample_wardrobe()` returns ~70% of items weighted by exponentially-decayed recency (`p ∝ 1/(1+s)`), then shuffles. Tunables (`HISTORY_WINDOW_DAYS=7`, `DAILY_DECAY=0.85`, `SAMPLE_FRACTION=0.7`) at the top of [`outfit_history.py`](backend/services/outfit_history.py). Real signal lands over the next few days of cron emails — eyeball whether outfits visibly vary.
+- **Trip planner persistence** ([#20](https://github.com/JiamanBettyWu/wardrobe-ai/issues/20) → [PR #22](https://github.com/JiamanBettyWu/wardrobe-ai/pull/22)). Form + result now persist in `localStorage` across navigation/reload until either "Plan another trip" is clicked or the plan's `end_date` is past (silent expiry).
 
 **Next time I sit down, pick one:**
 1. **Watch 3 days of daily emails** to validate [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) actually fixed the repetition problem. If still repetitive, tune the constants; if good, do nothing.
 2. **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — replace the purchase stub with real SerpAPI Google Shopping results (natural follow-up to the trip planner)
-3. **[#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21)** — fix the misleading login error (5 lines, high signal-to-effort)
-4. **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — fix the weather-window crash so trips >5 days out don't 502
-5. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
-6. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
+3. **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — fix the weather-window crash so trips >5 days out don't 502
+4. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
+5. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
 
 ---
 
@@ -39,9 +39,8 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#16 Diversity follow-up: category floors if sampled pool is incoherent](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16) (conditional — only if #15 starves a category)
 - [#17 Diversity follow-up: dedup exact outfit-set repeats](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17) (conditional — only if exact combos still repeat)
 - [#18 Diversity follow-up: soft weather scoring as a sampling multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) (deferred until winter/summer)
-- [#21 Login: distinguish "wrong password" from "backend unreachable"](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21)
 
-Closed this session: [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) (recency sampler → [PR #19](https://github.com/JiamanBettyWu/wardrobe-ai/pull/19)), [#20](https://github.com/JiamanBettyWu/wardrobe-ai/issues/20) (trip persistence → [PR #22](https://github.com/JiamanBettyWu/wardrobe-ai/pull/22)).
+Closed this session: [#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21) (login error UX → [PR #23](https://github.com/JiamanBettyWu/wardrobe-ai/pull/23)).
 
 See the [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/projects)
 for status (Todo / In Progress / Done).
