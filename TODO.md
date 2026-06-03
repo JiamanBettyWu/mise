@@ -24,6 +24,7 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 3. **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — fix the weather-window crash so trips >5 days out don't 502
 4. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
 5. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
+6. **[#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)** — multi-item tagging (B-lite) + bbox feasibility experiment
 
 ---
 
@@ -39,6 +40,7 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#16 Diversity follow-up: category floors if sampled pool is incoherent](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16) (conditional — only if #15 starves a category)
 - [#17 Diversity follow-up: dedup exact outfit-set repeats](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17) (conditional — only if exact combos still repeat)
 - [#18 Diversity follow-up: soft weather scoring as a sampling multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) (deferred until winter/summer)
+- [#24 Multi-item tagging from a single photo (B-lite) + Claude bbox feasibility check](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)
 
 Closed this session: [#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21) (login error UX → [PR #23](https://github.com/JiamanBettyWu/wardrobe-ai/pull/23)).
 
@@ -55,6 +57,16 @@ firm up.
 - ~~Consider an `outfits` history table~~ — promoted: lands as part of [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) (`outfit_history` table for recency tracking, which also unlocks "what did I wear last Tuesday").
 - V2 ideas (deferred from trip planner spec): calendar integration, day-by-day
   outfits, persisted trips, multi-destination.
+- **Option A multi-photo upload** (select N photos, one item per photo) — sibling of [#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)'s B-lite path. File separately if pursued.
+
+---
+
+## Larger plans (not in the issue tracker yet)
+
+Plans too big for a single issue. Each gets split into a sequence of
+issues/PRs when we're ready to do the work.
+
+- **[Multi-user support](docs/multi-user-plan.md)** — let 3-5 friends use their own wardrobes. Deferred until the "friend-ready" milestone (see doc for the gating checklist).
 
 ---
 
