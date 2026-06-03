@@ -279,6 +279,7 @@ textarea {
   gap: 0.75rem;
 }
 .trip-form__actions { margin-top: 0.25rem; }
+.trip-form__actions--reset { margin-top: 1.5rem; }
 
 .trip-result { margin-top: 1.5rem; }
 .trip-result__header { margin-top: 1rem; }
