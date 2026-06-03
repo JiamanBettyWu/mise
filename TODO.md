@@ -11,19 +11,19 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 
 ## Where I left off
 
-**Last session (2026-06-02):** Diversity work scoped.
+**Last session (2026-06-02):** Two PRs shipped + one UX bug logged.
 
-- **Daily-email "no-recommendation" hedge bug fixed** ([PR #14](https://github.com/JiamanBettyWu/wardrobe-ai/pull/14)). When Claude returned the skip-mode reasoning text **and** non-empty item_ids, the email template showed both the "no recommendation" message and outfit photos. Added a defensive `_is_skip()` check at hydration in [`recommend.py`](backend/services/recommend.py) and tightened the prompt to forbid the mixed shape.
-- **Outfit-diversity problem scoped into issues.** After noticing repeated daily-email picks (same outfits 3 days running), traced the root cause to prompt anchoring — wardrobe sent in stable order, Claude gravitates to the top. Designed a recency-decay weighted sampler and filed [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) (the real work) plus three conditional follow-ups ([#16](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16), [#17](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17), [#18](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18)) for tripwires we may or may not actually hit.
-
-**Active work: [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15)** — recency-decay sampler. V1 ships **without** weather pre-filtering; soft weather scoring is parked in [#18](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) for when we hit deep winter/summer and the pool genuinely needs trimming.
+- **Outfit diversity sampler shipped** ([#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) → [PR #19](https://github.com/JiamanBettyWu/wardrobe-ai/pull/19)). New `outfit_history` Supabase table tracks per-(date, mode) recommendations. `sample_wardrobe()` returns ~70% of items weighted by exponentially-decayed recency (`p ∝ 1/(1+s)`), then shuffles. Tunables (`HISTORY_WINDOW_DAYS=7`, `DAILY_DECAY=0.85`, `SAMPLE_FRACTION=0.7`) at the top of [`outfit_history.py`](backend/services/outfit_history.py). Real signal lands over the next few days of cron emails — eyeball whether outfits visibly vary.
+- **Trip planner persistence shipped** ([#20](https://github.com/JiamanBettyWu/wardrobe-ai/issues/20) → [PR #22](https://github.com/JiamanBettyWu/wardrobe-ai/pull/22)). Form + result now persist in `localStorage` across navigation/reload until either "Plan another trip" is clicked or the plan's `end_date` is past (silent expiry).
+- **Misleading login error logged** ([#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21)). Backend-down vs. wrong-password both show "Wrong password." — small fix, ~5 lines in [`App.jsx`](frontend/src/App.jsx).
 
 **Next time I sit down, pick one:**
-1. **[#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15)** — outfit-diversity sampler (active; designed, not yet built)
-2. **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — replace the purchase stub with real SerpAPI Google Shopping results
-3. **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — fix the weather-window crash so trips >5 days out don't 502
-4. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
-5. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
+1. **Watch 3 days of daily emails** to validate [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) actually fixed the repetition problem. If still repetitive, tune the constants; if good, do nothing.
+2. **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — replace the purchase stub with real SerpAPI Google Shopping results (natural follow-up to the trip planner)
+3. **[#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21)** — fix the misleading login error (5 lines, high signal-to-effort)
+4. **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — fix the weather-window crash so trips >5 days out don't 502
+5. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
+6. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
 
 ---
 
@@ -36,12 +36,12 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#9 Trip planner crashes for trips starting >5 days out (OWM forecast window)](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)
 - [#10 Real purchase search: replace stub with SerpAPI Google Shopping](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)
 - [#13 Align local Python version with Render (3.11)](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
-- **[#15 Outfit diversity: per-item recency decay + weighted sampling](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15)** ← active
-- [#16 Diversity follow-up: category floors if sampled pool is incoherent](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16) (conditional on #15)
-- [#17 Diversity follow-up: dedup exact outfit-set repeats](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17) (conditional on #15)
+- [#16 Diversity follow-up: category floors if sampled pool is incoherent](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16) (conditional — only if #15 starves a category)
+- [#17 Diversity follow-up: dedup exact outfit-set repeats](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17) (conditional — only if exact combos still repeat)
 - [#18 Diversity follow-up: soft weather scoring as a sampling multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) (deferred until winter/summer)
+- [#21 Login: distinguish "wrong password" from "backend unreachable"](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21)
 
-Closed since last sync: [#3](https://github.com/JiamanBettyWu/wardrobe-ai/issues/3), [#6](https://github.com/JiamanBettyWu/wardrobe-ai/issues/6), [#11](https://github.com/JiamanBettyWu/wardrobe-ai/pull/11) (env consolidation), [#12](https://github.com/JiamanBettyWu/wardrobe-ai/pull/12) (Render schema-order fix), [#14](https://github.com/JiamanBettyWu/wardrobe-ai/pull/14) (elevated-mode hedge).
+Closed this session: [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) (recency sampler → [PR #19](https://github.com/JiamanBettyWu/wardrobe-ai/pull/19)), [#20](https://github.com/JiamanBettyWu/wardrobe-ai/issues/20) (trip persistence → [PR #22](https://github.com/JiamanBettyWu/wardrobe-ai/pull/22)).
 
 See the [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/projects)
 for status (Todo / In Progress / Done).
