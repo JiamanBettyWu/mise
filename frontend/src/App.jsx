@@ -27,9 +27,16 @@ export default function App() {
       await api.healthAuth();
       setUnlocked(true);
       setError('');
-    } catch {
+    } catch (err) {
       setStoredPassword('');
-      setError('Wrong password.');
+      const msg = err?.message ?? '';
+      if (msg.startsWith('401')) {
+        setError('Wrong password.');
+      } else if (msg.startsWith('500')) {
+        setError('Server misconfigured — APP_PASSWORD not set.');
+      } else {
+        setError('Could not reach the server. Is the backend running?');
+      }
     }
   }
 
