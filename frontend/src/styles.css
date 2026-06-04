@@ -347,49 +347,78 @@ textarea {
 .weather {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.6rem 0.85rem;
-  border: 1px solid #2222;
-  border-radius: 8px;
-  margin-top: 0.75rem;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  margin-top: 1.5rem;
   font-size: 0.9rem;
+  color: rgba(20, 20, 40, 0.85);
 }
 
-.outfit {
-  border: 1px solid #2222;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-top: 1rem;
+/* Outfit groupings: no container chrome — heading + items grid only. */
+.outfit { margin-top: 2rem; }
+.outfit--empty { opacity: 0.5; }
+.outfit--empty .outfit__header h3 { color: rgba(20, 20, 40, 0.5); }
+
+.outfit__header h3 {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 0 0 0.35rem;
+  color: rgba(20, 20, 40, 0.95);
 }
-.outfit--empty {
-  border-style: dashed;
-  opacity: 0.75;
+.outfit__reasoning {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(20, 20, 40, 0.7);
 }
-.outfit--empty .outfit__header h3 { color: #888; }
-.outfit__header h3 { margin: 0 0 0.25rem; }
-.outfit__reasoning { margin: 0 0 0.75rem; }
+
 .outfit__items {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 0.6rem;
+  gap: 0.7rem;
 }
 @media (min-width: 600px) {
-  .outfit__items { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .outfit__items { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.9rem; }
 }
+
+/* Mini glass tile — same language as ClothingCardGlass, smaller. */
 .outfit__item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.8rem;
+  gap: 0.4rem;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 6px 16px rgba(20, 20, 40, 0.06);
 }
 .outfit__item img {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 6px;
-  background: #1112;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
+  display: block;
 }
-.outfit__item-name { line-height: 1.2; }
+.outfit__item-name {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: rgba(20, 20, 40, 0.95);
+  padding: 0 2px;
+}
 
 /* Trip planner ----------------------------------------------------------- */
 
