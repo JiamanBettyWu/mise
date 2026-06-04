@@ -35,38 +35,41 @@ export default function TodayOutfit() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="form-page">
         <h1>Today's outfit</h1>
-        <div className="page-header__actions">
-          <label>
-            <input
-              type="checkbox"
-              checked={travelMode}
-              onChange={(e) => setTravelMode(e.target.checked)}
-            />
-            Travel mode
-          </label>
+
+        <label className="field">
+          <span className="muted">
+            Anything special about today? (optional — e.g. "client meeting", "long walk")
+          </span>
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Describe the occasion, then click Generate"
+          />
+        </label>
+
+        <label className="form-page__inline-toggle">
+          <input
+            type="checkbox"
+            checked={travelMode}
+            onChange={(e) => setTravelMode(e.target.checked)}
+          />
+          Travel mode
+        </label>
+
+        <div>
           <button onClick={generate} disabled={loading}>
             {loading ? 'Thinking…' : data ? 'Regenerate' : 'Generate'}
           </button>
         </div>
-      </div>
 
-      <label className="field" style={{ marginTop: '1rem' }}>
-        <span className="muted">
-          Anything special about today? (optional — e.g. "client meeting", "long walk")
-        </span>
-        <input
-          type="text"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Describe the occasion, then click Generate"
-        />
-      </label>
+        {error && <p className="error">{error}</p>}
+      </div>
 
       {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
 
-      {error && <p className="error">{error}</p>}
       {loading && <p className="muted">Picking outfits…</p>}
 
       {!data && !loading && !error && (
