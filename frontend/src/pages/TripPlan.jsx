@@ -148,19 +148,13 @@ export default function TripPlan() {
 
         {error && <p className="error">{error}</p>}
         </form>
-
-        {plan && !loading && (
-          <div className="trip-form__actions trip-form__actions--reset">
-            <button type="button" onClick={planAnotherTrip}>
-              Plan another trip
-            </button>
-          </div>
-        )}
       </div>
 
       {loading && <p className="muted">Thinking through weather, catalog, and gaps…</p>}
 
-      {plan && !loading && <TripPlanResult plan={plan} />}
+      {plan && !loading && (
+        <TripPlanResult plan={plan} onPlanAnother={planAnotherTrip} />
+      )}
     </div>
   );
 }
