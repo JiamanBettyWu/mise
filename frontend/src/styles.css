@@ -99,6 +99,30 @@ a { color: inherit; }
   margin-top: 1rem;
 }
 
+/* Design experiment: variant picker (remove with the experiment) -------- */
+.variant-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+.variant-picker__label { color: #888; margin-right: 0.25rem; }
+.variant-picker__btn {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  background: transparent;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+.variant-picker__btn.is-active {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+}
+
 .card {
   border: 1px solid #2222;
   border-radius: 8px;

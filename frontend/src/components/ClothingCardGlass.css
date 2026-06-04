@@ -1,0 +1,97 @@
+/* Glass card variant ----------------------------------------------------
+   The blur only LOOKS like glass when there's a colored surface behind it.
+   The rule at the bottom uses :has() to paint the page with a soft gradient
+   whenever any .glass-card is on screen.
+
+   Knobs to play with:
+     --glass-blur   how strong the frost is
+     --glass-tint   how opaque the white surface is (lower = more transparent)
+     --glass-radius corner roundness
+----------------------------------------------------------------------- */
+
+.glass-card {
+  --glass-blur: 90px;
+  --glass-tint: 0.3;
+  --glass-radius: 22px;
+
+  background: rgba(255, 255, 255, var(--glass-tint));
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--glass-radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 10px 30px rgba(20, 20, 40, 0.10);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 18px 44px rgba(20, 20, 40, 0.16);
+}
+
+.glass-card--unavailable { opacity: 0.55; }
+
+.glass-card__photo-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.04);
+}
+.glass-card__photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.glass-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 4px 2px;
+}
+.glass-card__name {
+  /* Wispr-style: EB Garamond (delicate, literary serif) on glass.
+     EB Garamond is fragile at small sizes — keep it at 1rem+ for legibility.
+     Knobs to play with: font-weight (400=book, 500=medium, 600=semibold). */
+  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgba(20, 20, 40, 0.95);
+  line-height: 1.2;
+}
+.glass-card__tags {
+  font-size: 0.78rem;
+  color: rgba(20, 20, 40, 0.55);
+}
+.glass-card__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  margin-top: 6px;
+  color: rgba(20, 20, 40, 0.75);
+}
+.glass-card__actions label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Page-level backdrop: only paints when glass cards are visible. */
+body:has(.glass-card) {
+  background:
+    radial-gradient(circle at 15% 10%, #d7e0f8 0%, transparent 35%),
+    radial-gradient(circle at 30% 20%, #E5DBE6 0%, transparent 30%),
+    radial-gradient(circle at 85% 80%, #E7DAE3 0%, transparent 50%),
+    #eef1f8;
+  background-attachment: fixed;
+}
