@@ -86,12 +86,5 @@
   gap: 0.3rem;
 }
 
-/* Page-level backdrop: only paints when glass cards are visible. */
-body:has(.glass-card) {
-  background:
-    radial-gradient(circle at 15% 10%, #d7e0f8 0%, transparent 35%),
-    radial-gradient(circle at 30% 20%, #E5DBE6 0%, transparent 30%),
-    radial-gradient(circle at 85% 80%, #E7DAE3 0%, transparent 50%),
-    #eef1f8;
-  background-attachment: fixed;
-}
+/* (The page gradient lives globally in styles.css now — it applies on
+   every page, not only when glass cards are visible.) */

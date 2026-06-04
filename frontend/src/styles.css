@@ -10,6 +10,13 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
+  background:
+    radial-gradient(circle at 15% 10%, #d7e0f8 0%, transparent 35%),
+    radial-gradient(circle at 30% 20%, #E5DBE6 0%, transparent 30%),
+    radial-gradient(circle at 85% 80%, #E7DAE3 0%, transparent 50%),
+    #eef1f8;
+  background-attachment: fixed;
+  color: #1a1a2e;
 }
 
 #root {
@@ -20,13 +27,30 @@ body {
 
 button {
   cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #888;
-  background: transparent;
-  font-size: 0.95rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 20, 40, 0.15);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 0.9rem;
+  color: rgba(20, 20, 40, 0.9);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+button:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(20, 20, 40, 0.3);
 }
 button:disabled { opacity: 0.5; cursor: default; }
+
+.danger {
+  border-color: rgba(179, 38, 30, 0.3);
+  color: #b3261e;
+}
+.danger:hover {
+  background: rgba(179, 38, 30, 0.08);
+  border-color: rgba(179, 38, 30, 0.5);
+}
 
 input[type="password"], input[type="text"], input[type="search"], input:not([type]), select {
   padding: 0.5rem;
@@ -51,16 +75,58 @@ a { color: inherit; }
 .error { color: #c0392b; font-size: 0.9rem; }
 .muted { color: #888; font-size: 0.85rem; }
 
+/* Glass nav: sticky floating pill at the top of every page. */
 .nav {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 50;
   display: flex;
-  gap: 1rem;
+  gap: 0.2rem;
   align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #2222;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(20, 20, 40, 0.08);
   margin-bottom: 1.5rem;
 }
-.nav__lock { margin-left: auto; }
+.nav a {
+  text-decoration: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  color: rgba(20, 20, 40, 0.7);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav a:hover {
+  background: rgba(255, 255, 255, 0.4);
+  color: rgba(20, 20, 40, 0.95);
+}
+.nav a.active {
+  background: rgba(20, 20, 40, 0.88);
+  color: #fff;
+}
+.nav__lock {
+  /* Quiet "lock" pill on the right: override the global button. */
+  margin-left: auto;
+  background: transparent;
+  backdrop-filter: none;
+  border-color: transparent;
+  color: rgba(20, 20, 40, 0.5);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+}
+.nav__lock:hover {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(20, 20, 40, 0.15);
+  color: rgba(20, 20, 40, 0.9);
+}
 
+/* Kept for any non-nav use — unchanged. */
 .link-btn {
   background: none;
   border: none;
@@ -239,7 +305,6 @@ textarea {
   gap: 0.6rem;
 }
 .modal__actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
-.danger { border-color: #c0392b; color: #c0392b; }
 
 .weather {
   display: flex;
