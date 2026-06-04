@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import ClothingCard from '../components/ClothingCard.jsx';
+import ClothingCardGlass from '../components/ClothingCardGlass.jsx';
 import ItemDetailModal from '../components/ItemDetailModal.jsx';
 import { api } from '../services/api.js';
 
@@ -79,7 +79,7 @@ export default function Catalog() {
 
       <div className="grid">
         {visible.map((item) => (
-          <ClothingCard
+          <ClothingCardGlass
             key={item.id}
             item={item}
             onChange={handleChange}

@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { api } from '../services/api.js';
+import './ClothingCardGlass.css';
 
-export default function ClothingCard({ item, onChange, onOpen }) {
+// Glass variant — Wispr-inspired glassmorphism + soft minimalism.
+// Try changing: blur intensity, border-radius, shadow softness, hover lift.
+
+export default function ClothingCardGlass({ item, onChange, onOpen }) {
   const [busy, setBusy] = useState(false);
 
   async function patch(fields, e) {
@@ -17,19 +21,21 @@ export default function ClothingCard({ item, onChange, onOpen }) {
 
   return (
     <div
-      className={`card ${item.available ? '' : 'card--unavailable'}`}
+      className={`glass-card ${item.available ? '' : 'glass-card--unavailable'}`}
       onClick={() => onOpen?.(item)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter') onOpen?.(item); }}
     >
-      <img src={item.photo_url} alt={item.name} className="card__photo" />
-      <div className="card__body">
-        <div className="card__name">{item.name}</div>
-        <div className="card__tags muted">
+      <div className="glass-card__photo-wrap">
+        <img src={item.photo_url} alt={item.name} className="glass-card__photo" />
+      </div>
+      <div className="glass-card__body">
+        <div className="glass-card__name">{item.name}</div>
+        <div className="glass-card__tags">
           {item.type} · {item.color}
         </div>
-        <div className="card__actions" onClick={(e) => e.stopPropagation()}>
+        <div className="glass-card__actions" onClick={(e) => e.stopPropagation()}>
           <label>
             <input
               type="checkbox"

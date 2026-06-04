@@ -25,7 +25,7 @@ function normalizeGap(g) {
   return { item: g.item, rationale: g.rationale || '', category: g.category || null };
 }
 
-export default function TripPlanResult({ plan }) {
+export default function TripPlanResult({ plan, onPlanAnother }) {
   const sortedList = [...(plan.packing_list || [])].sort(
     (a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
   );
@@ -53,11 +53,22 @@ export default function TripPlanResult({ plan }) {
       <WeatherStrip weather={plan.weather} />
 
       <div className="trip-result__header">
-        <h2>{plan.destination}</h2>
-        <p className="muted">
-          {plan.start_date} → {plan.end_date} · {plan.duration_days} day
-          {plan.duration_days === 1 ? '' : 's'}
-        </p>
+        <div className="trip-result__title">
+          <h2>{plan.destination}</h2>
+          <p className="muted">
+            {plan.start_date} → {plan.end_date} · {plan.duration_days} day
+            {plan.duration_days === 1 ? '' : 's'}
+          </p>
+        </div>
+        {onPlanAnother && (
+          <button
+            type="button"
+            className="trip-result__plan-another"
+            onClick={onPlanAnother}
+          >
+            Plan another trip
+          </button>
+        )}
       </div>
 
       {plan.reasoning && <p className="trip-result__reasoning">{plan.reasoning}</p>}

@@ -96,9 +96,10 @@ export default function TripPlan() {
 
   return (
     <div>
-      <h1>Trip planner</h1>
+      <div className="form-page">
+        <h1>Trip planner</h1>
 
-      <form className="trip-form" onSubmit={generate}>
+        <form className="trip-form" onSubmit={generate}>
         <label className="field">
           <span className="muted">Destination</span>
           <input
@@ -146,19 +147,13 @@ export default function TripPlan() {
         </div>
 
         {error && <p className="error">{error}</p>}
-      </form>
+        </form>
+      </div>
 
       {loading && <p className="muted">Thinking through weather, catalog, and gaps…</p>}
 
       {plan && !loading && (
-        <>
-          <div className="trip-form__actions trip-form__actions--reset">
-            <button type="button" onClick={planAnotherTrip}>
-              Plan another trip
-            </button>
-          </div>
-          <TripPlanResult plan={plan} />
-        </>
+        <TripPlanResult plan={plan} onPlanAnother={planAnotherTrip} />
       )}
     </div>
   );

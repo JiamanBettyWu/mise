@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import Catalog from './pages/Catalog.jsx';
 import AddItem from './pages/AddItem.jsx';
 import TodayOutfit from './pages/TodayOutfit.jsx';
@@ -57,12 +57,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav className="nav">
-        <Link to="/">Catalog</Link>
-        <Link to="/today">Today</Link>
-        <Link to="/trip">Trip</Link>
-        <Link to="/add">Add</Link>
+        <NavLink to="/" end>Catalog</NavLink>
+        <NavLink to="/today">Today</NavLink>
+        <NavLink to="/trip">Trip</NavLink>
+        <NavLink to="/add">Add</NavLink>
         <button
-          className="link-btn nav__lock"
+          className="nav__lock"
           onClick={() => { setStoredPassword(''); location.reload(); }}
         >
           Lock

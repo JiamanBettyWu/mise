@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import ClothingFields from './ClothingFields.jsx';
+import './ItemDetailModal.css';
 
 export default function ItemDetailModal({ item, onClose, onChange, onDelete }) {
   const [editing, setEditing] = useState(false);
@@ -54,33 +55,33 @@ export default function ItemDetailModal({ item, onClose, onChange, onDelete }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
-        <img src={item.photo_url} alt={item.name} className="modal__photo" />
+    <div className="gmodal-backdrop" onClick={onClose}>
+      <div className="gmodal" onClick={(e) => e.stopPropagation()}>
+        <button className="gmodal__close" onClick={onClose} aria-label="Close">×</button>
+        <img src={item.photo_url} alt={item.name} className="gmodal__photo" />
 
         {!editing ? (
-          <div className="modal__body">
-            <h2>{item.name}</h2>
-            <div className="muted">
+          <div className="gmodal__body">
+            <h2 className="gmodal__name">{item.name}</h2>
+            <div className="gmodal__meta">
               {item.type} · {item.color} · {item.formality} · {item.season} · {item.fabric}
             </div>
-            {item.brand && <div className="muted">Brand: {item.brand}</div>}
+            {item.brand && <div className="gmodal__meta">Brand: {item.brand}</div>}
             {item.description && <p>{item.description}</p>}
-            {item.notes && <p className="muted">Notes: {item.notes}</p>}
-            <div className="muted">
+            {item.notes && <p className="gmodal__meta">Notes: {item.notes}</p>}
+            <div className="gmodal__meta">
               {item.available ? 'Available' : 'In laundry'}
               {item.in_travel_bag ? ' · Packed' : ''}
             </div>
-            <div className="modal__actions">
+            <div className="gmodal__actions">
               <button onClick={() => { setDraft(item); setEditing(true); }}>Edit</button>
               <button onClick={remove} disabled={busy} className="danger">Delete</button>
             </div>
           </div>
         ) : (
-          <div className="modal__body">
+          <div className="gmodal__body">
             <ClothingFields value={draft} onChange={setDraft} />
-            <div className="modal__actions">
+            <div className="gmodal__actions">
               <button onClick={save} disabled={busy}>
                 {busy ? 'Saving…' : 'Save'}
               </button>
@@ -90,7 +91,7 @@ export default function ItemDetailModal({ item, onClose, onChange, onDelete }) {
             </div>
           </div>
         )}
-        {error && <div className="error">{error}</div>}
+        {error && <p className="gmodal__error">{error}</p>}
       </div>
     </div>
   );
