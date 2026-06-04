@@ -191,57 +191,6 @@ a { color: inherit; }
   margin-top: 1rem;
 }
 
-/* Design experiment: variant picker (remove with the experiment) -------- */
-.variant-picker {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-}
-.variant-picker__label { color: #888; margin-right: 0.25rem; }
-.variant-picker__btn {
-  padding: 0.25rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid #ccc;
-  background: transparent;
-  font-size: 0.8rem;
-  text-transform: capitalize;
-  cursor: pointer;
-}
-.variant-picker__btn.is-active {
-  background: #1a1a1a;
-  color: #fff;
-  border-color: #1a1a1a;
-}
-
-.card {
-  border: 1px solid #2222;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.card--unavailable { opacity: 0.5; }
-.card__photo {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  background: #1112;
-}
-.card__body { padding: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
-.card__name { font-weight: 600; font-size: 0.9rem; line-height: 1.25; }
-.card__tags { font-size: 0.75rem; }
-.card__actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
-}
-.card__actions label { display: flex; align-items: center; gap: 0.25rem; }
-
 .form {
   display: flex;
   flex-direction: column;
@@ -292,57 +241,6 @@ textarea {
   width: 100%;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-
-.card { cursor: pointer; transition: transform 0.05s ease; }
-.card:hover { transform: translateY(-1px); }
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 100;
-}
-.modal {
-  background: Canvas;
-  color: CanvasText;
-  border: 1px solid #2222;
-  border-radius: 10px;
-  max-width: 520px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-.modal__close {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  border: none;
-  background: transparent;
-  font-size: 1.6rem;
-  line-height: 1;
-  cursor: pointer;
-  color: inherit;
-}
-.modal__photo {
-  width: 100%;
-  max-height: 50vh;
-  object-fit: contain;
-  background: #1112;
-}
-.modal__body {
-  padding: 1rem 1.25rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-.modal__actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
 
 .weather {
   display: flex;
