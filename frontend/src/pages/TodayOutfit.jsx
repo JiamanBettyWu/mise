@@ -35,9 +35,21 @@ export default function TodayOutfit() {
 
   return (
     <div>
-      <div className="form-page">
+      <div className="page-header">
         <h1>Today's outfit</h1>
+        <div className="page-header__actions">
+          <label>
+            <input
+              type="checkbox"
+              checked={travelMode}
+              onChange={(e) => setTravelMode(e.target.checked)}
+            />
+            Travel mode
+          </label>
+        </div>
+      </div>
 
+      <div className="form-page">
         <label className="field">
           <span className="muted">
             Anything special about today? (optional — e.g. "client meeting", "long walk")
@@ -48,15 +60,6 @@ export default function TodayOutfit() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Describe the occasion, then click Generate"
           />
-        </label>
-
-        <label className="form-page__inline-toggle">
-          <input
-            type="checkbox"
-            checked={travelMode}
-            onChange={(e) => setTravelMode(e.target.checked)}
-          />
-          Travel mode
         </label>
 
         <div>
