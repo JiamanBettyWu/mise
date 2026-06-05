@@ -44,6 +44,7 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#17 Diversity follow-up: dedup exact outfit-set repeats](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17) (conditional — only if exact combos still repeat)
 - [#18 Diversity follow-up: soft weather scoring as a sampling multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) (deferred until winter/summer)
 - [#24 Multi-item tagging from a single photo (B-lite) + Claude bbox feasibility check](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)
+- [#30 Eval harness scaffold for trip_planner LangGraph pipeline](https://github.com/JiamanBettyWu/wardrobe-ai/issues/30) (design firms up after [#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10))
 
 Closed last session: [#26](https://github.com/JiamanBettyWu/wardrobe-ai/issues/26) (persist Today's outfit → [PR #28](https://github.com/JiamanBettyWu/wardrobe-ai/pull/28)), [#27](https://github.com/JiamanBettyWu/wardrobe-ai/issues/27) (destination autocomplete → [PR #29](https://github.com/JiamanBettyWu/wardrobe-ai/pull/29)).
 
