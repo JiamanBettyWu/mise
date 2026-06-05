@@ -11,7 +11,10 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 
 ## Where I left off
 
-**Last session (2026-06-05):** Typography refactor shipped ([PR #31](https://github.com/JiamanBettyWu/wardrobe-ai/pull/31), no tracked issue — ad-hoc exploration). Moved CSS off hardcoded `'EB Garamond'` onto runtime font tokens (`--font-heading/body/mono`) set by a new `FontProvider` ([frontend/src/fonts.jsx](frontend/src/fonts.jsx)). Active pairing is now **Cormorant Garamond + DM Sans**; the whole app re-themes by changing `ACTIVE_COMBO`. A dev-only `<FontPicker>` previews 5 combos live (gated by `import.meta.env.DEV`, stripped from prod). DESIGN.md updated (Principle 2 + Typography + decisions log). Modal close button stays hardcoded `system-ui` (glyph-safety).
+**Last session (2026-06-05):** Two UI changes shipped.
+
+- **Clear action on Today's Outfit** ([#32](https://github.com/JiamanBettyWu/wardrobe-ai/issues/32) → [PR #33](https://github.com/JiamanBettyWu/wardrobe-ai/pull/33)). Ghost "Clear" button next to Generate (shown only when there's notes/results), mirroring the trip planner's "Plan another trip" reset. Wipes notes/data/error but **preserves travel mode** (standing preference, not part of one ask). Promoted the ghost style to a reusable `.ghost` modifier.
+- **Typography → runtime font tokens** ([PR #31](https://github.com/JiamanBettyWu/wardrobe-ai/pull/31), no tracked issue — ad-hoc). Moved CSS off hardcoded `'EB Garamond'` onto `--font-heading/body/mono` set by a new `FontProvider` ([frontend/src/fonts.jsx](frontend/src/fonts.jsx)). Active pairing is **Cormorant Garamond + DM Sans**; re-theme the whole app via `ACTIVE_COMBO`. Dev-only `<FontPicker>` previews 5 combos live (gated by `import.meta.env.DEV`, stripped from prod). Modal close button stays hardcoded `system-ui` (glyph-safety).
 
 **Previous session (2026-06-04):** Two redesign follow-ups shipped back-to-back.
 
@@ -46,7 +49,7 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#24 Multi-item tagging from a single photo (B-lite) + Claude bbox feasibility check](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)
 - [#30 Eval harness scaffold for trip_planner LangGraph pipeline](https://github.com/JiamanBettyWu/wardrobe-ai/issues/30) (design firms up after [#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10))
 
-Closed last session: font-tokens typography refactor → [PR #31](https://github.com/JiamanBettyWu/wardrobe-ai/pull/31) (no issue — ad-hoc).
+Closed last session: [#32](https://github.com/JiamanBettyWu/wardrobe-ai/issues/32) (Today's Outfit Clear action → [PR #33](https://github.com/JiamanBettyWu/wardrobe-ai/pull/33)); font-tokens typography refactor → [PR #31](https://github.com/JiamanBettyWu/wardrobe-ai/pull/31) (no issue — ad-hoc).
 
 See the [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/projects)
 for status (Todo / In Progress / Done).
