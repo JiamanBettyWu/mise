@@ -163,8 +163,11 @@ def get_weather_for_destination(
     destination: str,
     start_date: date,
     end_date: date,
+    lat: float | None = None,
+    lon: float | None = None,
 ) -> TripWeather:
-    lat, lon = _destination_to_coords(destination)
+    if lat is None or lon is None:
+        lat, lon = _destination_to_coords(destination)
     raw = _fetch_forecast(lat, lon)
 
     by_date: dict[date, list[dict]] = {}

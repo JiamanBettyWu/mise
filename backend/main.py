@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import require_password
 from db.supabase import client as supabase
-from routers import clothes, outfits, trips
+from routers import clothes, geo, outfits, trips
 
 # Load the single repo-root .env regardless of cwd. See ENV setup in README.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(clothes.router)
 app.include_router(outfits.router)
 app.include_router(trips.router)
+app.include_router(geo.router)
 
 
 @app.get("/health")

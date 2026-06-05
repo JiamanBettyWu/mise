@@ -52,9 +52,12 @@ export const api = {
       body: { travel_mode, notes, n, lat, lon },
     }),
 
-  planTrip: ({ destination, start_date, end_date, additional_notes = '' }) =>
+  planTrip: ({ destination, start_date, end_date, additional_notes = '', lat = null, lon = null }) =>
     request('/trips/plan', {
       method: 'POST',
-      body: { destination, start_date, end_date, additional_notes },
+      body: { destination, start_date, end_date, additional_notes, lat, lon },
     }),
+
+  searchGeo: (q, limit = 5) =>
+    request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 };

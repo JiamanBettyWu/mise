@@ -94,6 +94,7 @@ Append-only. Date each entry. When a decision reverses, *replace* the old entry 
 - **2026-06-04** — *Modal close button uses `system-ui` font, `display: flex` centering, `padding: 0`.* EB Garamond was bleeding into the `×` glyph; flex centering avoids glyph-metric variance.
 - **2026-06-04** — *App-wide gradient applies to `body` directly, not scoped via `:has(.glass-card)`.* Glass is the app's design language now — every page should read as one continuous surface.
 - **2026-06-04** — *Editorial variant (Fraunces serif, flat layout) was explored and dropped from the app.* Kept as a potential landing/marketing-page direction; recoverable from git history (`feat/glass-card-design`) if revisited.
+- **2026-06-04** — *Destination combobox dropdown uses the same `12px` radius and glass tint as text inputs, but a higher tint (0.92) than cards.* The menu is a transient decision surface — readability beats atmosphere; matching the input's radius keeps the field + menu reading as one component.
 
 ## Maintaining this doc
 
