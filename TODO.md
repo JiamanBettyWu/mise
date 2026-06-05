@@ -11,17 +11,17 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 
 ## Where I left off
 
-**Last session (2026-06-04):** Two redesign follow-ups shipped back-to-back.
+**Last session (2026-06-05):** Typography refactor shipped ([PR #31](https://github.com/JiamanBettyWu/wardrobe-ai/pull/31), no tracked issue — ad-hoc exploration). Moved CSS off hardcoded `'EB Garamond'` onto runtime font tokens (`--font-heading/body/mono`) set by a new `FontProvider` ([frontend/src/fonts.jsx](frontend/src/fonts.jsx)). Active pairing is now **Cormorant Garamond + DM Sans**; the whole app re-themes by changing `ACTIVE_COMBO`. A dev-only `<FontPicker>` previews 5 combos live (gated by `import.meta.env.DEV`, stripped from prod). DESIGN.md updated (Principle 2 + Typography + decisions log). Modal close button stays hardcoded `system-ui` (glyph-safety).
+
+**Previous session (2026-06-04):** Two redesign follow-ups shipped back-to-back.
 
 - **Persist Today's outfit results** ([#26](https://github.com/JiamanBettyWu/wardrobe-ai/issues/26) → [PR #28](https://github.com/JiamanBettyWu/wardrobe-ai/pull/28)). Mirrors the Trip persistence pattern: `today_state` in `localStorage` survives navigation, with `generatedOn` gating expiry so yesterday's pick is dropped on hydrate. Geolocation is intentionally not persisted (cheap to re-request, stale coords would mislabel "your location").
 - **Destination autocomplete** ([#27](https://github.com/JiamanBettyWu/wardrobe-ai/issues/27) → [PR #29](https://github.com/JiamanBettyWu/wardrobe-ai/pull/29)). New `GET /geo/search` route proxies OWM `/geo/1.0/direct` server-side. `TripPlan` destination is now a debounced combobox with ArrowUp/Down + Enter + Escape nav. Selected coords thread through `TripPlanRequest` → `PackingState` → `get_weather_node`, skipping the redundant backend geocode. Free-text fallback still works.
 
-**Previous session (2026-06-04 earlier):** Glass design system landed across the whole frontend (cards, modal, nav, buttons, inputs, outfit tiles, trip results) and is documented in [DESIGN.md](DESIGN.md) with a dated decisions log. CLAUDE.md points to it so future UI work stays coherent.
-
-**Two sessions back (2026-06-03):** Quick login-error UX fix shipped ([#21](https://github.com/JiamanBettyWu/wardrobe-ai/issues/21) → [PR #23](https://github.com/JiamanBettyWu/wardrobe-ai/pull/23)). Unlock screen branches on the thrown error's status prefix: 401 → "Wrong password.", 500 → "Server misconfigured.", anything else → "Could not reach the server."
+**Two sessions back (2026-06-04 earlier):** Glass design system landed across the whole frontend (cards, modal, nav, buttons, inputs, outfit tiles, trip results) and is documented in [DESIGN.md](DESIGN.md) with a dated decisions log. CLAUDE.md points to it so future UI work stays coherent.
 
 **Next time I sit down, pick one:**
-1. **Live with the redesign + new combobox for a couple days** and note anything that grates — file follow-ups if so.
+1. **Live with the redesign + new fonts + combobox for a couple days** and note anything that grates — file follow-ups if so. (Cormorant is easy to swap if it doesn't wear well: change `ACTIVE_COMBO` or run `npm run dev` for the live picker.)
 2. **Watch 3 days of daily emails** to validate [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) actually fixed the repetition problem.
 3. **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — replace the purchase stub with real SerpAPI Google Shopping results
 4. **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — fix the weather-window crash so trips >5 days out don't 502
@@ -46,7 +46,7 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#24 Multi-item tagging from a single photo (B-lite) + Claude bbox feasibility check](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)
 - [#30 Eval harness scaffold for trip_planner LangGraph pipeline](https://github.com/JiamanBettyWu/wardrobe-ai/issues/30) (design firms up after [#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10))
 
-Closed last session: [#26](https://github.com/JiamanBettyWu/wardrobe-ai/issues/26) (persist Today's outfit → [PR #28](https://github.com/JiamanBettyWu/wardrobe-ai/pull/28)), [#27](https://github.com/JiamanBettyWu/wardrobe-ai/issues/27) (destination autocomplete → [PR #29](https://github.com/JiamanBettyWu/wardrobe-ai/pull/29)).
+Closed last session: font-tokens typography refactor → [PR #31](https://github.com/JiamanBettyWu/wardrobe-ai/pull/31) (no issue — ad-hoc).
 
 See the [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/projects)
 for status (Todo / In Progress / Done).
