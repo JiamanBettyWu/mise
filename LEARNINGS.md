@@ -31,3 +31,9 @@ Idiomatic LangGraph nodes return `{"key": value}` partial dicts and let the fram
 
 ### 2026-06 — Frontend persistence pattern: hydrate on mount, sync via `useEffect`
 For "where I left off" state across nav (TripPlan, TodayOutfit), the shape that works: `hydrate()` runs on mount with silent expiry (drop stale payloads); a `useEffect` syncs to `localStorage` on every change; empty form removes the key entirely. Don't persist things that are cheap to re-fetch (geolocation) or that go stale fast (yesterday's outfit).
+
+### 2026-06 — Global `button:hover` outranks a bare `.chip` (CSS specificity)
+Styled toggle chips as `<button class="chip">`, but a "Packed" chip flashed white on hover. Cause: the global `button:hover` (element + pseudo-class = 0,1,1) outranks `.chip` (one class = 0,1,0). Lesson: any class-based component style built on a global element selector needs its *own* `:hover`/state rules (`.chip:hover` = 0,2,0) to win — base specificity isn't enough once a pseudo-class enters the global rule.
+
+### 2026-06 — Private repos can't inline raw images in PR descriptions
+Committed a mockup PNG and tried to embed it via `blob/<sha>/...?raw=true` and `raw.githubusercontent.com` — both 404 because the repo is private and GitHub's camo proxy can't authenticate to raw. The only way to inline-render an image in a private-repo PR is to drag-drop it into the description in the browser (uploads to the signed `user-attachments` CDN). From the CLI you can only *link* to a committed file, not embed it.
