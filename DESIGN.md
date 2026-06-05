@@ -76,7 +76,7 @@ Keep new layouts in these ranges. Off-grid values like `13px` or `1.1rem` arbitr
 - **Buttons**:
   - **Primary glass pill** — global `button` style. Use as default.
   - **Danger** — `.danger` modifier. Same glass pill, red tint.
-  - **Ghost** — transparent background that fills on hover. Pattern: `.nav__lock`, `.trip-result__plan-another`. Use for secondary/quiet actions next to a primary one.
+  - **Ghost** — `.ghost` modifier (transparent background that fills on hover). Use for secondary/quiet actions next to a primary one. `.nav__lock` and `.trip-result__plan-another` are older bespoke instances of the same pattern.
 - **Form pages** — [TodayOutfit.jsx](frontend/src/pages/TodayOutfit.jsx), [TripPlan.jsx](frontend/src/pages/TripPlan.jsx). `.page-header` row for title + any page-level toggles (top-right). `.form-page` wrapper below for form content in a left-aligned column with consistent vertical rhythm.
 - **Small content tiles** — `.outfit__item` is the shared mini-tile pattern (TodayOutfit results, Trip packing lists). Reuse it; don't invent a new tile shape.
 
@@ -96,6 +96,7 @@ Append-only. Date each entry. When a decision reverses, *replace* the old entry 
 - **2026-06-04** — *App-wide gradient applies to `body` directly, not scoped via `:has(.glass-card)`.* Glass is the app's design language now — every page should read as one continuous surface.
 - **2026-06-04** — *Editorial variant (Fraunces serif, flat layout) was explored and dropped from the app.* Kept as a potential landing/marketing-page direction; recoverable from git history (`feat/glass-card-design`) if revisited.
 - **2026-06-04** — *Destination combobox dropdown uses the same `12px` radius and glass tint as text inputs, but a higher tint (0.92) than cards.* The menu is a transient decision surface — readability beats atmosphere; matching the input's radius keeps the field + menu reading as one component.
+- **2026-06-05** — *Today's Outfit "Clear" sits next to Generate in the form's button row, not in a result header.* Unlike Trip (where the form collapses and "Plan another trip" lives in the result header), Today's form stays visible alongside results, so the discard action pairs with the primary button on the same surface. Clear preserves Travel mode — it's a standing preference, not part of a single ask. Surfaced only when there's something to clear (`data || notes`). Ghost styling promoted to a reusable `.ghost` modifier.
 - **2026-06-05** — *Typography moved from a hardcoded `'EB Garamond'` to runtime CSS tokens (`--font-heading/body/mono`), and the active pairing is now **Cormorant Garamond + DM Sans**.* The "one display + one functional font" principle is unchanged — only the faces and the wiring changed. Combos live in [fonts.jsx](frontend/src/fonts.jsx); a dev-only `<FontPicker>` previews them and `ACTIVE_COMBO` sets the shipped default. EB Garamond is kept as a selectable combo. Fonts load via `FontProvider`, not a static `<link>` in [index.html](frontend/index.html).
 
 ## Maintaining this doc
