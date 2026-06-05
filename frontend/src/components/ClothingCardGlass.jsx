@@ -36,24 +36,26 @@ export default function ClothingCardGlass({ item, onChange, onOpen }) {
           {item.type} · {item.color}
         </div>
         <div className="glass-card__actions" onClick={(e) => e.stopPropagation()}>
-          <label>
-            <input
-              type="checkbox"
-              checked={!item.available}
-              onChange={(e) => patch({ available: !e.target.checked }, e)}
-              disabled={busy}
-            />
+          <button
+            type="button"
+            className={`chip ${!item.available ? 'chip--on-laundry' : ''}`}
+            aria-pressed={!item.available}
+            disabled={busy}
+            onClick={(e) => patch({ available: !item.available }, e)}
+          >
+            <span className="chip__dot" />
             In laundry
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={item.in_travel_bag}
-              onChange={(e) => patch({ in_travel_bag: e.target.checked }, e)}
-              disabled={busy}
-            />
+          </button>
+          <button
+            type="button"
+            className={`chip ${item.in_travel_bag ? 'chip--on-packed' : ''}`}
+            aria-pressed={item.in_travel_bag}
+            disabled={busy}
+            onClick={(e) => patch({ in_travel_bag: !item.in_travel_bag }, e)}
+          >
+            <span className="chip__dot" />
             Packed
-          </label>
+          </button>
         </div>
       </div>
     </div>
