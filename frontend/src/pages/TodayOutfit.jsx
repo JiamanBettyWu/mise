@@ -1,15 +1,56 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import { getCurrentPosition } from '../services/geo.js';
 
+const STORAGE_KEY = 'today_state';
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Today's outfit is by definition for today — drop anything generated on a
+// prior day. Unparseable payloads also reset rather than crash on stale shapes.
+function hydrate() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.generatedOn && parsed.generatedOn !== todayISO()) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
+
 export default function TodayOutfit() {
-  const [travelMode, setTravelMode] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [data, setData] = useState(null);
+  const persisted = hydrate();
+  const [travelMode, setTravelMode] = useState(persisted?.form?.travelMode ?? false);
+  const [notes, setNotes] = useState(persisted?.form?.notes ?? '');
+  const [data, setData] = useState(persisted?.data ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [usingMyLocation, setUsingMyLocation] = useState(false);
   const coordsRef = useRef(null);
+
+  useEffect(() => {
+    const isEmpty = !notes && !data && !travelMode;
+    if (isEmpty) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        form: { travelMode, notes },
+        data,
+        generatedOn: data ? todayISO() : null,
+      })
+    );
+  }, [travelMode, notes, data]);
 
   const generate = useCallback(async () => {
     setLoading(true);
