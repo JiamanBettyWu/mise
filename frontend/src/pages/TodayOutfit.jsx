@@ -52,6 +52,15 @@ export default function TodayOutfit() {
     );
   }, [travelMode, notes, data]);
 
+  // Discard notes + results and start over. Travel mode is preserved — it's a
+  // standing preference (mirrors the page-header toggle), not part of one ask.
+  function clear() {
+    setNotes('');
+    setData(null);
+    setError('');
+    setUsingMyLocation(false);
+  }
+
   const generate = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -103,10 +112,20 @@ export default function TodayOutfit() {
           />
         </label>
 
-        <div>
+        <div className="form-page__actions">
           <button onClick={generate} disabled={loading}>
             {loading ? 'Thinking…' : data ? 'Regenerate' : 'Generate'}
           </button>
+          {(data || notes) && (
+            <button
+              type="button"
+              className="ghost"
+              onClick={clear}
+              disabled={loading}
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         {error && <p className="error">{error}</p>}
