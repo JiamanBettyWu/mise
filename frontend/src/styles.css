@@ -326,6 +326,42 @@ textarea {
 }
 .trip-form__actions { margin-top: 0.25rem; }
 
+.combobox { position: relative; }
+.combobox input { width: 100%; }
+.combobox__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(20, 20, 40, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(20, 20, 40, 0.08);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.combobox__option {
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.combobox__option:hover,
+.combobox__option--active { background: rgba(20, 20, 40, 0.06); }
+.combobox__loading {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
 .trip-result { margin-top: 1.5rem; }
 
 .trip-result__header {

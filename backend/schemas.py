@@ -68,6 +68,10 @@ class TripPlanRequest(BaseModel):
     start_date: date
     end_date: date
     additional_notes: str = ""
+    # Optional pre-geocoded coords from the destination autocomplete. When
+    # present, the weather node skips its own OWM /geo lookup.
+    lat: float | None = None
+    lon: float | None = None
 
 
 class TripWeatherDay(BaseModel):

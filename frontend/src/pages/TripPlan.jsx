@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import TripPlanResult from '../components/TripPlanResult.jsx';
 import { api } from '../services/api.js';
 
@@ -36,6 +37,7 @@ function hydrate() {
 export default function TripPlan() {
   const persisted = hydrate();
   const [destination, setDestination] = useState(persisted?.form?.destination ?? '');
+  const [selected, setSelected] = useState(persisted?.form?.selected ?? null);
   const [startDate, setStartDate] = useState(persisted?.form?.startDate ?? todayPlus(1));
   const [endDate, setEndDate] = useState(persisted?.form?.endDate ?? todayPlus(5));
   const [notes, setNotes] = useState(persisted?.form?.notes ?? '');
@@ -52,14 +54,15 @@ export default function TripPlan() {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        form: { destination, startDate, endDate, notes },
+        form: { destination, selected, startDate, endDate, notes },
         plan,
       })
     );
-  }, [destination, startDate, endDate, notes, plan]);
+  }, [destination, selected, startDate, endDate, notes, plan]);
 
   function planAnotherTrip() {
     setDestination('');
+    setSelected(null);
     setStartDate(todayPlus(1));
     setEndDate(todayPlus(5));
     setNotes('');
@@ -85,6 +88,8 @@ export default function TripPlan() {
         start_date: startDate,
         end_date: endDate,
         additional_notes: notes.trim(),
+        lat: selected?.lat ?? null,
+        lon: selected?.lon ?? null,
       });
       setPlan(result);
     } catch (err) {
@@ -102,11 +107,10 @@ export default function TripPlan() {
         <form className="trip-form" onSubmit={generate}>
         <label className="field">
           <span className="muted">Destination</span>
-          <input
-            type="text"
+          <DestinationCombobox
             value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            placeholder="e.g. Oaxaca, Mexico"
+            onChange={setDestination}
+            onSelect={setSelected}
           />
         </label>
 

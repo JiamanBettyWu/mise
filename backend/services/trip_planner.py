@@ -37,6 +37,8 @@ class PackingState(TypedDict, total=False):
     start_date: date
     end_date: date
     additional_notes: str
+    lat: float | None
+    lon: float | None
 
     # filled in by nodes
     weather: TripWeather
@@ -54,6 +56,8 @@ def get_weather_node(state: PackingState) -> dict:
         destination=state["destination"],
         start_date=state["start_date"],
         end_date=state["end_date"],
+        lat=state.get("lat"),
+        lon=state.get("lon"),
     )
 
     return {"weather": weather}
@@ -253,6 +257,8 @@ def run(req: TripPlanRequest) -> TripPlanResponse:
         "start_date": req.start_date,
         "end_date": req.end_date,
         "additional_notes": req.additional_notes,
+        "lat": req.lat,
+        "lon": req.lon,
     }
 
     final_state = _APP.invoke(initial_state)
