@@ -5,7 +5,7 @@ The visual language for Wardrobe AI's frontend. The codebase is the source of tr
 ## Principles
 
 1. **Glass over solid surfaces.** Translucent white panels with `backdrop-filter: blur` layered over a colored gradient. The blur reacting to the gradient is what makes the app feel alive.
-2. **One display font, one functional font.** EB Garamond for headings/names; system-ui sans for body, controls, and metadata. The serif is the typographic identity — it carries from cards to modal to outfit labels and gives the app one voice.
+2. **One display font, one functional font.** A serif (currently Cormorant Garamond) for headings/names; a sans (currently DM Sans) for body, controls, and metadata. The serif is the typographic identity — it carries from cards to modal to outfit labels and gives the app one voice. The *faces* are swappable via font tokens (see Typography); the *one-serif-one-sans* rule is not.
 3. **Funnel layout: narrow input, wide output.** Forms live in left-aligned columns; results expand to the container width. The shift signals "you've moved from deciding to consuming."
 4. **Shape signals function.** Pills (radius `999px`) for actions, gently-rounded rectangles (radius `12px`) for text input, soft cards (radius `16–24px`) for content. Never mix — each shape carries meaning.
 5. **Restraint over decoration.** One palette, one serif, consistent radii. New components should reuse the existing vocabulary, not introduce new shapes or colors.
@@ -30,9 +30,10 @@ Other ink:
 
 ### Typography
 
-- **Display**: `'EB Garamond', Georgia, 'Times New Roman', serif` — loaded via Google Fonts in [frontend/index.html](frontend/index.html). Used for card names, modal headlines, section headings, outfit labels.
-- **Functional**: inherits `system-ui, -apple-system, sans-serif` from `:root`. All controls and body copy.
-- **Letter-spacing**: `0` on serifs (EB Garamond has built-in kerning); `-0.005em` on sans-serif display headings for slight tightening.
+- **Display**: `'Cormorant Garamond', Georgia, serif` — the editorial serif that carries the app's identity. Used for card names, modal headlines, section headings, outfit labels. Applied via the `--font-heading` token; never hardcoded in CSS.
+- **Functional**: `'DM Sans', system-ui, sans-serif` via the `--font-body` token. All controls and body copy.
+- **Font tokens**: `--font-heading` / `--font-body` / `--font-mono` are set at runtime by `FontProvider` ([frontend/src/fonts.jsx](frontend/src/fonts.jsx)), which also injects the Google Fonts `<link>`. Re-theme the whole app by changing `ACTIVE_COMBO`; a **dev-only** `<FontPicker>` (stripped from production builds) previews combos live. CSS reads the tokens — it must never hardcode a family. The lone exception is the modal close button (`system-ui`, a glyph-safety choice — see decisions log).
+- **Letter-spacing**: `0` on serifs (Garamond-family faces have built-in kerning); `-0.005em` on sans-serif display headings for slight tightening.
 
 ### Glass surface formula
 
@@ -95,6 +96,7 @@ Append-only. Date each entry. When a decision reverses, *replace* the old entry 
 - **2026-06-04** — *App-wide gradient applies to `body` directly, not scoped via `:has(.glass-card)`.* Glass is the app's design language now — every page should read as one continuous surface.
 - **2026-06-04** — *Editorial variant (Fraunces serif, flat layout) was explored and dropped from the app.* Kept as a potential landing/marketing-page direction; recoverable from git history (`feat/glass-card-design`) if revisited.
 - **2026-06-04** — *Destination combobox dropdown uses the same `12px` radius and glass tint as text inputs, but a higher tint (0.92) than cards.* The menu is a transient decision surface — readability beats atmosphere; matching the input's radius keeps the field + menu reading as one component.
+- **2026-06-05** — *Typography moved from a hardcoded `'EB Garamond'` to runtime CSS tokens (`--font-heading/body/mono`), and the active pairing is now **Cormorant Garamond + DM Sans**.* The "one display + one functional font" principle is unchanged — only the faces and the wiring changed. Combos live in [fonts.jsx](frontend/src/fonts.jsx); a dev-only `<FontPicker>` previews them and `ACTIVE_COMBO` sets the shipped default. EB Garamond is kept as a selectable combo. Fonts load via `FontProvider`, not a static `<link>` in [index.html](frontend/index.html).
 
 ## Maintaining this doc
 

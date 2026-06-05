@@ -1,5 +1,11 @@
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
+  /* Font tokens — overridden at runtime by FontProvider (fonts.jsx).
+     Defaults here keep type sane before JS runs / if the provider is removed. */
+  --font-heading: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --font-body: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', monospace;
+
+  font-family: var(--font-body);
   color-scheme: light dark;
 }
 
@@ -256,7 +262,7 @@ textarea {
 .outfit--empty .outfit__header h3 { color: rgba(20, 20, 40, 0.5); }
 
 .outfit__header h3 {
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 1.4rem;
   font-weight: 500;
   letter-spacing: 0;
@@ -303,7 +309,7 @@ textarea {
   display: block;
 }
 .outfit__item-name {
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.2;
@@ -374,7 +380,7 @@ textarea {
 }
 .trip-result__title { flex: 1 1 auto; min-width: 0; }
 .trip-result__header h2 {
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 1.8rem;
   font-weight: 500;
   letter-spacing: 0;
@@ -413,14 +419,14 @@ textarea {
 
 .trip-section { margin-top: 1.5rem; }
 .trip-section h3 {
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 1.3rem;
   font-weight: 500;
   margin: 0 0 0.5rem;
   color: rgba(20, 20, 40, 0.95);
 }
 .trip-section h4 {
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 1.05rem;
   font-weight: 500;
   margin: 0.75rem 0 0.4rem;
@@ -513,7 +519,7 @@ textarea {
 }
 .purchase-card__body { padding: 0 2px 2px; }
 .purchase-card__title {
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.25;
@@ -523,4 +529,44 @@ textarea {
 .purchase-card__meta {
   font-size: 0.78rem;
   color: rgba(20, 20, 40, 0.55);
+}
+
+/* ── Font picker (dev/exploration only — remove with <FontPicker /> ) ──
+   Floating glass pill; same tint/blur as the nav (DESIGN.md). */
+.font-picker {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.4rem 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(20, 20, 40, 0.12);
+}
+.font-picker__label {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(20, 20, 40, 0.55);
+}
+.font-picker__select {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: rgba(20, 20, 40, 0.95);
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+.font-picker__select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 20, 40, 0.18);
 }
