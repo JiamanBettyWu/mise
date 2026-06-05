@@ -58,10 +58,10 @@
   padding: 4px 4px 2px;
 }
 .glass-card__name {
-  /* Wispr-style: EB Garamond (delicate, literary serif) on glass.
-     EB Garamond is fragile at small sizes — keep it at 1rem+ for legibility.
+  /* Heading serif on glass (set by the active font combo — fonts.jsx).
+     Serifs can be fragile at small sizes — keep it at 1rem+ for legibility.
      Knobs to play with: font-weight (400=book, 500=medium, 600=semibold). */
-  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-heading);
   font-size: 1.15rem;
   font-weight: 500;
   letter-spacing: 0;

@@ -95,7 +95,7 @@
 }
 
 .gmodal__name {
-  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-heading);
   font-size: 1.7rem;
   font-weight: 500;
   line-height: 1.15;
