@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 2rem 1.5rem;
   z-index: 100;
   animation: gmodal-fade-in 0.18s ease-out;
 }
