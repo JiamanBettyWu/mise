@@ -80,6 +80,7 @@ get_weather → get_catalog → reason_and_select ──(has_gaps)──→ sear
 - **Frontend design system is documented in [DESIGN.md](DESIGN.md).** Read it before any UI change. Update the principles, vocabulary, or decisions log in the same commit as the visual change — not in a follow-up.
 - [`TODO.md`](TODO.md) is the "where I left off" scratchpad. **GitHub Issues and the Projects board are the source of truth** for tracked work; TODO.md is just the resume-pointer.
 - **After each merged PR, update TODO.md and sweep it for stale info.** Move the shipped issue out of "Open issues", add it to the "Closed last session" line with the PR link, refresh "Where I left off" and "Next time I sit down" so the next session opens with a current pointer. Fix any line that referenced the now-shipped work as still pending.
+- **When you hit a non-obvious gotcha while debugging, append a 2-line entry to [LEARNINGS.md](LEARNINGS.md).** Informal, first-person, chronological. The file is intentionally unpolished — frictionlessness > documentation quality. Three years of accumulated entries is the real portfolio material.
 - **Branch per issue**, named `feat/issue-N-...` or `fix/...`. PRs close issues with `Closes #N`.
 - This is a solo repo; on PRs **skip the "Approve" step** (GitHub blocks self-approval) — use the green Merge button directly.
 - Labels in use: `enhancement`, `bug`, `tech-debt`, `prompt-tuning`, `langgraph`.
