@@ -37,3 +37,9 @@ Styled toggle chips as `<button class="chip">`, but a "Packed" chip flashed whit
 
 ### 2026-06 — Private repos can't inline raw images in PR descriptions
 Committed a mockup PNG and tried to embed it via `blob/<sha>/...?raw=true` and `raw.githubusercontent.com` — both 404 because the repo is private and GitHub's camo proxy can't authenticate to raw. The only way to inline-render an image in a private-repo PR is to drag-drop it into the description in the browser (uploads to the signed `user-attachments` CDN). From the CLI you can only *link* to a committed file, not embed it.
+
+### 2026-06 — A *hanging* import (not an error) can mean corrupted site-packages
+Backend wouldn't start: `uvicorn` hung silently. Bisected with `signal.alarm` and found `import dotenv` hanging forever. Cause wasn't code — `.venv/lib/.../dotenv/*.py` were full of NUL bytes (filesystem corruption; `ls` even showed `total 0` blocks). A read on unallocated/bad blocks *blocks on I/O* instead of erroring, so the import hangs rather than throwing. Same event had corrupted `frontend/node_modules`. Fix: rebuild from lockfiles — `uv sync` / `npm ci`. Lesson: hanging import + recently-flaky disk → scan the package files for NUL bytes (`grep -qU $'\x00'`), don't debug the code.
+
+### 2026-06 — Don't run `uvicorn --reload` right after `uv sync` (it watches `.venv`)
+After rebuilding `.venv`, started the backend with `--reload`. WatchFiles watches the whole project *including `.venv`*, so `uv sync`'s freshly-written files kept triggering reloads that reset in-flight connections — auth requests returned `000`/curl-exit-56 even though the server logged `200`. Looked like an auth bug; was really restart-churn. For dev that needs reload, exclude the venv: `--reload-exclude '.venv/*'`. Or just run without `--reload` when you're not editing backend code.
