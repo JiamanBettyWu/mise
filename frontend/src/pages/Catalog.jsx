@@ -8,7 +8,11 @@ export default function Catalog() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [travelMode, setTravelMode] = useState(false);
+  // Single mutually-exclusive view: 'all' | 'packed' | 'laundry'.
+  // 'packed' is the old Travel-mode filter; 'laundry' is its mirror. One state
+  // means picking one view clears the other for free (no coordinating booleans).
+  const [view, setView] = useState('all');
+  const [resetting, setResetting] = useState(false);
   const [openItem, setOpenItem] = useState(null);
   const [query, setQuery] = useState('');
 
@@ -29,7 +33,9 @@ export default function Catalog() {
   }
 
   const visible = useMemo(() => {
-    let list = travelMode ? items.filter((i) => i.in_travel_bag) : items;
+    let list = items;
+    if (view === 'packed') list = list.filter((i) => i.in_travel_bag);
+    else if (view === 'laundry') list = list.filter((i) => !i.available);
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter((i) =>
@@ -38,7 +44,37 @@ export default function Catalog() {
       );
     }
     return list;
-  }, [items, travelMode, query]);
+  }, [items, view, query]);
+
+  // How many items the bulk reset would touch — counts the whole view set,
+  // ignoring the search box (the button says "all", not "all matching").
+  const resettableCount = useMemo(() => {
+    if (view === 'packed') return items.filter((i) => i.in_travel_bag).length;
+    if (view === 'laundry') return items.filter((i) => !i.available).length;
+    return 0;
+  }, [items, view]);
+
+  async function bulkReset() {
+    const isPacked = view === 'packed';
+    const targets = items.filter((i) => (isPacked ? i.in_travel_bag : !i.available));
+    if (targets.length === 0) return;
+    const noun = isPacked ? 'packed' : 'laundry';
+    const verb = isPacked ? 'Unpack' : 'Clear';
+    const plural = targets.length === 1 ? '' : 's';
+    if (!confirm(`${verb} all ${targets.length} ${noun} item${plural}?`)) return;
+
+    const patch = isPacked ? { in_travel_bag: false } : { available: true };
+    setResetting(true);
+    try {
+      const updated = await Promise.all(targets.map((i) => api.patchClothing(i.id, patch)));
+      const byId = new Map(updated.map((u) => [u.id, u]));
+      setItems((arr) => arr.map((i) => byId.get(i.id) || i));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setResetting(false);
+    }
+  }
 
   return (
     <div>
@@ -48,11 +84,24 @@ export default function Catalog() {
           <label>
             <input
               type="checkbox"
-              checked={travelMode}
-              onChange={(e) => setTravelMode(e.target.checked)}
+              checked={view === 'packed'}
+              onChange={(e) => setView(e.target.checked ? 'packed' : 'all')}
             />
             Travel mode
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={view === 'laundry'}
+              onChange={(e) => setView(e.target.checked ? 'laundry' : 'all')}
+            />
+            In laundry
+          </label>
+          {resettableCount > 0 && (
+            <button className="ghost" onClick={bulkReset} disabled={resetting}>
+              {view === 'packed' ? 'Unpack all' : 'Clear laundry'}
+            </button>
+          )}
           <Link to="/add"><button>Add item</button></Link>
         </div>
       </div>
@@ -71,9 +120,11 @@ export default function Catalog() {
         <p className="muted">
           {query
             ? `No matches for "${query}".`
-            : travelMode
+            : view === 'packed'
               ? 'Nothing packed yet.'
-              : 'No items yet — add your first.'}
+              : view === 'laundry'
+                ? 'Nothing in the laundry.'
+                : 'No items yet — add your first.'}
         </p>
       )}
 
