@@ -73,7 +73,7 @@ get_weather → get_catalog → reason_and_select ──(has_gaps)──→ sear
 ## Gotchas worth knowing
 
 - **Python version parity.** Local `backend/.venv` is currently **3.14**; Render runs **3.11**. PEP 649 lazy annotations on 3.14 can silently hide `NameError`s that bite on Render at import time (we hit this with the schema class-order bug in PR #12). Tracked as [issue #13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13). Until that lands, when adding model classes whose annotations reference other classes, define dependencies *before* consumers.
-- **OWM `/forecast` is 5 days only.** Trips starting more than ~5 days out crash the weather node — tracked as [issue #9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9). For testing, pick dates inside the forecast window.
+- **OWM `/forecast` is 5 days only.** Trips outside that live window now use explicit coverage metadata plus a Claude-generated trip-level climate estimate (PR #38). For tests that need real forecast data, pick dates inside the OWM window; for fallback behavior, test partial/out-of-window dates.
 
 ## Project conventions
 

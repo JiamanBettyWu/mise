@@ -96,7 +96,7 @@ adds enough signup friction that non-technical friends bounce. Not pursuing.
 We're deferring multi-user until the app is good enough that friends will
 actually want to use it. The "friend-ready" milestone is:
 
-- [ ] **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — trip-planner crash on >5-day-out trips
+- [x] **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — trip-planner crash on >5-day-out trips fixed in [PR #38](https://github.com/JiamanBettyWu/wardrobe-ai/pull/38)
 - [ ] **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — real purchase search (stub data lies to users)
 - [ ] **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) easy wins** — parallel weather/catalog, trim payload, progressive UI indicators. Skip streaming for v1.
 - [ ] **UI pass** on the 3 screens that matter (catalog, daily outfit, trip planner). Coherent, not pretty.
