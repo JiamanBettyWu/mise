@@ -198,8 +198,15 @@ function CategorySection({ category, items, gaps }) {
 
 function WeatherStrip({ weather }) {
   if (!weather) return null;
+  const coverageLabel = {
+    full_forecast: 'Forecast',
+    partial_forecast: 'Partial forecast + climate estimate',
+    inferred_climate: 'Climate estimate',
+  }[weather.coverage];
+
   return (
     <div className="weather">
+      {coverageLabel && <strong className="weather__label">{coverageLabel}</strong>}
       <span>{weather.summary}</span>
     </div>
   );

@@ -45,8 +45,7 @@ async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
     except Exception as e:
         log.error("Tagging failed:\n%s", traceback.format_exc())
         delete_photo(public_url)
-        detail = f"Tagging failed: {type(e).__name__}: {e}"
-        raise HTTPException(status_code=502, detail=detail)
+        raise HTTPException(status_code=502, detail="Tagging failed")
 
     return TagSuggestion(photo_url=public_url, **tags)
 

@@ -27,4 +27,4 @@ def plan(req: TripPlanRequest) -> TripPlanResponse:
         raise HTTPException(400, str(e))
     except Exception as e:
         log.error("Trip planning failed:\n%s", traceback.format_exc())
-        raise HTTPException(status_code=502, detail=f"{type(e).__name__}: {e}")
+        raise HTTPException(status_code=502, detail="Trip planning failed")

@@ -173,4 +173,14 @@ def parse_json(resp) -> dict:
         if text.startswith("json"):
             text = text[4:]
         text = text.strip("` \n")
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        stop_reason = getattr(resp, "stop_reason", None)
+        preview = text[:500]
+        suffix = text[-500:]
+        raise ValueError(
+            "Claude returned invalid JSON"
+            f" (stop_reason={stop_reason}, length={len(text)}): {e}. "
+            f"Start: {preview!r}. End: {suffix!r}"
+        ) from e

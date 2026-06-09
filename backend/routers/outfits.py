@@ -36,4 +36,4 @@ def recommend_endpoint(req: RecommendRequest):
         )
     except Exception as e:
         log.error("Recommendation failed:\n%s", traceback.format_exc())
-        raise HTTPException(status_code=502, detail=f"{type(e).__name__}: {e}")
+        raise HTTPException(status_code=502, detail="Recommendation failed")
