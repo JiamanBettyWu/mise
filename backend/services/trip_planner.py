@@ -63,6 +63,81 @@ def get_weather_node(state: PackingState) -> dict:
     return {"weather": weather}
 
 
+CLIMATE_INFERENCE_SYSTEM_PROMPT = """You estimate destination climate for travel packing.
+
+Given a destination, travel dates, and any available forecast context, return a concise
+trip-level climate estimate for dates not covered by a live forecast.
+
+Rules:
+- Do not invent exact daily temperatures.
+- Do not present this as a live weather forecast.
+- Mention uncertainty briefly.
+- Focus on packing-relevant conditions: heat/cold, humidity, rain, wind, sun, and layers.
+
+Return ONLY a JSON object of the shape:
+
+{
+  "inferred_summary": "1-2 sentences"
+}
+
+No commentary, no markdown fences. The JSON must be parseable.
+"""
+
+
+def infer_weather_if_needed_node(state: PackingState) -> dict:
+    weather = state["weather"]
+    if weather.coverage == "full_forecast":
+        return {}
+
+    inferred_summary = infer_climate_summary(state)
+    if weather.forecast_summary:
+        summary = f"{weather.forecast_summary} {inferred_summary}"
+    else:
+        summary = inferred_summary
+
+    return {
+        "weather": weather.model_copy(
+            update={
+                "summary": summary,
+                "inferred_summary": inferred_summary,
+            }
+        )
+    }
+
+
+def infer_climate_summary(state: PackingState) -> str:
+    weather = state["weather"]
+    duration = (state["end_date"] - state["start_date"]).days + 1
+    user_blocks = [
+        f"Destination: {state['destination']}",
+        f"Dates: {state['start_date']} to {state['end_date']} ({duration} days)",
+        f"Weather coverage: {weather.coverage}",
+        f"Available forecast summary: {weather.forecast_summary or 'None'}",
+        "Infer climate only for trip dates not covered by the available forecast.",
+    ]
+    additional_notes = state.get("additional_notes", "")
+    if additional_notes.strip():
+        user_blocks.append(f"User notes: {additional_notes.strip()}")
+
+    resp = client().messages.create(
+        model=MODEL,
+        max_tokens=256,
+        system=[
+            {
+                "type": "text",
+                "text": CLIMATE_INFERENCE_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
+    )
+    parsed = parse_json(resp)
+    return parsed.get(
+        "inferred_summary",
+        "Climate estimate unavailable; pack conservatively for the destination and season.",
+    )
+
+
 def get_catalog_node(state: PackingState):
     rows = (
         supabase()
@@ -112,6 +187,7 @@ The packing plan should:
 - Include all categories of clothing items a person would wear: top + bottom (or dress) + shoes, 
   plus outerwears if needed.
 - Be weather-appropriate (layers for cold, breathable for heat, water-resistant if rain is forecasted).
+- If weather context includes a climate estimate, use it conservatively and do not treat it as a live forecast.
 - Pick the number of items appropriate for the trip duration.
 - Reference each item by its `id`, unless for `gaps` and `essentials`. 
 
@@ -176,7 +252,7 @@ def recommend_packing_plan(
 
     resp = client().messages.create(
         model=MODEL,
-        max_tokens=1024,
+        max_tokens=2048,
         system=[
             {
                 "type": "text",
@@ -220,13 +296,15 @@ def build_graph():
     g = StateGraph(PackingState)
 
     g.add_node("get_weather", get_weather_node)
+    g.add_node("infer_weather_if_needed", infer_weather_if_needed_node)
     g.add_node("generate_output", generate_output_node)
     g.add_node("get_catalog", get_catalog_node)
     g.add_node("reason_and_select", reason_and_select_node)
     g.add_node("search_purchases", search_purchases_node)
 
     g.set_entry_point("get_weather")
-    g.add_edge("get_weather", "get_catalog")
+    g.add_edge("get_weather", "infer_weather_if_needed")
+    g.add_edge("infer_weather_if_needed", "get_catalog")
     g.add_edge("get_catalog", "reason_and_select")
 
     g.add_conditional_edges(

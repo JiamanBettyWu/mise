@@ -85,6 +85,9 @@ class TripWeatherDay(BaseModel):
 class TripWeather(BaseModel):
     summary: str
     daily: list[TripWeatherDay] = []
+    coverage: Literal["full_forecast", "partial_forecast", "inferred_climate"]
+    forecast_summary: Optional[str] = None
+    inferred_summary: Optional[str] = None
 
 
 class PackingCategory(BaseModel):
@@ -119,5 +122,4 @@ class TripPlanResponse(BaseModel):
     purchase_suggestions: list[PurchaseSuggestion] = []
     reasoning: str = ""
     essentials: list[str] = []
-
 

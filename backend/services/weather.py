@@ -139,7 +139,6 @@ def _date_range(start_date: date, end_date: date) -> list[date]:
 
 
 def _summarize_conditions(daily: list[TripWeatherDay]) -> str:
-
     max_temp = max(d.high_c for d in daily)
     min_temp = min(d.low_c for d in daily)
     most_common_conditions = Counter(d.conditions for d in daily).most_common(1)[
@@ -157,6 +156,12 @@ def _summarize_conditions(daily: list[TripWeatherDay]) -> str:
         f"Trip weather: high {max_temp}°C, low {min_temp}°C, "
         f"mostly {most_common_conditions}. {percip_summary}"
     )
+
+
+def _format_date_span(days: list[date]) -> str:
+    if len(days) == 1:
+        return days[0].isoformat()
+    return f"{days[0].isoformat()} to {days[-1].isoformat()}"
 
 
 def get_weather_for_destination(
@@ -177,14 +182,37 @@ def get_weather_for_destination(
 
         by_date.setdefault(local_date, []).append(entry)
 
+    requested_dates = _date_range(start_date, end_date)
+    covered_dates = [d for d in requested_dates if d in by_date]
     daily = [
         _rollup_day(by_date[d], d)
-        for d in _date_range(start_date, end_date)
-        if d in by_date
+        for d in covered_dates
     ]
 
-    summary = _summarize_conditions(daily)
-    if len(daily) < len(_date_range(start_date, end_date)):
-        summary += f" (Forecast only available for the first {len(daily)} days.)"
+    if not daily:
+        return TripWeather(
+            daily=[],
+            summary=(
+                "Forecast data is outside OpenWeatherMap's 5-day window; "
+                "a climate estimate is needed for this trip."
+            ),
+            coverage="inferred_climate",
+        )
 
-    return TripWeather(daily=daily, summary=summary)
+    forecast_summary = _summarize_conditions(daily)
+    if len(covered_dates) == len(requested_dates):
+        coverage = "full_forecast"
+        summary = forecast_summary
+    else:
+        coverage = "partial_forecast"
+        summary = (
+            f"Forecast covers {_format_date_span(covered_dates)}. "
+            f"{forecast_summary}"
+        )
+
+    return TripWeather(
+        daily=daily,
+        summary=summary,
+        coverage=coverage,
+        forecast_summary=summary,
+    )

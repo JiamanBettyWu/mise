@@ -46,3 +46,6 @@ After rebuilding `.venv`, started the backend with `--reload`. WatchFiles watche
 
 ### 2026-06 — UPDATE: the "corruption" was iCloud eviction, not a bad disk
 Follow-up to the two entries above. Root cause found: the repo lived on `~/Desktop`, which is synced by iCloud "Desktop & Documents" with "Optimize Mac Storage" on. iCloud was *evicting* file contents to the cloud (files go `dataless` — size shown, 0 local blocks). Reading an evicted file triggers an on-demand download; when that stalls you get a hang (kernel stuck on import), and partial/failed fetches looked like NUL corruption. `verifyVolume /` came back clean and SMART was healthy — because the disk was always fine. Tells: `ls` shows `total 0` blocks; `find <dir> -type f -flags +dataless` lists evicted files. Fix: moved the repo to `~/dev` (outside iCloud). NEVER keep repos/`node_modules`/`.venv` in Desktop or Documents when iCloud sync is on.
+
+### 2026-06 — Long trip prompts can truncate Claude JSON, then look like parser bugs
+A 17-day trip hit `JSONDecodeError: Unterminated string...`; root cause was Claude stopping inside a JSON string because the packing-plan response cap was too low. Fix: raise `max_tokens` for larger structured outputs and make `parse_json()` report `stop_reason`, length, and text snippets so truncation is obvious next time.

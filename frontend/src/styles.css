@@ -265,6 +265,7 @@ textarea {
 .weather {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.6rem;
   padding: 0.7rem 1rem;
   background: rgba(255, 255, 255, 0.5);
@@ -275,6 +276,10 @@ textarea {
   margin-top: 1.5rem;
   font-size: 0.9rem;
   color: rgba(20, 20, 40, 0.85);
+}
+
+.weather__label {
+  color: #1a1a2e;
 }
 
 /* Outfit groupings: no container chrome — heading + items grid only. */
