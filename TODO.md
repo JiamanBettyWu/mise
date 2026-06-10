@@ -11,7 +11,12 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 
 ## Where I left off
 
-**Last session (2026-06-08):** Weather-window crash fixed.
+**Last session (2026-06-09):** Feedback-loop + warmth scoped end-to-end; sandals incident root-caused and fixed.
+
+- **Recommendation-quality scoping session** → decision record in [docs/feedback-loop-design.md](docs/feedback-loop-design.md), filed as issues [#39](https://github.com/JiamanBettyWu/wardrobe-ai/issues/39) (email-first feedback via signed-token links), [#41](https://github.com/JiamanBettyWu/wardrobe-ai/issues/41) (web thumbs), [#40](https://github.com/JiamanBettyWu/wardrobe-ai/issues/40) (warmth 1–5, metadata-only backfill; `season` demoted to display-only), [#42](https://github.com/JiamanBettyWu/wardrobe-ai/issues/42) (feedback → sampling multiplier, smoothed + clamped [0.6, 1.4]), [#44](https://github.com/JiamanBettyWu/wardrobe-ai/issues/44) (no recency weighting for categories ≤5 items). [#18](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) rewritten in place (warmth in prompt + extremes gate **replaces** the soft weather multiplier; blocked on #40). [#16](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16)'s trigger condition officially fired. Organizing principle: *stochastic weights for preferences, deterministic logic for physics.*
+- **Sandals fix shipped** ([#43](https://github.com/JiamanBettyWu/wardrobe-ai/issues/43) → [PR #45](https://github.com/JiamanBettyWu/wardrobe-ai/pull/45)). Root cause: the outfit prompt *mandated* shoes per outfit while the skip convention was all-or-nothing per mode — and the catalog has exactly one elevated-capable pair among 5 footwear items, which the 0.7 sample drops ~30% of days. Prompt may now omit a slot and note the gap in `reasoning`. Verify in the next few daily emails.
+
+**Previous session (2026-06-08):** Weather-window crash fixed.
 
 - **Forecast coverage + inferred climate** ([#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9) → [PR #38](https://github.com/JiamanBettyWu/wardrobe-ai/pull/38)). Trip planner now distinguishes `full_forecast`, `partial_forecast`, and `inferred_climate` instead of crashing when OWM `/forecast` has no overlapping dates. Added a LangGraph `infer_weather_if_needed` node that asks Claude for a trip-level climate estimate only when the live forecast is partial/missing; UI labels Forecast vs Partial forecast + climate estimate vs Climate estimate. Also hardened Claude JSON parser diagnostics while keeping 502 details generic client-side. Manually verified forecasted, partial, and inferred trip cases.
 
@@ -32,12 +37,14 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 **✅ Resolved (was: run Disk Utility → First Aid):** No disk check needed — the disk was never the problem. The 2026-06-05 NUL-byte "corruption" in `frontend/node_modules` + `backend/.venv` was **iCloud eviction**, not filesystem damage. The repo lived on `~/Desktop` (iCloud "Desktop & Documents" + "Optimize Mac Storage" on), so file *contents* were evicted to the cloud and stalled on-demand re-downloads read as NUL bytes / `total 0` blocks. `verifyVolume /` came back clean and SMART was healthy because the hardware was always fine. **Fix applied:** moved this repo (and all active projects) to `~/dev`, outside iCloud; migration verified complete 2026-06-08. Rule going forward: never keep repos / `node_modules` / `.venv` in Desktop or Documents with iCloud sync on. See LEARNINGS for the full "hanging import → iCloud eviction" trail.
 
 **Next time I sit down, pick one:**
-1. **Live with the redesign + new fonts + combobox for a couple days** and note anything that grates — file follow-ups if so. (Cormorant is easy to swap if it doesn't wear well: change `ACTIVE_COMBO` or run `npm run dev` for the live picker.)
-2. **Watch 3 days of daily emails** to validate [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) actually fixed the repetition problem.
-3. **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — replace the purchase stub with real SerpAPI Google Shopping results
-4. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
-5. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
-6. **[#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)** — multi-item tagging (B-lite) + bbox feasibility experiment
+1. **[#39](https://github.com/JiamanBettyWu/wardrobe-ai/issues/39) email feedback capture** or **[#40](https://github.com/JiamanBettyWu/wardrobe-ai/issues/40) warmth attribute** — the two data-collection pieces of the feedback-loop plan; every day unshipped is signal not collected. (Then #42/#18/#44 once data and fields exist.)
+2. **Check the daily emails for the #43 fix** — Elevated should now omit shoes (with a note in reasoning) rather than show sport sandals.
+3. **Live with the redesign + new fonts + combobox for a couple days** and note anything that grates — file follow-ups if so. (Cormorant is easy to swap if it doesn't wear well: change `ACTIVE_COMBO` or run `npm run dev` for the live picker.)
+4. **Watch 3 days of daily emails** to validate [#15](https://github.com/JiamanBettyWu/wardrobe-ai/issues/15) actually fixed the repetition problem.
+5. **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — replace the purchase stub with real SerpAPI Google Shopping results
+6. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — prompt tuning after a real trip (best done *after* actually using the planner for Oaxaca)
+7. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the planner (parallelize weather + catalog, trim payload)
+8. **[#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)** — multi-item tagging (B-lite) + bbox feasibility experiment
 
 ---
 
@@ -49,13 +56,20 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#5 Prepare repo for public release (portfolio)](https://github.com/JiamanBettyWu/wardrobe-ai/issues/5)
 - [#10 Real purchase search: replace stub with SerpAPI Google Shopping](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)
 - [#13 Align local Python version with Render (3.11)](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
-- [#16 Diversity follow-up: category floors if sampled pool is incoherent](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16) (conditional — only if #15 starves a category)
+- [#16 Diversity follow-up: category floors if sampled pool is incoherent](https://github.com/JiamanBettyWu/wardrobe-ai/issues/16) (**trigger fired** — sandals incident; see comment on the issue)
 - [#17 Diversity follow-up: dedup exact outfit-set repeats](https://github.com/JiamanBettyWu/wardrobe-ai/issues/17) (conditional — only if exact combos still repeat)
-- [#18 Diversity follow-up: soft weather scoring as a sampling multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) (deferred until winter/summer)
+- [#18 Weather fit: warmth in prompt + extremes gate](https://github.com/JiamanBettyWu/wardrobe-ai/issues/18) (rewritten 2026-06-09, replaces soft multiplier; blocked on #40)
 - [#24 Multi-item tagging from a single photo (B-lite) + Claude bbox feasibility check](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)
 - [#30 Eval harness scaffold for trip_planner LangGraph pipeline](https://github.com/JiamanBettyWu/wardrobe-ai/issues/30) (design firms up after [#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10))
+- [#39 Feedback loop: thumbs from the daily email (signed token links)](https://github.com/JiamanBettyWu/wardrobe-ai/issues/39)
+- [#40 Warmth attribute 1–5: tagging + backfill + editable UI](https://github.com/JiamanBettyWu/wardrobe-ai/issues/40)
+- [#41 Feedback loop: web thumbs on TodayOutfit](https://github.com/JiamanBettyWu/wardrobe-ai/issues/41) (after #39)
+- [#42 Feedback factor in sampling: smoothed like-rate → clamped multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/42) (after #39)
+- [#44 Category-aware recency: skip recency weighting for small categories](https://github.com/JiamanBettyWu/wardrobe-ai/issues/44)
 
-Closed last session: [#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9) (forecast coverage + inferred climate → [PR #38](https://github.com/JiamanBettyWu/wardrobe-ai/pull/38)).
+The feedback-loop/warmth issue cluster (#39–#44, #18, #16) is mapped with rationale in [docs/feedback-loop-design.md](docs/feedback-loop-design.md).
+
+Closed last session: [#43](https://github.com/JiamanBettyWu/wardrobe-ai/issues/43) (prompt may omit a slot instead of forcing off-mode items → [PR #45](https://github.com/JiamanBettyWu/wardrobe-ai/pull/45)).
 
 See the [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/projects)
 for status (Todo / In Progress / Done).
