@@ -8,11 +8,8 @@ This file provides guidance to coding agents (e.g. Claude Code, Codex) when work
 ```bash
 uv sync                                          # install deps
 uv run uvicorn main:app --reload --port 8000     # dev server
-uv run python test_graph.py                      # offline LangGraph checks (free, gitignored)
-RUN_E2E=1 uv run python test_graph.py            # full pipeline (hits live APIs)
-uv run python test_sampling.py                   # recency-decay sampler unit tests (pure, committed)
-uv run python test_validation.py                 # outfit structural validation tests (pure, committed)
-uv run python test_feedback_token.py             # signed feedback-token tests (pure, committed)
+uv run pytest                                    # offline test suite in tests/ (free, no network)
+RUN_E2E=1 uv run pytest                          # + the full trip-planner pipeline (hits live APIs)
 uv run python -m py_compile <file>               # quick syntax check
 ```
 
@@ -69,7 +66,7 @@ get_weather → get_catalog → reason_and_select ──(has_gaps)──→ sear
 2. Backend ALWAYS calls `services/image.ensure_under_limit()` — this **transcodes HEIC→JPEG and shrinks oversized images**. Same browser-safe bytes go to both Supabase Storage and the vision model.
 3. The mime type returned by `ensure_under_limit` drives the storage path extension (in `services/storage.py`) — don't trust the original filename's extension.
 
-**Single .env at repo root.** Three Python entry points (`backend/main.py`, `backend/test_graph.py`, `jobs/daily_outfit.py`) all load it via explicit `Path(__file__).parents[1] / ".env"`. **Don't add a `backend/.env`** — the cwd-walking default of `load_dotenv()` causes silent divergence. See PR #11 for the cleanup that fixed it.
+**Single .env at repo root.** Every Python entry point (`backend/main.py`, `backend/tests/conftest.py`, the `jobs/` scripts) loads it via an explicit path relative to `__file__`, never cwd. **Don't add a `backend/.env`** — the cwd-walking default of `load_dotenv()` causes silent divergence. See PR #11 for the cleanup that fixed it.
 
 ## Deploy surface
 
