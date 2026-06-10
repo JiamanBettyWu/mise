@@ -1,13 +1,21 @@
 import base64
 import json
+import logging
 import os
 from functools import lru_cache
 
 from anthropic import Anthropic
 
 from services.image import ensure_under_limit
+from services.validation import drop_extras, validate_outfit
+
+log = logging.getLogger("wardrobe.claude")
 
 MODEL = "claude-sonnet-4-6"
+
+# Outfit structural repair (issue #46): how many targeted re-asks before the
+# deterministic drop_extras fallback kicks in.
+MAX_REPAIR_ATTEMPTS = 2
 
 TAGGING_SYSTEM_PROMPT = """You are a clothing-tagging assistant for a personal wardrobe app.
 
@@ -141,12 +149,7 @@ def recommend_outfits(
     If `modes` is provided, returns one outfit per mode in order; `n` is ignored.
     Each mode is a dict with keys `name` and `description`.
     """
-    user_blocks = [
-        f"Weather: high {weather['temp_high_c']}°C, low {weather['temp_low_c']}°C, "
-        f"{weather['conditions']}, "
-        f"{int(weather['precip_chance'] * 100)}% precipitation chance, "
-        f"wind {weather['wind_kmh']} km/h.",
-    ]
+    user_blocks = [_weather_line(weather)]
     if modes:
         user_blocks.append("Modes (return one outfit per mode, in this order):")
         for m in modes:
@@ -171,7 +174,121 @@ def recommend_outfits(
         messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
     )
     parsed = parse_json(resp)
-    return parsed.get("outfits", [])
+    outfits = parsed.get("outfits", [])
+    return _enforce_structure(outfits, wardrobe, weather, modes, notes)
+
+
+def _weather_line(weather: dict) -> str:
+    return (
+        f"Weather: high {weather['temp_high_c']}°C, low {weather['temp_low_c']}°C, "
+        f"{weather['conditions']}, "
+        f"{int(weather['precip_chance'] * 100)}% precipitation chance, "
+        f"wind {weather['wind_kmh']} km/h."
+    )
+
+
+def _enforce_structure(
+    outfits: list[dict],
+    wardrobe: list[dict],
+    weather: dict,
+    modes: list[dict] | None,
+    notes: str,
+) -> list[dict]:
+    """Validate outfit structure; repair with feedback, then fall back (issue #46).
+
+    Blind identical retries re-roll correlated dice, so failed outfits get a
+    targeted repair call that quotes the violations back. After
+    MAX_REPAIR_ATTEMPTS, drop_extras guarantees a structurally valid result —
+    a daily email must never fail over a fixable structural slip.
+    """
+    types_by_id = {item["id"]: item.get("type", "") for item in wardrobe}
+    failed: list[tuple[int, dict, list[str]]] = []
+
+    for attempt in range(MAX_REPAIR_ATTEMPTS + 1):
+        failed = [
+            (i, o, v)
+            for i, o in enumerate(outfits)
+            if (v := validate_outfit(o.get("item_ids", []), types_by_id))
+        ]
+        if not failed:
+            if attempt:
+                log.warning("outfit structure repaired after %d attempt(s)", attempt)
+            return outfits
+        if attempt == MAX_REPAIR_ATTEMPTS:
+            break
+        log.warning(
+            "outfit validation failed (repair attempt %d/%d): %s",
+            attempt + 1,
+            MAX_REPAIR_ATTEMPTS,
+            "; ".join(
+                f"[{o.get('label') or f'#{i}'}] {', '.join(v)}" for i, o, v in failed
+            ),
+        )
+        for (i, _, _), fixed in zip(
+            failed, _repair_outfits(failed, wardrobe, weather, modes, notes)
+        ):
+            if fixed is not None:
+                outfits[i] = fixed
+
+    log.warning(
+        "outfit validation fallback after %d repair attempts: dropping extras",
+        MAX_REPAIR_ATTEMPTS,
+    )
+    for _, outfit, _ in failed:
+        outfit["item_ids"] = drop_extras(outfit.get("item_ids", []), types_by_id)
+    return outfits
+
+
+def _repair_outfits(
+    failed: list[tuple[int, dict, list[str]]],
+    wardrobe: list[dict],
+    weather: dict,
+    modes: list[dict] | None,
+    notes: str,
+) -> list[dict | None]:
+    """One targeted re-ask for only the failed outfits. Never raises — any
+    API/parse error is logged and reported as no-fix so the caller can retry
+    or fall back."""
+    mode_by_name = {m["name"]: m for m in (modes or [])}
+    blocks = [
+        "Your previous outfit response contained structural violations. Return "
+        'corrected versions of ONLY the outfits listed below, in this order, as '
+        '{"outfits": [...]} in the usual format. Keep each outfit\'s label, fix '
+        "the violations, and keep the outfit coherent for its mode and the weather.",
+        _weather_line(weather),
+    ]
+    if notes.strip():
+        blocks.append(f"User notes for today: {notes.strip()}")
+    for i, outfit, violations in failed:
+        label = outfit.get("label") or f"outfit at position {i + 1}"
+        mode = mode_by_name.get(outfit.get("label"))
+        mode_desc = f"\nMode: {mode['description']}" if mode else ""
+        blocks.append(
+            f"Outfit to fix: {label}{mode_desc}\n"
+            f"Previous attempt: {json.dumps(outfit, ensure_ascii=False)}\n"
+            "Violations:\n" + "\n".join(f"- {msg}" for msg in violations)
+        )
+    blocks.append("Wardrobe inventory (JSON):")
+    blocks.append(json.dumps(wardrobe, ensure_ascii=False))
+
+    try:
+        resp = client().messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            system=[
+                {
+                    "type": "text",
+                    "text": OUTFIT_SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[{"role": "user", "content": "\n\n".join(blocks)}],
+        )
+        repaired = parse_json(resp).get("outfits", [])
+    except Exception:
+        log.warning("outfit repair call failed; will retry or fall back", exc_info=True)
+        return [None] * len(failed)
+    return repaired + [None] * (len(failed) - len(repaired))
 
 
 def parse_json(resp) -> dict:

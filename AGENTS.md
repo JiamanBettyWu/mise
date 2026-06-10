@@ -11,6 +11,7 @@ uv run uvicorn main:app --reload --port 8000     # dev server
 uv run python test_graph.py                      # offline LangGraph checks (free, gitignored)
 RUN_E2E=1 uv run python test_graph.py            # full pipeline (hits live APIs)
 uv run python test_sampling.py                   # recency-decay sampler unit tests (pure, committed)
+uv run python test_validation.py                 # outfit structural validation tests (pure, committed)
 uv run python -m py_compile <file>               # quick syntax check
 ```
 
