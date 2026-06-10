@@ -1,7 +1,8 @@
 # Feedback loop + warmth: design decisions
 
 **Status:** scoped and filed 2026-06-09 — issues #39–#44, plus rewritten #18
-and a trigger-fired comment on #16.
+and a trigger-fired comment on #16. Shipped so far: #43 (PR #45), #46
+(PRs #47/#48), **#39 (PR #49 — feedback capture live, A in the issue map)**.
 **Last updated:** 2026-06-09.
 
 Decision record from the scoping session for recommendation-quality work:
