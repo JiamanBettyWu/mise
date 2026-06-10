@@ -29,6 +29,11 @@ npm run preview
 uv --project backend run python jobs/daily_outfit.py
 ```
 
+### One-off scripts (run from repo root)
+```bash
+uv --project backend run python jobs/backfill_warmth.py --dry-run   # warmth backfill (#40); drop --dry-run to write
+```
+
 ### Other useful
 - `gh pr create` / `gh issue create` — workflow is branch-per-issue, PR closes via `Closes #N`.
 - `gh run view <id> --log` — fetch GitHub Actions run logs (the daily-outfit workflow runs every morning).

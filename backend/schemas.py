@@ -24,6 +24,9 @@ class ClothingItemBase(BaseModel):
     formality: Formality
     season: Season
     fabric: str
+    # 1 = minimal warmth … 5 = maximum; None = not rated (e.g. bags, belts).
+    # Inferred at tagging, hand-editable in the UI; inference fills nulls only.
+    warmth: Optional[int] = Field(default=None, ge=1, le=5)
     description: str = ""
     brand: Optional[str] = None
     notes: Optional[str] = None
@@ -42,6 +45,7 @@ class ClothingItemUpdate(BaseModel):
     formality: Optional[Formality] = None
     season: Optional[Season] = None
     fabric: Optional[str] = None
+    warmth: Optional[int] = Field(default=None, ge=1, le=5)
     description: Optional[str] = None
     brand: Optional[str] = None
     notes: Optional[str] = None

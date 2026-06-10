@@ -26,6 +26,7 @@ export default function ItemDetailModal({ item, onClose, onChange, onDelete }) {
         formality: draft.formality,
         season: draft.season,
         fabric: draft.fabric,
+        warmth: draft.warmth ?? null,
         description: draft.description || '',
         brand: draft.brand?.trim() || null,
         notes: draft.notes || null,
@@ -65,6 +66,7 @@ export default function ItemDetailModal({ item, onClose, onChange, onDelete }) {
             <h2 className="gmodal__name">{item.name}</h2>
             <div className="gmodal__meta">
               {item.type} · {item.color} · {item.formality} · {item.season} · {item.fabric}
+              {item.warmth != null && <> · warmth {item.warmth}/5</>}
             </div>
             {item.brand && <div className="gmodal__meta">Brand: {item.brand}</div>}
             {item.description && <p>{item.description}</p>}
