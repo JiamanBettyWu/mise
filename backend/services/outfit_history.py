@@ -10,19 +10,23 @@ Tunables:
   HISTORY_WINDOW_DAYS  how far back the decay reaches
   DAILY_DECAY          per-day multiplicative decay; 0.85 ≈ ~4 day half-life
   SAMPLE_FRACTION      target share of the wardrobe to keep in the pool
+  SMALL_CATEGORY_MAX   categories at or below this size skip recency entirely
 """
 
 from __future__ import annotations
 
 import math
 import random
+from collections import Counter
 from datetime import date, timedelta
 
 from db.supabase import client as supabase
+from services.categories import category_of
 
 HISTORY_WINDOW_DAYS = 7
 DAILY_DECAY = 0.85
 SAMPLE_FRACTION = 0.7
+SMALL_CATEGORY_MAX = 5
 
 
 def sample_wardrobe(
@@ -35,6 +39,9 @@ def sample_wardrobe(
     Items recently recommended in any of today's `modes` are less likely to be
     picked: p ∝ 1 / (1 + recency_score). Items never recommended are uniformly
     likely. With `modes=None`, recency is summed across all modes.
+
+    Items in small categories (≤ SMALL_CATEGORY_MAX available) are exempt
+    from recency weighting — see _sampling_weights.
     """
     if not wardrobe:
         return wardrobe
@@ -46,7 +53,7 @@ def sample_wardrobe(
         modes=mode_names,
         today=today,
     )
-    weights = [1.0 / (1.0 + scores.get(item["id"], 0.0)) for item in wardrobe]
+    weights = _sampling_weights(wardrobe, scores)
 
     target_size = max(1, math.ceil(len(wardrobe) * SAMPLE_FRACTION))
     sampled = _weighted_sample_without_replacement(wardrobe, weights, target_size)
@@ -84,6 +91,26 @@ def log_outfits(
     )
     ids = iter(row["id"] for row in inserted)
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
+
+
+def _sampling_weights(wardrobe: list[dict], scores: dict[str, float]) -> list[float]:
+    """Pure: per-item sampling weights, w = 1 / (1 + recency_score).
+
+    Issue #44 (the sports-sandals incident): rotation pressure only makes
+    sense when substitutes exist. Items in categories with ≤ SMALL_CATEGORY_MAX
+    *available* items get weight 1.0 — the same as never-recommended — so
+    "you wore the good shoes yesterday" stops evicting the only viable pair.
+    Counts are over the wardrobe passed in (already availability- and
+    travel-filtered), and the category map is the closed `type` vocabulary
+    in services/categories.py.
+    """
+    counts = Counter(category_of(item.get("type", "")) for item in wardrobe)
+    return [
+        1.0
+        if counts[category_of(item.get("type", ""))] <= SMALL_CATEGORY_MAX
+        else 1.0 / (1.0 + scores.get(item["id"], 0.0))
+        for item in wardrobe
+    ]
 
 
 def _recency_scores(
