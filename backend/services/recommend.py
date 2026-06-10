@@ -37,7 +37,7 @@ def recommend(
         weather=weather, wardrobe=candidate_pool, n=n, notes=notes, modes=modes
     )
 
-    log_outfits(
+    history_ids = log_outfits(
         date.today(),
         [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
     )
@@ -61,8 +61,10 @@ def recommend(
                 else [by_id[iid] for iid in o.get("item_ids", []) if iid in by_id]
             ),
             "reasoning": o.get("reasoning", ""),
+            # Outfit_history row id for feedback links (#39); None for skips.
+            "history_id": hid,
         }
-        for o in outfits
+        for o, hid in zip(outfits, history_ids)
     ]
 
     return {"weather": weather, "outfits": hydrated, "wardrobe_size": wardrobe_size}
