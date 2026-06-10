@@ -1,0 +1,33 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          # Pin to Render's Python, NOT the local 3.14 — PEP 649 lazy
+          # annotations on 3.14 silently hide NameErrors that bite on Render
+          # at import time (the PR #12 class-order bug, tracked in #13).
+          # Running CI on 3.11 makes this workflow the guard for those.
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install backend deps (incl. dev group)
+        working-directory: backend
+        run: uv sync
+
+      # Offline suite only — no secrets, no network, free. The RUN_E2E=1
+      # live-pipeline test self-skips when the flag is absent.
+      - name: Run offline test suite
+        working-directory: backend
+        run: uv run pytest

@@ -72,12 +72,13 @@ get_weather → get_catalog → reason_and_select ──(has_gaps)──→ sear
 
 - **Backend** → Render (auto-deploy from `main`). Service config in [`render.yaml`](render.yaml).
 - **Frontend** → Vercel (auto-deploy from `main`, root = `frontend/`). Config in [`frontend/vercel.json`](frontend/vercel.json).
+- **CI** → GitHub Actions runs the offline pytest suite on every PR and push to `main` ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)). Pinned to **Python 3.11 to match Render** — it's the guard against the 3.14/3.11 annotation gotcha below. No secrets needed; the `RUN_E2E` test self-skips.
 - **Daily outfit cron** → **GitHub Actions** (NOT Render Cron — Render Cron requires a paid plan). Workflow: [`.github/workflows/daily-outfit.yml`](.github/workflows/daily-outfit.yml). Note: GitHub's scheduled runs are best-effort and routinely delayed 1–3h, which is why the workflow schedules at `20 8 * * *` UTC (offset early to compensate) with no exact-hour guard. See PR #7's commit for the diagnosis.
 - **Email feedback links (#39)** → `FEEDBACK_SECRET` must be identical in **three places**: repo-root `.env`, Render env, GitHub Actions secrets. The daily job *signs* tokens in-process on the Actions runner; Render only *verifies* — a mismatch makes every emailed 👍/👎 link 400. The job also needs `BACKEND_PUBLIC_URL` (Actions secret) to build the links.
 
 ## Gotchas worth knowing
 
-- **Python version parity.** Local `backend/.venv` is currently **3.14**; Render runs **3.11**. PEP 649 lazy annotations on 3.14 can silently hide `NameError`s that bite on Render at import time (we hit this with the schema class-order bug in PR #12). Tracked as [issue #13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13). Until that lands, when adding model classes whose annotations reference other classes, define dependencies *before* consumers.
+- **Python version parity.** Local `backend/.venv` is currently **3.14**; Render runs **3.11**. PEP 649 lazy annotations on 3.14 can silently hide `NameError`s that bite on Render at import time (we hit this with the schema class-order bug in PR #12). Tracked as [issue #13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13). Until that lands, when adding model classes whose annotations reference other classes, define dependencies *before* consumers. The CI test workflow runs on 3.11, so import-time breakage of anything the tests touch is caught on the PR rather than on Render.
 - **OWM `/forecast` is 5 days only.** Trips outside that live window now use explicit coverage metadata plus a model-generated trip-level climate estimate (PR #38). For tests that need real forecast data, pick dates inside the OWM window; for fallback behavior, test partial/out-of-window dates.
 
 ## Project conventions
