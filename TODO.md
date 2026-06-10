@@ -66,7 +66,7 @@ scratchpad — half-formed ideas, where I left off, and links to the real artifa
 - [#41 Feedback loop: web thumbs on TodayOutfit](https://github.com/JiamanBettyWu/wardrobe-ai/issues/41) (after #39)
 - [#42 Feedback factor in sampling: smoothed like-rate → clamped multiplier](https://github.com/JiamanBettyWu/wardrobe-ai/issues/42) (after #39)
 - [#44 Category-aware recency: skip recency weighting for small categories](https://github.com/JiamanBettyWu/wardrobe-ai/issues/44)
-- [#46 Output validation for outfit structure (≤1 bottoms, ≤1 footwear) with repair-on-failure](https://github.com/JiamanBettyWu/wardrobe-ai/issues/46) (two-pants incident; shares `TYPE_CATEGORIES` with #44)
+- [#46 Output validation for outfit structure (≤1 bottoms, ≤1 footwear) with repair-on-failure](https://github.com/JiamanBettyWu/wardrobe-ai/issues/46) (two-pants incident; shares `TYPE_CATEGORIES` with #44; prompt-rule half shipped via [PR #47](https://github.com/JiamanBettyWu/wardrobe-ai/pull/47) — validate/repair/fallback remains)
 
 The feedback-loop/warmth issue cluster (#39–#44, #18, #16) is mapped with rationale in [docs/feedback-loop-design.md](docs/feedback-loop-design.md).
 
