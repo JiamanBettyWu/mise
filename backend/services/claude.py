@@ -91,6 +91,9 @@ Each outfit should:
   note the gap briefly in `reasoning` (e.g. "no suitable shoes available
   today"). An outfit missing shoes beats an outfit with off-mode shoes. Only
   skip the whole mode when no coherent outfit can be built at all.
+- Include at most ONE bottom (trousers, jeans, skirt, or shorts) and at most
+  ONE pair of footwear per outfit. Layering multiple tops is fine; doubling
+  up single-slot categories is not.
 - Use ONLY items from the inventory. Reference each item by its `id`.
 - Favor variety across days. The inventory order is randomized and does not
   imply preference; explore the full set rather than defaulting to the first
