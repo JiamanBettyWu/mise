@@ -33,6 +33,9 @@ services:
         sync: false
       - key: EMAIL_RECIPIENT
         sync: false
+      # Feedback links (#39) — must equal the GitHub Actions FEEDBACK_SECRET.
+      - key: FEEDBACK_SECRET
+        sync: false
 
 # Phase 4 — daily email cron. Re-enable when we ship jobs/daily_outfit.py.
 # Render cron services don't support the free plan, so this is commented out

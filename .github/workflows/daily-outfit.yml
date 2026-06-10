@@ -38,4 +38,8 @@ jobs:
           GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          # Feedback links (#39): the job SIGNS tokens here, Render VERIFIES —
+          # FEEDBACK_SECRET must match the Render env var of the same name.
+          FEEDBACK_SECRET: ${{ secrets.FEEDBACK_SECRET }}
+          BACKEND_PUBLIC_URL: ${{ secrets.BACKEND_PUBLIC_URL }}
         run: python jobs/daily_outfit.py

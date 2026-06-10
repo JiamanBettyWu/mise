@@ -61,5 +61,24 @@ def _render_outfit(index: int, outfit: dict) -> str:
   <p style="margin:0 0 10px;color:#555;font-size:14px;">{reasoning}</p>
   <table cellpadding="0" cellspacing="0" border="0" width="100%"
          style="border-collapse:collapse;"><tr>{items_html}</tr></table>
+  {_render_feedback_links(outfit.get("feedback_urls"))}
 </div>
 """
+
+
+def _render_feedback_links(urls: dict | None) -> str:
+    """👍/👎 anchor pair (issue #39). Plain styled <a> tags — buttons and JS
+    don't survive email clients. Empty string when the job didn't attach
+    links (e.g. FEEDBACK_SECRET unset), so the email renders fine without."""
+    if not urls:
+        return ""
+    link_style = (
+        "display:inline-block;padding:6px 14px;margin-right:8px;"
+        "border:1px solid #ccc;border-radius:16px;text-decoration:none;"
+        "color:#333;font-size:13px;background:#f7f7f7;"
+    )
+    return f"""\
+<div style="margin-top:10px;">
+    <a href="{escape(urls['up'])}" style="{link_style}">👍 Good pick</a>
+    <a href="{escape(urls['down'])}" style="{link_style}">👎 Not for me</a>
+  </div>"""

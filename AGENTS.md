@@ -12,6 +12,7 @@ uv run python test_graph.py                      # offline LangGraph checks (fre
 RUN_E2E=1 uv run python test_graph.py            # full pipeline (hits live APIs)
 uv run python test_sampling.py                   # recency-decay sampler unit tests (pure, committed)
 uv run python test_validation.py                 # outfit structural validation tests (pure, committed)
+uv run python test_feedback_token.py             # signed feedback-token tests (pure, committed)
 uv run python -m py_compile <file>               # quick syntax check
 ```
 
@@ -70,6 +71,7 @@ get_weather → get_catalog → reason_and_select ──(has_gaps)──→ sear
 - **Backend** → Render (auto-deploy from `main`). Service config in [`render.yaml`](render.yaml).
 - **Frontend** → Vercel (auto-deploy from `main`, root = `frontend/`). Config in [`frontend/vercel.json`](frontend/vercel.json).
 - **Daily outfit cron** → **GitHub Actions** (NOT Render Cron — Render Cron requires a paid plan). Workflow: [`.github/workflows/daily-outfit.yml`](.github/workflows/daily-outfit.yml). Note: GitHub's scheduled runs are best-effort and routinely delayed 1–3h, which is why the workflow schedules at `20 8 * * *` UTC (offset early to compensate) with no exact-hour guard. See PR #7's commit for the diagnosis.
+- **Email feedback links (#39)** → `FEEDBACK_SECRET` must be identical in **three places**: repo-root `.env`, Render env, GitHub Actions secrets. The daily job *signs* tokens in-process on the Actions runner; Render only *verifies* — a mismatch makes every emailed 👍/👎 link 400. The job also needs `BACKEND_PUBLIC_URL` (Actions secret) to build the links.
 
 ## Gotchas worth knowing
 

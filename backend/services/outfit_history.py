@@ -58,11 +58,15 @@ def sample_wardrobe(
 def log_outfits(
     on_date: date,
     mode_items: list[tuple[str, list[str]]],
-) -> None:
+) -> list[str | None]:
     """Insert one outfit_history row per non-empty (mode, item_ids) pair.
 
     Empty `item_ids` (the "no recommendation today" skip case) are dropped —
     counting them would phantom-penalize items in future runs.
+
+    Returns the inserted row ids aligned with `mode_items` (None at skipped
+    positions), so callers can attach feedback links to each outfit (#39).
+    PostgREST returns inserted rows in input order.
     """
     rows = [
         {
@@ -73,8 +77,13 @@ def log_outfits(
         for mode, item_ids in mode_items
         if item_ids
     ]
-    if rows:
-        supabase().table("outfit_history").insert(rows).execute()
+    inserted = (
+        supabase().table("outfit_history").insert(rows).execute().data or []
+        if rows
+        else []
+    )
+    ids = iter(row["id"] for row in inserted)
+    return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
 
 
 def _recency_scores(

@@ -22,6 +22,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from services.email import send_html_email  # noqa: E402
 from services.email_template import render_outfit_email  # noqa: E402
+from services.feedback_token import sign_token  # noqa: E402
 from services.recommend import recommend  # noqa: E402
 
 TZ = ZoneInfo("America/New_York")
@@ -60,6 +61,7 @@ def main() -> int:
     result = recommend(travel_mode=False, notes="", modes=DAILY_MODES)
     weather = result["weather"]
     outfits = result["outfits"]
+    _attach_feedback_links(outfits)
 
     html = render_outfit_email(
         weather=weather,
@@ -74,6 +76,28 @@ def main() -> int:
     )
     print(f"[done] sent {len(outfits)} outfits to {os.environ['EMAIL_RECIPIENT']}")
     return 0
+
+
+def _attach_feedback_links(outfits: list[dict]) -> None:
+    """Add 👍/👎 URLs to each logged outfit (issue #39).
+
+    Tokens are signed HERE, in-process on the Actions runner; the Render
+    backend only verifies — so FEEDBACK_SECRET must match in both places
+    (plus the local .env). Best-effort: a missing secret or URL skips the
+    links but never blocks the email.
+    """
+    base_url = os.environ.get("BACKEND_PUBLIC_URL", "").rstrip("/")
+    if not base_url or not os.environ.get("FEEDBACK_SECRET"):
+        print("[warn] BACKEND_PUBLIC_URL/FEEDBACK_SECRET not set; no feedback links")
+        return
+    for outfit in outfits:
+        history_id = outfit.get("history_id")
+        if not history_id:
+            continue
+        outfit["feedback_urls"] = {
+            "up": f"{base_url}/feedback/{sign_token(history_id, 1)}",
+            "down": f"{base_url}/feedback/{sign_token(history_id, -1)}",
+        }
 
 
 if __name__ == "__main__":
