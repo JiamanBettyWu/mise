@@ -2,8 +2,9 @@
 
 **Status:** scoped and filed 2026-06-09 — issues #39–#44, plus rewritten #18
 and a trigger-fired comment on #16. Shipped so far: #43 (PR #45), #46
-(PRs #47/#48), **#39 (PR #49 — feedback capture live, A in the issue map)**.
-**Last updated:** 2026-06-09.
+(PRs #47/#48), **#39 (PR #49 — feedback capture live, A in the issue map)**,
+**#44 (PR #50 — category-aware recency, F in the issue map)**.
+**Last updated:** 2026-06-10.
 
 Decision record from the scoping session for recommendation-quality work:
 thumbs up/down feedback, an inferred warmth attribute, and how both (plus a
