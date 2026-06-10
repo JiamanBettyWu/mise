@@ -8,7 +8,7 @@ from services.outfit_history import log_outfits, sample_wardrobe
 from services.weather import get_today
 
 WARDROBE_FIELDS = (
-    "id, name, type, color, formality, season, fabric, brand, description"
+    "id, name, type, color, formality, season, fabric, warmth, brand, description"
 )
 
 

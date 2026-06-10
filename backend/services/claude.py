@@ -17,7 +17,18 @@ MODEL = "claude-sonnet-4-6"
 # deterministic drop_extras fallback kicks in.
 MAX_REPAIR_ATTEMPTS = 2
 
-TAGGING_SYSTEM_PROMPT = """You are a clothing-tagging assistant for a personal wardrobe app.
+# Shared between the vision-tagging prompt and the one-off metadata backfill
+# (jobs/backfill_warmth.py) so the two can't drift apart (issue #40).
+WARMTH_SCALE = """\
+- warmth: integer 1-5 for how much warmth the item provides when worn, or null
+  for items that don't meaningfully affect warmth (bags, belts, jewelry-like
+  accessories). Scale: 1 = minimal (tank top, shorts, sandals, sheer or linen
+  pieces), 2 = light (t-shirt, light blouse, canvas sneakers), 3 = moderate
+  (long-sleeve shirt, jeans, light sweater, leather boots), 4 = warm (heavy
+  sweater, fleece, lined jacket), 5 = maximum (winter coat, down puffer,
+  heavy wool)."""
+
+TAGGING_SYSTEM_PROMPT = f"""You are a clothing-tagging assistant for a personal wardrobe app.
 
 Given a photo of a single clothing item, return a JSON object with these fields:
 
@@ -31,6 +42,7 @@ Given a photo of a single clothing item, return a JSON object with these fields:
 - season: exactly one of: spring, summer, fall, winter, all-season
 - fabric: best guess at material, e.g. "cotton", "wool", "denim", "leather",
   "synthetic". Use "unknown" if you genuinely cannot tell.
+{WARMTH_SCALE}
 - description: 1-5 sentences describing notable details — silhouette, fit,
   pattern, hardware, neckline, distinctive features. Skip generic filler.
 - brand: only set if a logo or label is clearly visible AND legible. Otherwise

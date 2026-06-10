@@ -5,6 +5,13 @@ export const TYPES = [
 ];
 export const FORMALITIES = ['casual', 'smart-casual', 'formal'];
 export const SEASONS = ['spring', 'summer', 'fall', 'winter', 'all-season'];
+export const WARMTH_LEVELS = [
+  [1, '1 — minimal'],
+  [2, '2 — light'],
+  [3, '3 — moderate'],
+  [4, '4 — warm'],
+  [5, '5 — maximum'],
+];
 
 export default function ClothingFields({ value, onChange }) {
   const set = (k, v) => onChange({ ...value, [k]: v });
@@ -34,6 +41,15 @@ export default function ClothingFields({ value, onChange }) {
       </Field>
       <Field label="Fabric">
         <input value={value.fabric || ''} onChange={(e) => set('fabric', e.target.value)} />
+      </Field>
+      <Field label="Warmth">
+        <select
+          value={value.warmth ?? ''}
+          onChange={(e) => set('warmth', e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="">— not rated</option>
+          {WARMTH_LEVELS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+        </select>
       </Field>
       <Field label="Brand (optional)">
         <input value={value.brand || ''} onChange={(e) => set('brand', e.target.value || null)} />
