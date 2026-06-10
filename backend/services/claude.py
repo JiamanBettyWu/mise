@@ -86,6 +86,11 @@ Each outfit should:
 - Be coherent in color, formality, and style.
 - Include all the pieces a person would actually wear: top + bottom (or dress)
   + shoes, plus outerwear if needed and any standout accessories.
+- EXCEPTION: if nothing in the inventory suits a slot for the mode and weather
+  (e.g. no footwear dressy enough for an elevated outfit), OMIT that slot and
+  note the gap briefly in `reasoning` (e.g. "no suitable shoes available
+  today"). An outfit missing shoes beats an outfit with off-mode shoes. Only
+  skip the whole mode when no coherent outfit can be built at all.
 - Use ONLY items from the inventory. Reference each item by its `id`.
 - Favor variety across days. The inventory order is randomized and does not
   imply preference; explore the full set rather than defaulting to the first
