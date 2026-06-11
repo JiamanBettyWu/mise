@@ -51,6 +51,9 @@ export const api = {
       method: 'POST',
       body: { travel_mode, notes, n, lat, lon },
     }),
+  // verdict: 1 = thumbs up, -1 = thumbs down, 0 = clear
+  outfitFeedback: (historyId, verdict) =>
+    request(`/outfits/${historyId}/feedback`, { method: 'POST', body: { verdict } }),
 
   planTrip: ({ destination, start_date, end_date, additional_notes = '', lat = null, lon = null }) =>
     request('/trips/plan', {

@@ -13,6 +13,7 @@ Tunables:
   SMALL_CATEGORY_MAX   categories at or below this size skip recency entirely
   FEEDBACK_FLOOR       multiplier at like-rate 0 — exploration guarantee (#42)
   FEEDBACK_CEILING     multiplier at like-rate 1 — anti-repetition guard (#42)
+  CATEGORY_FLOORS      minimum per-category presence in the sampled pool (#16)
 """
 
 from __future__ import annotations
@@ -31,6 +32,20 @@ SAMPLE_FRACTION = 0.7
 SMALL_CATEGORY_MAX = 5
 FEEDBACK_FLOOR = 0.6
 FEEDBACK_CEILING = 1.4
+
+# Issue #16: the SAMPLE_FRACTION draw can evict a small category wholesale
+# (the sandals incident's last unshipped mechanism). Each entry is a group of
+# categories sharing one floor — dresses satisfy the lower-half requirement
+# just like bottoms do. Floors are minimums in the *candidate pool*, not the
+# outfit; pool inclusion costs nothing, so outerwear is unconditional rather
+# than weather-gated (a coat in the pool on a hot day is just an item Claude
+# ignores). Implicitly capped by availability.
+CATEGORY_FLOORS = (
+    (("tops",), 3),
+    (("bottoms", "dresses"), 3),
+    (("footwear",), 2),
+    (("outerwear",), 1),
+)
 
 
 def sample_wardrobe(
@@ -61,7 +76,8 @@ def sample_wardrobe(
     weights = _sampling_weights(wardrobe, scores, multipliers)
 
     target_size = max(1, math.ceil(len(wardrobe) * SAMPLE_FRACTION))
-    sampled = _weighted_sample_without_replacement(wardrobe, weights, target_size)
+    ranked = _ranked_by_sample_key(wardrobe, weights)
+    sampled = _apply_category_floors(ranked[:target_size], ranked[target_size:])
 
     random.shuffle(sampled)
     return sampled
@@ -217,20 +233,14 @@ def _aggregate_scores(rows: list[dict], today: date) -> dict[str, float]:
     return scores
 
 
-def _weighted_sample_without_replacement(
-    items: list[dict],
-    weights: list[float],
-    k: int,
-) -> list[dict]:
-    """Efraimidis–Spirakis weighted sampling without replacement.
+def _ranked_by_sample_key(items: list[dict], weights: list[float]) -> list[dict]:
+    """Efraimidis–Spirakis weighted ranking without replacement.
 
-    For each item draw u ~ Uniform(0, 1) and compute key = log(u) / w; take the
-    top-k by key. Exactly equivalent to sequential weighted draws, O(n log k),
-    pure stdlib.
+    For each item draw u ~ Uniform(0, 1) and compute key = log(u) / w; sort
+    descending by key. The prefix of length k is exactly a weighted sample of
+    size k, so callers can slice — and the suffix is the natural "next in
+    line" order the category floors (#16) promote from. Pure stdlib.
     """
-    if k >= len(items):
-        return list(items)
-
     keyed: list[tuple[float, dict]] = []
     for item, w in zip(items, weights):
         if w <= 0:
@@ -239,4 +249,41 @@ def _weighted_sample_without_replacement(
         key = math.log(u) / w if u > 0 else float("-inf")
         keyed.append((key, item))
     keyed.sort(key=lambda kv: kv[0], reverse=True)
-    return [item for _, item in keyed[:k]]
+    return [item for _, item in keyed]
+
+
+def _weighted_sample_without_replacement(
+    items: list[dict],
+    weights: list[float],
+    k: int,
+) -> list[dict]:
+    if k >= len(items):
+        return list(items)
+    return _ranked_by_sample_key(items, weights)[:k]
+
+
+def _apply_category_floors(pool: list[dict], overflow: list[dict]) -> list[dict]:
+    """Pure: top up the pool so floor categories keep a minimum presence (#16).
+
+    `overflow` is the rest of the sample ranking, best-first, so promotion
+    respects the same recency × feedback priorities as the draw itself —
+    floors change *whether* a category survives, not *which* of its items do.
+    Floors cap at availability for free (overflow only holds what exists and,
+    upstream, what survived the weather gate — physics outranks floors). The
+    pool grows by at most the sum of deficits instead of evicting other items.
+    """
+    pool = list(pool)
+    counts = Counter(category_of(item.get("type", "")) for item in pool)
+    promoted: set[str] = set()
+    for group, floor in CATEGORY_FLOORS:
+        have = sum(counts[c] for c in group)
+        for item in overflow:
+            if have >= floor:
+                break
+            if item["id"] in promoted:
+                continue
+            if category_of(item.get("type", "")) in group:
+                pool.append(item)
+                promoted.add(item["id"])
+                have += 1
+    return pool

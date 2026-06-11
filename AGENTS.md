@@ -40,7 +40,7 @@ uv --project backend run python jobs/backfill_warmth.py --dry-run   # warmth bac
 The backend has **two distinct AI flows**. Reading both before changing either saves time.
 
 **1. Daily outfit recommender** — [`services/recommend.py`](backend/services/recommend.py)
-A straight-line Python function: pull weather → load catalog → extremes gate ([`services/weather_gate.py`](backend/services/weather_gate.py), drops warmth-absurd items, #18) → recency-weighted sampling ([`services/outfit_history.py`](backend/services/outfit_history.py), #15/#44) → ask the model to pick outfits for one or more "modes" (smart casual / athleisure / elevated). Used by `POST /outfits/today` and by the cron job. **Not a LangGraph.**
+A straight-line Python function: pull weather → load catalog → extremes gate ([`services/weather_gate.py`](backend/services/weather_gate.py), drops warmth-absurd items, #18) → weighted sampling ([`services/outfit_history.py`](backend/services/outfit_history.py); weight = recency (#15/#44) × feedback multiplier from thumbs verdicts (#42), pool topped up to per-category floors (#16)) → ask the model to pick outfits for one or more "modes" (smart casual / athleisure / elevated). Used by `POST /outfits/today` and by the cron job. Verdicts arrive via emailed 👍/👎 links (#39) or the web thumbs on TodayOutfit (#41) — same `outfit_history.feedback` column either way. **Not a LangGraph.**
 
 **2. Trip planner** — [`services/trip_planner.py`](backend/services/trip_planner.py)
 A LangGraph `StateGraph` over a `PackingState` TypedDict:

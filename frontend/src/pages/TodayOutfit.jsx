@@ -61,6 +61,30 @@ export default function TodayOutfit() {
     setUsingMyLocation(false);
   }
 
+  // Web twin of the email 👍/👎 (#41): same outfit_history row, authed POST
+  // instead of a signed token. Optimistic — revert on failure. Tapping the
+  // active thumb clears the verdict (verdict 0); the other thumb switches.
+  const sendFeedback = useCallback(
+    async (index, verdict) => {
+      const outfit = data?.outfits?.[index];
+      if (!outfit?.history_id) return;
+      const next = outfit.feedback === verdict ? 0 : verdict;
+      const apply = (fb) =>
+        setData((d) => ({
+          ...d,
+          outfits: d.outfits.map((o, i) => (i === index ? { ...o, feedback: fb } : o)),
+        }));
+      apply(next || null);
+      try {
+        await api.outfitFeedback(outfit.history_id, next);
+      } catch (e) {
+        apply(outfit.feedback ?? null);
+        setError(String(e));
+      }
+    },
+    [data]
+  );
+
   const generate = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -151,7 +175,7 @@ export default function TodayOutfit() {
       )}
 
       {data?.outfits?.map((outfit, i) => (
-        <Outfit key={i} index={i} outfit={outfit} />
+        <Outfit key={i} index={i} outfit={outfit} onFeedback={sendFeedback} />
       ))}
     </div>
   );
@@ -169,13 +193,37 @@ function WeatherStrip({ w, usingMyLocation }) {
   );
 }
 
-function Outfit({ index, outfit }) {
+function Outfit({ index, outfit, onFeedback }) {
   const heading = outfit.label || `Option ${index + 1}`;
   const empty = !outfit.items?.length;
   return (
     <div className={`outfit ${empty ? 'outfit--empty' : ''}`}>
       <div className="outfit__header">
-        <h3>{heading}</h3>
+        <div className="outfit__header-row">
+          <h3>{heading}</h3>
+          {!empty && outfit.history_id && (
+            <div className="outfit__feedback">
+              <button
+                type="button"
+                className={`chip ${outfit.feedback === 1 ? 'chip--on-verdict' : ''}`}
+                aria-pressed={outfit.feedback === 1}
+                aria-label="Thumbs up"
+                onClick={() => onFeedback(index, 1)}
+              >
+                👍
+              </button>
+              <button
+                type="button"
+                className={`chip ${outfit.feedback === -1 ? 'chip--on-verdict' : ''}`}
+                aria-pressed={outfit.feedback === -1}
+                aria-label="Thumbs down"
+                onClick={() => onFeedback(index, -1)}
+              >
+                👎
+              </button>
+            </div>
+          )}
+        </div>
         <p className="outfit__reasoning muted">{outfit.reasoning}</p>
       </div>
       {!empty && (

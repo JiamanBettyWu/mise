@@ -1,13 +1,15 @@
 # Feedback loop + warmth: design decisions
 
 **Status:** scoped and filed 2026-06-09 — issues #39–#44, plus rewritten #18
-and a trigger-fired comment on #16. Shipped so far: #43 (PR #45), #46
+and a trigger-fired comment on #16. Shipped: #43 (PR #45), #46
 (PRs #47/#48), **#39 (PR #49 — feedback capture live, A in the issue map)**,
 **#44 (PR #50 — category-aware recency, F in the issue map)**, **#40 (PR #51 —
 warmth attribute, C in the issue map; catalog fully backfilled)**, **#18
-(PR #56 — warmth in prompt + extremes gate, D′ in the issue map)**. Every
-structural piece is now live; what remains is data-dependent (#42 wants ~2
-weeks of verdicts) or optional (#41 web thumbs, #16 if the trigger refires).
+(PR #56 — warmth in prompt + extremes gate, D′ in the issue map)**, **#42
+(PR #57 — feedback → sampling multiplier, E in the issue map)**, **#41
+(PR #58 — web thumbs, B in the issue map)**, **#16 (PR #58 — category floors
+in the sampled pool)**. The whole design is now implemented; the loop's
+quality is data-dependent (verdict volume) from here.
 **Last updated:** 2026-06-10.
 
 Decision record from the scoping session for recommendation-quality work:

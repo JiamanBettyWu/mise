@@ -18,6 +18,7 @@ from services.outfit_history import (
     FEEDBACK_FLOOR,
     SMALL_CATEGORY_MAX,
     _aggregate_scores,
+    _apply_category_floors,
     _feedback_multipliers,
     _sampling_weights,
     _weighted_sample_without_replacement,
@@ -80,21 +81,24 @@ def test_sample_wardrobe_suppresses_worn_in_large_category(monkeypatch, no_feedb
 
 
 def test_small_category_exempt_from_recency(monkeypatch, no_feedback):
-    # The sandals incident (#44): same heavy "worn" score, but only 2 footwear
+    # The sandals incident (#44): same heavy "worn" score, but only 4 footwear
     # items (≤ SMALL_CATEGORY_MAX) — rotation pressure is meaningless without
-    # substitutes, so both sample evenly.
-    sneakers = [{"id": "fresh", "type": "sneakers"}, {"id": "worn", "type": "sneakers"}]
+    # substitutes, so the worn pair samples as evenly as fresh ones. (4 items,
+    # not 2: at 2 the footwear floor of #16 would keep both in every pool and
+    # mask what this test measures.)
+    shoes = [{"id": f"fresh{i}", "type": "sneakers"} for i in range(3)]
+    shoes.append({"id": "worn", "type": "sneakers"})
     monkeypatch.setattr(
         outfit_history, "_recency_scores", lambda modes, today: {"worn": 10.0}
     )
-    monkeypatch.setattr(outfit_history, "SAMPLE_FRACTION", 0.5)  # keep 1 of 2
+    monkeypatch.setattr(outfit_history, "SAMPLE_FRACTION", 0.5)  # keep 2 of 4
 
     random.seed(123)
     hits = Counter()
     for _ in range(2_000):
-        pool = sample_wardrobe(sneakers, modes=None, today=TODAY)
-        hits[pool[0]["id"]] += 1
-    assert hits["worn"] > hits["fresh"] * 0.8, hits  # ~50/50, not suppressed
+        for item in sample_wardrobe(shoes, modes=None, today=TODAY):
+            hits[item["id"]] += 1
+    assert hits["worn"] > hits["fresh0"] * 0.8, hits  # ~even, not suppressed
 
 
 def test_exemption_boundary_is_deterministic():
@@ -188,6 +192,76 @@ def test_feedback_composes_with_recency():
     weights = _sampling_weights(tops, {"t0": 1.0}, {"t0": 1.4})
     assert abs(weights[0] - 0.5 * 1.4) < 1e-9, weights
     assert all(w == 1.0 for w in weights[1:]), weights
+
+
+# --- Category floors (#16) ---
+
+
+def test_floors_promote_in_rank_order():
+    # Pool satisfies tops but has no footwear; overflow is best-first, so the
+    # first two shoes get promoted, in order, and nothing else.
+    pool = [{"id": f"t{i}", "type": "shirt"} for i in range(3)]
+    overflow = [
+        {"id": "shoe_a", "type": "sneakers"},
+        {"id": "t_extra", "type": "shirt"},
+        {"id": "shoe_b", "type": "boots"},
+        {"id": "shoe_c", "type": "sandals"},
+    ]
+    result = _apply_category_floors(pool, overflow)
+    assert [x["id"] for x in result] == ["t0", "t1", "t2", "shoe_a", "shoe_b"], result
+
+
+def test_floors_cap_at_availability():
+    # Footwear floor is 2 but only one shoe exists anywhere — take it, done.
+    pool = [{"id": "t0", "type": "shirt"}]
+    overflow = [{"id": "only_shoe", "type": "shoes"}]
+    result = _apply_category_floors(pool, overflow)
+    assert [x["id"] for x in result] == ["t0", "only_shoe"], result
+
+
+def test_dresses_count_toward_bottoms_floor():
+    # 2 bottoms + 1 dress meets the lower-half floor of 3 — the spare jeans
+    # in overflow must NOT be promoted.
+    pool = [
+        {"id": "skirt", "type": "skirt"},
+        {"id": "trousers", "type": "trousers"},
+        {"id": "dress", "type": "dress"},
+    ]
+    overflow = [{"id": "jeans", "type": "jeans"}]
+    result = _apply_category_floors(pool, overflow)
+    assert [x["id"] for x in result] == ["skirt", "trousers", "dress"], result
+
+
+def test_floors_noop_when_pool_satisfies():
+    pool = (
+        [{"id": f"t{i}", "type": "t-shirt"} for i in range(3)]
+        + [{"id": f"b{i}", "type": "jeans"} for i in range(3)]
+        + [{"id": f"s{i}", "type": "shoes"} for i in range(2)]
+        + [{"id": "coat", "type": "coat"}]
+    )
+    overflow = [{"id": "spare", "type": "shoes"}]
+    assert _apply_category_floors(pool, overflow) == pool
+
+
+def test_sample_wardrobe_pool_always_meets_floors(monkeypatch, no_feedback):
+    # The eviction mechanism itself (#16): the 0.7 draw can drop both shoes /
+    # the only jacket by luck. With floors, no run may.
+    wardrobe = (
+        [{"id": f"t{i}", "type": "t-shirt"} for i in range(10)]
+        + [{"id": f"s{i}", "type": "sneakers"} for i in range(2)]
+        + [{"id": f"b{i}", "type": "jeans"} for i in range(3)]
+        + [{"id": "coat", "type": "coat"}]
+    )
+    monkeypatch.setattr(outfit_history, "_recency_scores", lambda modes, today: {})
+
+    random.seed(99)
+    for _ in range(500):
+        pool = sample_wardrobe(wardrobe, modes=None, today=TODAY)
+        cats = Counter(item["type"] for item in pool)
+        assert cats["sneakers"] == 2, cats
+        assert cats["jeans"] == 3, cats
+        assert cats["coat"] == 1, cats
+        assert cats["t-shirt"] >= 3, cats
 
 
 def test_sample_wardrobe_downweights_disliked(monkeypatch):
