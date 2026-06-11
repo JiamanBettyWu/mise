@@ -4,8 +4,10 @@
 and a trigger-fired comment on #16. Shipped so far: #43 (PR #45), #46
 (PRs #47/#48), **#39 (PR #49 — feedback capture live, A in the issue map)**,
 **#44 (PR #50 — category-aware recency, F in the issue map)**, **#40 (PR #51 —
-warmth attribute, C in the issue map; catalog fully backfilled, #18/D′
-unblocked)**. All data-collection pieces are now live.
+warmth attribute, C in the issue map; catalog fully backfilled)**, **#18
+(PR #56 — warmth in prompt + extremes gate, D′ in the issue map)**. Every
+structural piece is now live; what remains is data-dependent (#42 wants ~2
+weeks of verdicts) or optional (#41 web thumbs, #16 if the trigger refires).
 **Last updated:** 2026-06-10.
 
 Decision record from the scoping session for recommendation-quality work:
