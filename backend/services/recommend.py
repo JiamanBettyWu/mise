@@ -6,6 +6,7 @@ from db.supabase import client as supabase
 from services.claude import recommend_outfits
 from services.outfit_history import log_outfits, sample_wardrobe
 from services.weather import get_today
+from services.weather_gate import gate_extremes
 
 WARDROBE_FIELDS = (
     "id, name, type, color, formality, season, fabric, warmth, brand, description"
@@ -29,9 +30,13 @@ def recommend(
     wardrobe = res.data or []
     wardrobe_size = len(wardrobe)
 
-    # Recency-weighted subset (issue #15). Items recently recommended in any of
-    # today's modes are less likely but never excluded.
-    candidate_pool = sample_wardrobe(wardrobe, modes=modes)
+    # Extremes gate first (issue #18) so absurd items can't displace useful
+    # ones in the sample, then the recency-weighted subset (issue #15): items
+    # recently recommended in any of today's modes are less likely but never
+    # excluded. Small-category counts inside sampling see the post-gate pool —
+    # substitutes that don't exist *today* shouldn't count.
+    wearable = gate_extremes(wardrobe, weather)
+    candidate_pool = sample_wardrobe(wearable, modes=modes)
 
     outfits = recommend_outfits(
         weather=weather, wardrobe=candidate_pool, n=n, notes=notes, modes=modes
