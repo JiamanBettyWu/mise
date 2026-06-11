@@ -103,6 +103,10 @@ a wardrobe inventory, recommend complete outfits.
 Each outfit should:
 - Be weather-appropriate (layers for cold, breathable for heat, water-resistant
   if rain is likely).
+- Respect each item's `warmth` rating, 1 (minimal) to 5 (maximum); null means
+  the item doesn't affect warmth (bags, belts). The outfit's combined layered
+  warmth should suit today's high/low — light pieces for heat; for cold, either
+  high-warmth pieces or several lighter layers.
 - Be coherent in color, formality, and style.
 - Include all the pieces a person would actually wear: top + bottom (or dress)
   + shoes, plus outerwear if needed and any standout accessories.
