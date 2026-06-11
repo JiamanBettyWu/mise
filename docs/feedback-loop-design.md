@@ -97,9 +97,11 @@ mult_i  = 0.6 + 0.8 × score_i                        # [0,1] → [0.6, 1.4]
 
 - The `1/len(item_ids)` weighting makes each outfit distribute one unit of
   credit/blame instead of minting n units.
-- Worked example: one thumbs-down on a 3-item outfit → each item ≈ 0.87 —
-  gentle, because the prior dominates single observations. The innocent
-  blazer later in three liked outfits → ≈ 1.13. Items are exonerated or
+- Worked example: one thumbs-down on a 3-item outfit → each item gets 1/3
+  blame → score 3/7 → mult ≈ 0.94 — gentle, because the prior dominates
+  single observations. (An earlier draft said 0.87; that number forgot the
+  1/len weighting.) The innocent blazer later in three liked 3-item outfits
+  → ups = 1.0 → ≈ 1.13. Items are exonerated or
   convicted by **accumulation, never by a single verdict**.
 - No-feedback outfits contribute nothing: silence is absence of evidence,
   not a vote.

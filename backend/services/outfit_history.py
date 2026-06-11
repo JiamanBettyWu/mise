@@ -11,6 +11,8 @@ Tunables:
   DAILY_DECAY          per-day multiplicative decay; 0.85 ≈ ~4 day half-life
   SAMPLE_FRACTION      target share of the wardrobe to keep in the pool
   SMALL_CATEGORY_MAX   categories at or below this size skip recency entirely
+  FEEDBACK_FLOOR       multiplier at like-rate 0 — exploration guarantee (#42)
+  FEEDBACK_CEILING     multiplier at like-rate 1 — anti-repetition guard (#42)
 """
 
 from __future__ import annotations
@@ -27,6 +29,8 @@ HISTORY_WINDOW_DAYS = 7
 DAILY_DECAY = 0.85
 SAMPLE_FRACTION = 0.7
 SMALL_CATEGORY_MAX = 5
+FEEDBACK_FLOOR = 0.6
+FEEDBACK_CEILING = 1.4
 
 
 def sample_wardrobe(
@@ -53,7 +57,8 @@ def sample_wardrobe(
         modes=mode_names,
         today=today,
     )
-    weights = _sampling_weights(wardrobe, scores)
+    multipliers = _feedback_multipliers(_feedback_rows())
+    weights = _sampling_weights(wardrobe, scores, multipliers)
 
     target_size = max(1, math.ceil(len(wardrobe) * SAMPLE_FRACTION))
     sampled = _weighted_sample_without_replacement(wardrobe, weights, target_size)
@@ -93,24 +98,86 @@ def log_outfits(
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
 
 
-def _sampling_weights(wardrobe: list[dict], scores: dict[str, float]) -> list[float]:
-    """Pure: per-item sampling weights, w = 1 / (1 + recency_score).
+def _sampling_weights(
+    wardrobe: list[dict],
+    scores: dict[str, float],
+    multipliers: dict[str, float],
+) -> list[float]:
+    """Pure: per-item sampling weights, w = recency_factor × feedback_mult.
 
-    Issue #44 (the sports-sandals incident): rotation pressure only makes
-    sense when substitutes exist. Items in categories with ≤ SMALL_CATEGORY_MAX
-    *available* items get weight 1.0 — the same as never-recommended — so
-    "you wore the good shoes yesterday" stops evicting the only viable pair.
+    Recency factor is 1 / (1 + recency_score), except — issue #44 (the
+    sports-sandals incident) — rotation pressure only makes sense when
+    substitutes exist. Items in categories with ≤ SMALL_CATEGORY_MAX
+    *available* items get recency factor 1.0 — the same as never-recommended —
+    so "you wore the good shoes yesterday" stops evicting the only viable pair.
     Counts are over the wardrobe passed in (already availability- and
     travel-filtered), and the category map is the closed `type` vocabulary
     in services/categories.py.
+
+    The feedback multiplier (#42) applies to every item regardless of
+    category size: the small-category exemption is about rotation pressure,
+    not preference. Unrated items get exactly 1.0.
     """
     counts = Counter(category_of(item.get("type", "")) for item in wardrobe)
-    return [
-        1.0
-        if counts[category_of(item.get("type", ""))] <= SMALL_CATEGORY_MAX
-        else 1.0 / (1.0 + scores.get(item["id"], 0.0))
-        for item in wardrobe
-    ]
+    weights = []
+    for item in wardrobe:
+        recency = (
+            1.0
+            if counts[category_of(item.get("type", ""))] <= SMALL_CATEGORY_MAX
+            else 1.0 / (1.0 + scores.get(item["id"], 0.0))
+        )
+        weights.append(recency * multipliers.get(item["id"], 1.0))
+    return weights
+
+
+def _feedback_multipliers(rows: list[dict]) -> dict[str, float]:
+    """Pure: beta-smoothed per-item like-rate → bounded weight multiplier (#42).
+
+    Each outfit verdict is a noisy label on every item in it, weighted
+    1/len(item_ids) so one tap distributes one unit of credit/blame
+    (docs/feedback-loop-design.md, D2):
+
+        score_i = (ups_i + 1) / (ups_i + downs_i + 2)   # Laplace prior = 0.5
+        mult_i  = FLOOR + (CEILING − FLOOR) × score_i   # [0,1] → [0.6, 1.4]
+
+    Items with no verdicts are absent from the result; callers default them
+    to 1.0, so behavior without feedback is unchanged (D3).
+    """
+    ups: dict[str, float] = {}
+    downs: dict[str, float] = {}
+    for row in rows:
+        item_ids = row.get("item_ids") or []
+        verdict = row.get("feedback")
+        if not item_ids or verdict not in (1, -1):
+            continue
+        credit = 1.0 / len(item_ids)
+        bucket = ups if verdict == 1 else downs
+        for iid in item_ids:
+            bucket[iid] = bucket.get(iid, 0.0) + credit
+
+    span = FEEDBACK_CEILING - FEEDBACK_FLOOR
+    return {
+        iid: FEEDBACK_FLOOR
+        + span * (ups.get(iid, 0.0) + 1.0) / (ups.get(iid, 0.0) + downs.get(iid, 0.0) + 2.0)
+        for iid in set(ups) | set(downs)
+    }
+
+
+def _feedback_rows() -> list[dict]:
+    """All outfit rows carrying a verdict.
+
+    No window or mode filter, unlike _recency_scores: taste is global and
+    slow-moving, and feedback time-decay is deliberately out of scope (D2).
+    """
+    return (
+        supabase()
+        .table("outfit_history")
+        .select("item_ids, feedback")
+        .not_.is_("feedback", "null")
+        .execute()
+        .data
+        or []
+    )
 
 
 def _recency_scores(
