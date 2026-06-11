@@ -80,43 +80,15 @@
 }
 
 /* Toggle chips ---------------------------------------------------------
-   Pill (999px) = "action" per DESIGN.md principle 4. Two on-states with
-   different fill weights on purpose: laundry = soft/muted (passive
-   "unavailable" state, echoes --unavailable dimming); packed = strong ink
-   (deliberate/committed). No new colors — ink-alpha on glass only.
-   OFF state stays a ghost pill so it reads as pressable, not as the
-   plain metadata text above it.
+   Base .chip pill + dot live in styles.css (promoted to shared vocabulary —
+   the outfit feedback thumbs reuse them, #41). This file keeps only the
+   card-specific on-states. Two fill weights on purpose: laundry =
+   soft/muted (passive "unavailable" state, echoes --unavailable dimming);
+   packed = strong ink (deliberate/committed). No new colors — ink-alpha on
+   glass only. Each on-state needs its own hover rule — the global
+   button:hover outranks a bare .chip, so a Packed chip flashes white
+   on hover otherwise.
 --------------------------------------------------------------------- */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 32px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  font-weight: 500;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  /* OFF — ghost pill */
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(20, 20, 40, 0.2);
-  color: rgba(20, 20, 40, 0.55);
-}
-.chip:disabled { cursor: default; opacity: 0.6; }
-
-/* Hover overrides — the global button:hover (styles.css) outranks a bare
-   .chip, so each state needs its own hover rule or a Packed chip flashes
-   white on hover. */
-.chip:hover {
-  background: rgba(255, 255, 255, 0.5);
-  border-color: rgba(20, 20, 40, 0.35);
-  color: rgba(20, 20, 40, 0.75);
-}
 .chip--on-laundry:hover {
   background: rgba(20, 20, 40, 0.16);
   border-color: transparent;
@@ -126,14 +98,6 @@
   background: rgba(20, 20, 40, 0.8);
   border-color: transparent;
   color: #fff;
-}
-
-.chip__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(20, 20, 40, 0.4);
-  background: transparent;
 }
 
 /* ON — In laundry: soft muted fill */
