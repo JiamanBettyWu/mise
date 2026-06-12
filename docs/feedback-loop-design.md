@@ -14,7 +14,9 @@ quality is data-dependent (verdict volume) from here.
 next wave is scoped in issues #59–#64. #60 shipped same day: optional 👎
 attribution de-noises D2's smear — see the addendum in D2 — and
 `outfit_history` now records weather + notes at recommendation time for the
-weekly inference job, #62).
+weekly inference job, #62. #63 also shipped: 3 candidates per mode + a
+deterministic filter that hard-blocks combination-attributed 👎 combos —
+the enforcement layer the D2 addendum routes that signal to).
 
 Decision record from the scoping session for recommendation-quality work:
 thumbs up/down feedback, an inferred warmth attribute, and how both (plus a
@@ -131,9 +133,9 @@ no data to estimate per-(item, mode) anything for months.
 Deliberately out of scope: pairing effects ("each piece fine, together
 wrong" — needs combination-level memory, adjacent to #17 — **trigger fired
 2026-06-12: #59 ships a prompt-level episodic version** (recent thumbed
-outfits injected into the outfit prompt's user message; statistical
-combination memory still out of scope, #63 adds a deterministic
-👎-attributed-combo filter later); joint estimation
+outfits injected into the outfit prompt's user message) **and #63 the
+enforcement version** (combination-attributed 👎s become a deterministic
+candidate blocklist; statistical pair estimation still out of scope); joint estimation
 (regression of verdicts on item indicators — months of data before it beats
 smoothed counting; revisit after the eval harness, #30); feedback time-decay
 (taste is slow-moving; a ~90-day half-life drops in later without schema

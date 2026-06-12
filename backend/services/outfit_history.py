@@ -130,6 +130,29 @@ def log_outfits(
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
 
 
+def blocked_combos() -> set[frozenset[str]]:
+    """Item-id sets of combination-attributed 👎 outfits (#63).
+
+    A 👎 tagged "the combination" is not a soft preference — it's a recorded
+    known-bad fact, so it's enforced deterministically (candidate filter in
+    claude._select_candidates) instead of asked for in prose. No time window,
+    same reasoning as _feedback_rows: a combination judged bad stays bad
+    until the verdict is cleared or flipped (which wipes the attribution).
+    Exact-set matching for v1; high-Jaccard overlap is a future refinement.
+    """
+    rows = (
+        supabase()
+        .table("outfit_history")
+        .select("item_ids")
+        .eq("feedback", -1)
+        .eq("feedback_reason", "combination")
+        .execute()
+        .data
+        or []
+    )
+    return {frozenset(row["item_ids"]) for row in rows if row.get("item_ids")}
+
+
 class AttributionError(ValueError):
     """Invalid attribution payload or row state. `.status` is the HTTP code."""
 
