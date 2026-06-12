@@ -10,7 +10,8 @@ warmth attribute, C in the issue map; catalog fully backfilled)**, **#18
 (PR #58 — web thumbs, B in the issue map)**, **#16 (PR #58 — category floors
 in the sampled pool)**. The whole design is now implemented; the loop's
 quality is data-dependent (verdict volume) from here.
-**Last updated:** 2026-06-10.
+**Last updated:** 2026-06-12 (D2 pairing-effects trigger fired → #59; the
+next wave is scoped in issues #59–#64).
 
 Decision record from the scoping session for recommendation-quality work:
 thumbs up/down feedback, an inferred warmth attribute, and how both (plus a
@@ -110,7 +111,11 @@ mult_i  = 0.6 + 0.8 × score_i                        # [0,1] → [0.6, 1.4]
 - Pure function of `outfit_history` rows → unit-tested in `test_sampling.py`.
 
 Deliberately out of scope: pairing effects ("each piece fine, together
-wrong" — needs combination-level memory, adjacent to #17); joint estimation
+wrong" — needs combination-level memory, adjacent to #17 — **trigger fired
+2026-06-12: #59 ships a prompt-level episodic version** (recent thumbed
+outfits injected into the outfit prompt's user message; statistical
+combination memory still out of scope, #63 adds a deterministic
+👎-attributed-combo filter later); joint estimation
 (regression of verdicts on item indicators — months of data before it beats
 smoothed counting; revisit after the eval harness, #30); feedback time-decay
 (taste is slow-moving; a ~90-day half-life drops in later without schema
