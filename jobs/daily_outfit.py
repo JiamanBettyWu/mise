@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 # Load the single repo-root .env regardless of cwd.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+from services.calendar import calendar_modes  # noqa: E402
 from services.email import send_html_email  # noqa: E402
 from services.email_template import render_outfit_email  # noqa: E402
 from services.feedback_token import sign_token  # noqa: E402
@@ -64,7 +65,14 @@ DAILY_MODES = [
 def main() -> int:
     now = datetime.now(TZ)
     print(f"[run] generating outfit for {now.isoformat()}")
-    result = recommend(travel_mode=False, notes="", modes=DAILY_MODES)
+    # Calendar-driven modes (#64): presence of CALENDAR_ICS_URL is the toggle;
+    # unset (or any failure) keeps the full three-mode behavior. The first
+    # DAILY_MODES entry (Smart casual) is the floor mode — always included.
+    modes, notes, calendar_note = calendar_modes(
+        DAILY_MODES, floor=DAILY_MODES[0]["name"], tz=TZ, now=now
+    )
+    print(f"[run] modes: {', '.join(m['name'] for m in modes)}")
+    result = recommend(travel_mode=False, notes=notes, modes=modes)
     weather = result["weather"]
     outfits = result["outfits"]
     _attach_feedback_links(outfits)
@@ -73,6 +81,7 @@ def main() -> int:
         weather=weather,
         outfits=outfits,
         date_label=now.strftime("%A, %B %-d"),
+        calendar_note=calendar_note,
     )
 
     send_html_email(

@@ -1,7 +1,9 @@
 from html import escape
 
 
-def render_outfit_email(weather: dict, outfits: list[dict], date_label: str) -> str:
+def render_outfit_email(
+    weather: dict, outfits: list[dict], date_label: str, calendar_note: str = ""
+) -> str:
     weather_line = (
         f"<strong>{weather['temp_high_c']}°C</strong> high "
         f"· <strong>{weather['temp_low_c']}°C</strong> low "
@@ -9,6 +11,16 @@ def render_outfit_email(weather: dict, outfits: list[dict], date_label: str) -> 
         f"· {int(weather['precip_chance'] * 100)}% precip "
         f"· {weather['wind_kmh']} km/h wind"
     )
+
+    # Calendar-driven modes (#64): why today's modes were chosen. Empty when
+    # the calendar toggle is off or there was nothing to explain.
+    note_html = ""
+    if calendar_note.strip():
+        note_html = (
+            '<div style="font-size:14px;padding:10px 12px;border:1px solid #ddd;'
+            "border-radius:8px;margin-bottom:16px;background:#fafafa;"
+            f'color:#555;">📅 {escape(calendar_note.strip())}</div>\n  '
+        )
 
     if not outfits:
         body = (
@@ -26,7 +38,7 @@ def render_outfit_email(weather: dict, outfits: list[dict], date_label: str) -> 
   <div style="color:#666;font-size:14px;margin-bottom:8px;">{escape(date_label)}</div>
   <div style="font-size:14px;padding:10px 12px;border:1px solid #ddd;
               border-radius:8px;margin-bottom:16px;">{weather_line}</div>
-  {body}
+  {note_html}{body}
 </body></html>
 """
 

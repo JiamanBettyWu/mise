@@ -4,7 +4,8 @@
 post #60 — optional 👎 attribution de-noises the multiplier and the
 avoid-list, and `outfit_history` records weather + notes at recommendation
 time — and post #63 — the model proposes 3 candidates per mode and a
-deterministic filter rejects 👎-attributed combinations; the full
+deterministic filter rejects 👎-attributed combinations — and post #64 —
+the daily job's modes optionally come from today's calendar; the full
 feedback-loop design of #39–#44 was implemented in PR #58 and earlier).
 This is the *how it works* reference; the *why we chose it* decision record is
 [feedback-loop-design.md](feedback-loop-design.md). When the two disagree, the
@@ -13,8 +14,18 @@ entry point, [`services/outfit_history.py`](../backend/services/outfit_history.p
 is where almost all the math lives.
 
 Used by `POST /outfits/recommend` (web) and `jobs/daily_outfit.py` (the morning
-email, GitHub Actions cron). Same code path; the job passes three named modes
+email, GitHub Actions cron). Same code path; the job passes named modes
 (Smart casual / Athleisure / Elevated), the web UI passes none.
+
+Which modes the job passes is itself an input, not part of the pipeline:
+with the optional `CALENDAR_ICS_URL` secret set, today's Google Calendar
+events drive mode selection (#64, [`services/calendar.py`](../backend/services/calendar.py)) —
+no events → Smart casual only, gym class → + Athleisure, dinner out → +
+Elevated, any failure → all three. The event listing also rides in as `notes`,
+so the generator sees *why* a mode fired and `outfit_history` records it (#60),
+and the classifier writes a 1-2 sentence explanation shown in the email header
+("We see solidcore at 9:00 AM, so Athleisure is recommended alongside the
+default Smart casual"). Unset → the hardcoded three modes, unchanged.
 
 ---
 
@@ -345,3 +356,4 @@ Decided against *for now*, with the trigger that would revisit each:
 | Web feedback + attribution endpoints | `backend/routers/outfits.py` | — |
 | Email feedback GET + attribution landing page | `backend/routers/feedback.py` | — |
 | Daily job + modes | `jobs/daily_outfit.py` | — |
+| Calendar → modes (#64) | `backend/services/calendar.py` + `claude.py` (`classify_modes`) | `tests/test_calendar.py` |
