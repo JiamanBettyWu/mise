@@ -114,6 +114,58 @@ def test_all_candidates_blocked_becomes_skip_entry():
     assert r.startswith("no ") and "recommendation available" in r
 
 
+def test_recent_repeat_rejected_next_candidate_selected():
+    # #17: yesterday's exact set is deduped; a fresh candidate is served.
+    recent = {frozenset(["tee", "jeans", "flats"])}
+    out = _select_candidates(
+        [entry("Smart casual", cand("flats", "tee", "jeans"), cand("blouse", "skirt", "flats"))],
+        blocked_combos=set(),
+        types_by_id=TYPES,
+        recent_combos=recent,
+    )
+    assert out[0]["item_ids"] == ["blouse", "skirt", "flats"]
+
+
+def test_all_repeats_serves_repeat_not_skip():
+    # Unlike 👎-blocked combos, a repeat is annoying but wearable — when
+    # every candidate is a repeat, serve one instead of skipping the mode.
+    recent = {frozenset(["tee", "jeans", "flats"]), frozenset(["blouse", "skirt", "flats"])}
+    out = _select_candidates(
+        [entry("Smart casual", cand("tee", "jeans", "flats"), cand("blouse", "skirt", "flats"))],
+        blocked_combos=set(),
+        types_by_id=TYPES,
+        recent_combos=recent,
+    )
+    assert out[0]["item_ids"] == ["tee", "jeans", "flats"]
+
+
+def test_blocked_combo_never_served_even_when_only_alternative_is_repeat():
+    blocked = {frozenset(["blouse", "skirt", "flats"])}
+    recent = {frozenset(["tee", "jeans", "flats"])}
+    out = _select_candidates(
+        [entry("Smart casual", cand("blouse", "skirt", "flats"), cand("tee", "jeans", "flats"))],
+        blocked_combos=blocked,
+        types_by_id=TYPES,
+        recent_combos=recent,
+    )
+    # The 👎-blocked set stays buried; the repeat is the lesser evil.
+    assert out[0]["item_ids"] == ["tee", "jeans", "flats"]
+
+
+def test_repairable_fresh_candidate_preferred_over_repeat():
+    # Severity order: a fresh outfit needing structural repair beats
+    # serving a repeat outright.
+    two_bottoms = cand("tee", "jeans", "skirt")
+    recent = {frozenset(["tee", "jeans", "flats"])}
+    out = _select_candidates(
+        [entry("Smart casual", cand("tee", "jeans", "flats"), two_bottoms)],
+        blocked_combos=set(),
+        types_by_id=TYPES,
+        recent_combos=recent,
+    )
+    assert out[0]["item_ids"] == ["tee", "jeans", "skirt"]
+
+
 def test_model_skip_entry_passes_through():
     skip = cand(reasoning="No Elevated recommendation available today — nothing dressy.")
     out = _select_candidates(

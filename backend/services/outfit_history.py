@@ -138,7 +138,8 @@ def blocked_combos() -> set[frozenset[str]]:
     claude._select_candidates) instead of asked for in prose. No time window,
     same reasoning as _feedback_rows: a combination judged bad stays bad
     until the verdict is cleared or flipped (which wipes the attribution).
-    Exact-set matching for v1; high-Jaccard overlap is a future refinement.
+    Exact-set matching, deliberately: Jaccard-overlap blocking was considered
+    again with #17 (2026-06-12) and rejected until near-misses show up.
     """
     rows = (
         supabase()
@@ -146,6 +147,31 @@ def blocked_combos() -> set[frozenset[str]]:
         .select("item_ids")
         .eq("feedback", -1)
         .eq("feedback_reason", "combination")
+        .execute()
+        .data
+        or []
+    )
+    return {frozenset(row["item_ids"]) for row in rows if row.get("item_ids")}
+
+
+def recent_combos(days: int = HISTORY_WINDOW_DAYS) -> set[frozenset[str]]:
+    """Exact item-id sets recommended in the last `days` days (#17).
+
+    The candidate filter rejects these so the same assembly never recurs
+    within the episodic window — set-level dedup only; item-level rotation
+    stays recency weighting's job (different granularity: with a ~45-item
+    pool, exact set collisions are rare, but one item recurring across
+    different outfits is what repetition actually feels like). Unlike
+    blocked_combos this is time-boxed: yesterday's outfit is fine again
+    next week. Window reuses HISTORY_WINDOW_DAYS — one episodic horizon
+    across recency, feedback context (#59), and dedup.
+    """
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    rows = (
+        supabase()
+        .table("outfit_history")
+        .select("item_ids")
+        .gte("recommended_on", cutoff)
         .execute()
         .data
         or []

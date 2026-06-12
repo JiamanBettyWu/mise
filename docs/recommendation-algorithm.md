@@ -4,8 +4,9 @@
 post #60 — optional 👎 attribution de-noises the multiplier and the
 avoid-list, and `outfit_history` records weather + notes at recommendation
 time — and post #63 — the model proposes 3 candidates per mode and a
-deterministic filter rejects 👎-attributed combinations — and post #64 —
-the daily job's modes optionally come from today's calendar; the full
+deterministic filter rejects 👎-attributed combinations — post #64 —
+the daily job's modes optionally come from today's calendar — and post #17 —
+exact sets from the last 7 days are deduped by the same filter; the full
 feedback-loop design of #39–#44 was implemented in PR #58 and earlier).
 This is the *how it works* reference; the *why we chose it* decision record is
 [feedback-loop-design.md](feedback-loop-design.md). When the two disagree, the
@@ -224,12 +225,17 @@ candidate outfits per entry, ordered best-first and meaningfully distinct.
 Then `_select_candidates` (code, not an LLM) takes the first candidate per
 entry that (1) doesn't exact-set-match a **combination-attributed 👎**
 (`blocked_combos` — a recorded known-bad fact, so it's enforced
-deterministically per the organizing principle, not asked for in prose) and
-(2) passes structural validation. Every rejection is logged with its exact
-reason, and the sampled candidate pool is logged at the top of each run, so
-"why did/didn't item X appear?" always has an answer in the Actions/Render
-logs. Fallbacks: no structurally-valid candidate → the first non-blocked one
-goes through the #46 repair machinery as before; *every* candidate blocked →
+deterministically per the organizing principle, not asked for in prose),
+(2) doesn't exact-set-match an **outfit recommended in the last 7 days**
+(`recent_combos`, #17 — set-level dedup; item-level rotation stays the
+sampler's job, different granularity), and (3) passes structural validation.
+Every rejection is logged with its exact reason, and the sampled candidate
+pool is logged at the top of each run, so "why did/didn't item X appear?"
+always has an answer in the Actions/Render logs. Fallbacks, in severity
+order: no structurally-valid candidate → the first non-blocked one goes
+through the #46 repair machinery as before (a fresh outfit needing repair
+beats a repeat); all candidates blocked or repeats → serve a repeat (annoying
+but wearable beats an empty slot); *every* candidate a 👎-blocked combo →
 the entry becomes a mode skip (serving a known-bad combo would defeat the
 filter). An **LLM reranker is deliberately absent**: it would grade homework
 it just wrote, at 2× cost inside the cron path — deferred until #30 can
@@ -315,11 +321,14 @@ Decided against *for now*, with the trigger that would revisit each:
   level episodic avoid-list), #60 (attribution marks combination 👎s
   explicitly), #63 (deterministic candidate filter hard-blocks them).
   *Statistical* combination memory (estimating pair effects from data) stays
-  out of scope. #17 (dedup exact outfit repeats) is the same set-hash
-  mechanism with "recent repeats" as the blocklist source — decide there.
-- **Jaccard-overlap blocking** — the #63 filter is exact-set match v1; a
-  near-match (blocked combo plus one extra accessory) sails through. Loosen
-  to high-Jaccard overlap only if near-misses actually show up in practice.
+  out of scope. #17 (dedup exact recent outfit repeats) shipped as the same
+  set-hash mechanism with `recent_combos` as a second blocklist source.
+- **Jaccard-overlap blocking** — the filters are exact-set match; a
+  near-match (blocked combo plus one extra accessory) sails through.
+  Considered again when #17 shipped (2026-06-12) and deliberately rejected:
+  thresholds need tuning data, hard constraints have ugly edges (a heat wave
+  genuinely forces similar outfits), and exact-set is enough until
+  near-misses actually show up in practice.
 - **LLM reranking of candidates** — no information advantage over the
   generator (same context), 2× cost, new failure point in the cron path;
   revisit only when #30 can measure whether it improves picks.
@@ -350,7 +359,7 @@ Decided against *for now*, with the trigger that would revisit each:
 | Extremes gate | `backend/services/weather_gate.py` | `tests/test_weather_gate.py` |
 | type→category map | `backend/services/categories.py` | (covered via sampling/validation tests) |
 | Outfit prompt, validation, repair | `backend/services/claude.py` | `tests/test_validation.py` |
-| Candidate selection + 👎-combo blocklist (#63) | `claude.py` (`_select_candidates`) + `outfit_history.py` (`blocked_combos`) | `tests/test_candidates.py` |
+| Candidate selection + 👎-combo blocklist (#63) + recent-repeat dedup (#17) | `claude.py` (`_select_candidates`) + `outfit_history.py` (`blocked_combos`, `recent_combos`) | `tests/test_candidates.py` |
 | Email feedback tokens | `backend/services/feedback_token.py` | `tests/test_feedback_token.py` |
 | 👎 attribution (#60): validation + write | `outfit_history.py` (`record_attribution`) | `tests/test_attribution.py` |
 | Web feedback + attribution endpoints | `backend/routers/outfits.py` | — |

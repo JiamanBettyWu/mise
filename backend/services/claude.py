@@ -242,6 +242,7 @@ def recommend_outfits(
     modes: list[dict] | None = None,
     feedback_entries: list[dict] | None = None,
     blocked_combos: set[frozenset[str]] | None = None,
+    recent_combos: set[frozenset[str]] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
@@ -255,7 +256,8 @@ def recommend_outfits(
     Two-stage lite (#63): the single call returns CANDIDATES_PER_OUTFIT
     candidates per entry; deterministic selection (_select_candidates) takes
     the first candidate that isn't a 👎-attributed combination
-    (`blocked_combos`, from outfit_history.blocked_combos) and passes
+    (`blocked_combos`, from outfit_history.blocked_combos), isn't an exact
+    repeat of a recently recommended set (`recent_combos`, #17), and passes
     structural validation. _enforce_structure then only has to repair entries
     where no candidate survived.
     """
@@ -292,7 +294,12 @@ def recommend_outfits(
     parsed = parse_json(resp)
     entries = _normalize_entries(parsed.get("outfits", []))
     types_by_id = {item["id"]: item.get("type", "") for item in wardrobe}
-    outfits = _select_candidates(entries, blocked_combos or set(), types_by_id)
+    outfits = _select_candidates(
+        entries,
+        blocked_combos or set(),
+        types_by_id,
+        recent_combos=recent_combos or set(),
+    )
     return _enforce_structure(outfits, wardrobe, weather, modes, notes)
 
 
@@ -319,23 +326,29 @@ def _select_candidates(
     entries: list[dict],
     blocked_combos: set[frozenset[str]],
     types_by_id: dict[str, str],
+    recent_combos: set[frozenset[str]] | None = None,
 ) -> list[dict]:
     """Pure-ish (logs): stage 2 of the two-stage lite (#63).
 
     Per entry, take the first candidate that (1) is not a 👎-attributed
-    combination — a recorded fact, so it's enforced in code, not prose — and
-    (2) passes structural validation (#46). Every rejection is logged with
-    its exact reason. Fallbacks, in order: a non-blocked but structurally
-    invalid candidate (the existing repair machinery downstream fixes it);
-    if *every* candidate is a blocked combo, a skip entry — serving a
-    known-bad outfit would defeat the filter, and the skip phrasing matches
-    what _is_skip / the email template already handle.
+    combination — a recorded fact, so it's enforced in code, not prose —
+    (2) is not an exact repeat of a recently recommended set (#17), and
+    (3) passes structural validation (#46). Every rejection is logged with
+    its exact reason. Fallbacks, in severity order: a non-blocked but
+    structurally invalid candidate (the existing repair machinery downstream
+    fixes it — a fresh outfit needing repair beats a repeat); then a repeat
+    (a repeated outfit beats an empty slot); only if *every* candidate is a
+    👎-blocked combo, a skip entry — serving a known-bad outfit would defeat
+    the filter, and the skip phrasing matches what _is_skip / the email
+    template already handle.
     """
+    recent_combos = recent_combos or set()
     picked = []
     for i, entry in enumerate(entries):
         label = entry.get("label") or f"entry {i + 1}"
         chosen = None
         repairable = None
+        repeat = None
         for j, cand in enumerate(entry["candidates"]):
             item_ids = cand.get("item_ids") or []
             if item_ids and frozenset(item_ids) in blocked_combos:
@@ -345,6 +358,16 @@ def _select_candidates(
                     len(entry["candidates"]),
                     label,
                 )
+                continue
+            if item_ids and frozenset(item_ids) in recent_combos:
+                log.info(
+                    "candidate %d/%d rejected [%s]: exact repeat of a recently "
+                    "recommended outfit",
+                    j + 1,
+                    len(entry["candidates"]),
+                    label,
+                )
+                repeat = repeat or cand
                 continue
             violations = validate_outfit(item_ids, types_by_id)
             if violations:
@@ -364,6 +387,13 @@ def _select_candidates(
             break
         if chosen is None:
             chosen = repairable
+        if chosen is None and repeat is not None:
+            log.warning(
+                "all candidates for [%s] were 👎-blocked or recent repeats; "
+                "serving a repeat — better than an empty slot",
+                label,
+            )
+            chosen = repeat
         if chosen is None:
             log.warning(
                 "all candidates for [%s] matched 👎-attributed combinations; skipping",
