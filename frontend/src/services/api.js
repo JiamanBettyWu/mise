@@ -66,4 +66,17 @@ export const api = {
 
   searchGeo: (q, limit = 5) =>
     request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  // Profile
+  getProfile: () => request('/profile'),
+  updateProfile: (data) => request('/profile', { method: 'PUT', body: data }),
+
+  // Preferences
+  listPreferences: () => request('/profile/preferences'),
+  createPreference: (text) =>
+    request('/profile/preferences', { method: 'POST', body: { text } }),
+  updatePreference: (id, data) =>
+    request(`/profile/preferences/${id}`, { method: 'PATCH', body: data }),
+  deletePreference: (id) =>
+    request(`/profile/preferences/${id}`, { method: 'DELETE' }),
 };

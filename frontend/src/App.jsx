@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import Catalog from './pages/Catalog.jsx';
 import AddItem from './pages/AddItem.jsx';
+import Profile from './pages/Profile.jsx';
 import TodayOutfit from './pages/TodayOutfit.jsx';
 import TripPlan from './pages/TripPlan.jsx';
 import { api, getStoredPassword, setStoredPassword } from './services/api.js';
@@ -61,18 +62,14 @@ export default function App() {
         <NavLink to="/today">Today</NavLink>
         <NavLink to="/trip">Trip</NavLink>
         <NavLink to="/add">Add</NavLink>
-        <button
-          className="nav__lock"
-          onClick={() => { setStoredPassword(''); location.reload(); }}
-        >
-          Lock
-        </button>
+        <NavLink to="/profile" className="nav__avatar">B</NavLink>
       </nav>
       <Routes>
         <Route path="/" element={<Catalog />} />
         <Route path="/today" element={<TodayOutfit />} />
         <Route path="/trip" element={<TripPlan />} />
         <Route path="/add" element={<AddItem />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>
   );

@@ -142,20 +142,34 @@ a { color: inherit; }
   background: rgba(20, 20, 40, 0.88);
   color: #fff;
 }
-.nav__lock {
-  /* Quiet "lock" pill on the right: override the global button. */
+.nav__avatar {
+  /* Avatar chip: round glass pill, heading serif initial, auto-pushes right. */
   margin-left: auto;
-  background: transparent;
-  backdrop-filter: none;
-  border-color: transparent;
-  color: rgba(20, 20, 40, 0.5);
-  font-size: 0.8rem;
-  padding: 0.35rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(20, 20, 40, 0.75);
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.nav__lock:hover {
-  background: rgba(255, 255, 255, 0.4);
-  border-color: rgba(20, 20, 40, 0.15);
-  color: rgba(20, 20, 40, 0.9);
+.nav__avatar:hover {
+  background: rgba(255, 255, 255, 0.55);
+  color: rgba(20, 20, 40, 0.95);
+}
+.nav__avatar.active {
+  background: rgba(20, 20, 40, 0.88);
+  color: #fff;
+  border-color: transparent;
 }
 
 /* Kept for any non-nav use — unchanged. */
@@ -685,4 +699,112 @@ textarea {
 .font-picker__select:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(20, 20, 40, 0.18);
+}
+
+/* ---- Profile page (#61) -------------------------------------------------- */
+
+.profile__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.75rem;
+}
+.profile__section:first-child { margin-top: 1.25rem; }
+
+.profile__section-heading {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: rgba(20, 20, 40, 0.9);
+}
+
+.profile__label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(20, 20, 40, 0.75);
+}
+
+.profile__hint {
+  font-size: 0.83rem;
+  margin: 0;
+}
+
+.profile__location-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.profile__location-row .combobox {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile__pref-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Preference tile — reuses the .outfit__item surface vocabulary. */
+.profile__pref-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  flex-wrap: wrap;
+}
+.profile__pref-tile--editing {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.profile__pref-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: rgba(20, 20, 40, 0.85);
+  min-width: 0;
+}
+
+.profile__pref-badge {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  pointer-events: none;
+}
+
+.profile__pref-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.profile__pref-actions button {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.65rem;
+}
+
+.profile__pref-input {
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.profile__add-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-top: 0.25rem;
+}
+.profile__add-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile__empty {
+  font-size: 0.88rem;
+  font-style: italic;
+  margin: 0;
 }
