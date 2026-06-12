@@ -68,7 +68,7 @@ def main() -> int:
     # Calendar-driven modes (#64): presence of CALENDAR_ICS_URL is the toggle;
     # unset (or any failure) keeps the full three-mode behavior. The first
     # DAILY_MODES entry (Smart casual) is the floor mode — always included.
-    modes, notes = calendar_modes(
+    modes, notes, calendar_note = calendar_modes(
         DAILY_MODES, floor=DAILY_MODES[0]["name"], tz=TZ, now=now
     )
     print(f"[run] modes: {', '.join(m['name'] for m in modes)}")
@@ -81,6 +81,7 @@ def main() -> int:
         weather=weather,
         outfits=outfits,
         date_label=now.strftime("%A, %B %-d"),
+        calendar_note=calendar_note,
     )
 
     send_html_email(

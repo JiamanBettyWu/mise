@@ -109,23 +109,33 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
 MODE_CLASSIFIER_PROMPT = """You select which outfit "modes" a day's plans call
 for. Given today's calendar events (titles and times) and the available modes
 with descriptions, return ONLY a JSON object:
-{"modes": ["<mode name>", ...]}
+{"modes": ["<mode name>", ...],
+ "explanation": "<1-2 sentences, addressed to the user>"}
 
 Include a mode only when an event clearly calls for it — a workout class calls
 for an athletic mode; a dinner reservation, date, or event calls for a dressier
 mode. Routine events (errands, calls, appointments) that don't change what to
 wear should not add modes. Use the exact mode names given. An empty list is a
-valid answer. No commentary, no markdown fences."""
+valid answer.
+
+The explanation appears in the user's morning email: in 1-2 friendly
+sentences, say what you see on today's calendar and why it does (or doesn't)
+call for extra modes — e.g. "We see solidcore at 9:00 AM, so Athleisure is
+recommended alongside the default Smart casual." No commentary outside the
+JSON, no markdown fences."""
 
 
-def classify_modes(events: list[dict], modes: list[dict]) -> list[str]:
+def classify_modes(
+    events: list[dict], modes: list[dict], floor: str | None = None
+) -> tuple[list[str], str]:
     """One Haiku-class call: today's calendar events → applicable modes (#64).
 
-    Returns raw mode-name strings. The caller (services.calendar) validates
-    against the known list, always re-adds the floor mode, and treats any
-    exception as "fall back to all modes" — so this function can just raise.
-    Keyword rules were considered and rejected in the issue: titles drift
-    ("PT session", "Dinner @ Quince") and a keyword list goes stale silently.
+    Returns (raw mode-name strings, user-facing explanation for the email).
+    The caller (services.calendar) validates the names against the known
+    list, always re-adds the floor mode, and treats any exception as "fall
+    back to all modes" — so this function can just raise. Keyword rules were
+    considered and rejected in the issue: titles drift ("PT session",
+    "Dinner @ Quince") and a keyword list goes stale silently.
     """
     blocks = [
         "Today's calendar events:",
@@ -134,14 +144,22 @@ def classify_modes(events: list[dict], modes: list[dict]) -> list[str]:
         "Available modes:",
         *[f"- {m['name']}: {m['description']}" for m in modes],
     ]
+    if floor:
+        blocks += [
+            "",
+            f'Note: "{floor}" is always included as the default mode — present '
+            "any other modes in the explanation as additions to it.",
+        ]
     resp = client().messages.create(
         model=MODE_CLASSIFIER_MODEL,
-        max_tokens=256,
+        max_tokens=512,
         system=MODE_CLASSIFIER_PROMPT,
         messages=[{"role": "user", "content": "\n".join(blocks)}],
     )
     parsed = parse_json(resp)
-    return [str(name) for name in parsed.get("modes", [])]
+    names = [str(name) for name in parsed.get("modes", [])]
+    explanation = str(parsed.get("explanation") or "").strip()
+    return names, explanation
 
 
 OUTFIT_SYSTEM_PROMPT = """You are a personal stylist. Given today's weather and

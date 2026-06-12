@@ -22,8 +22,10 @@ with the optional `CALENDAR_ICS_URL` secret set, today's Google Calendar
 events drive mode selection (#64, [`services/calendar.py`](../backend/services/calendar.py)) —
 no events → Smart casual only, gym class → + Athleisure, dinner out → +
 Elevated, any failure → all three. The event listing also rides in as `notes`,
-so the generator sees *why* a mode fired and `outfit_history` records it (#60).
-Unset → the hardcoded three modes, unchanged.
+so the generator sees *why* a mode fired and `outfit_history` records it (#60),
+and the classifier writes a 1-2 sentence explanation shown in the email header
+("We see solidcore at 9:00 AM, so Athleisure is recommended alongside the
+default Smart casual"). Unset → the hardcoded three modes, unchanged.
 
 ---
 

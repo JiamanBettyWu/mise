@@ -30,22 +30,32 @@ from services.claude import classify_modes
 log = logging.getLogger("wardrobe.calendar")
 
 
+# Cap on the model-written email note — one short paragraph, not an essay.
+MAX_NOTE_CHARS = 300
+
+
 def calendar_modes(
     all_modes: list[dict],
     floor: str,
     tz: tzinfo,
     now: datetime | None = None,
-) -> tuple[list[dict], str]:
-    """Return (modes for today, notes for the generator).
+) -> tuple[list[dict], str, str]:
+    """Return (modes for today, notes for the generator, note for the email).
 
     `notes` is a deterministic listing of today's events ("Today's calendar:
     solidcore (9:00 AM); …") — it rides into the outfit prompt so the
     generator can tailor to the plan, and #60 logs it on outfit_history so
     the weekly inference job (#62) later sees *why* a mode fired.
+
+    The third element is the user-facing line the email header shows
+    ("We see solidcore at 9:00 AM, so Athleisure is recommended alongside
+    the default Smart casual.") — written by the classifier in the same
+    call, deterministic listing as fallback, and "" on every path where
+    there's nothing to explain (toggle off, empty day, classifier failure).
     """
     url = os.environ.get("CALENDAR_ICS_URL", "").strip()
     if not url:
-        return all_modes, ""
+        return all_modes, "", ""
 
     try:
         events = todays_events(url, tz, now=now)
@@ -53,32 +63,34 @@ def calendar_modes(
         log.warning(
             "calendar fetch/parse failed; falling back to all modes", exc_info=True
         )
-        return all_modes, ""
+        return all_modes, "", ""
 
     if not events:
         log.info("calendar: no events today → %s only", floor)
-        return [m for m in all_modes if m["name"] == floor] or all_modes, ""
+        return [m for m in all_modes if m["name"] == floor] or all_modes, "", ""
 
-    notes = "Today's calendar: " + "; ".join(
-        f"{e['title']} ({e['time']})" for e in events
-    )
+    listing = "; ".join(f"{e['title']} ({e['time']})" for e in events)
+    notes = "Today's calendar: " + listing
     try:
-        raw = classify_modes(events, all_modes)
+        raw, explanation = classify_modes(events, all_modes, floor=floor)
     except Exception:
         log.warning(
             "mode classification failed; falling back to all modes", exc_info=True
         )
-        return all_modes, notes
+        return all_modes, notes, ""
 
     option_names = {m["name"] for m in all_modes}
     names = {n for n in raw if n in option_names} | {floor}
     chosen = [m for m in all_modes if m["name"] in names]
+    if not explanation:
+        chosen_names = ", ".join(m["name"] for m in chosen)
+        explanation = f"On today's calendar: {listing}. Modes: {chosen_names}."
     log.info(
         "calendar: %d event(s) → modes: %s",
         len(events),
         ", ".join(m["name"] for m in chosen),
     )
-    return chosen, notes
+    return chosen, notes, explanation[:MAX_NOTE_CHARS]
 
 
 def todays_events(

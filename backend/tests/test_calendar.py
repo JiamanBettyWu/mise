@@ -71,7 +71,8 @@ def test_no_url_means_toggle_off(monkeypatch):
     monkeypatch.setattr(
         services.calendar, "todays_events", _fail("must not fetch when unset")
     )
-    assert calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW) == (MODES, "")
+    result = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
+    assert result == (MODES, "", "")
 
 
 def test_no_events_floor_mode_only_no_classifier(ics_url, monkeypatch):
@@ -79,9 +80,9 @@ def test_no_events_floor_mode_only_no_classifier(ics_url, monkeypatch):
     monkeypatch.setattr(
         services.calendar, "classify_modes", _fail("no classifier call for empty day")
     )
-    modes, notes = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
+    modes, notes, note = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
     assert [m["name"] for m in modes] == ["Smart casual"]
-    assert notes == ""
+    assert (notes, note) == ("", "")
 
 
 def test_classified_modes_union_floor_keep_canonical_order(ics_url, monkeypatch):
@@ -91,18 +92,37 @@ def test_classified_modes_union_floor_keep_canonical_order(ics_url, monkeypatch)
         lambda *a, **k: [{"title": "solidcore", "time": "9:00 AM"}],
     )
     # Classifier names only Athleisure; junk names are dropped; the floor is
-    # re-added; order follows MODES, not the classifier response.
+    # re-added; order follows MODES, not the classifier response. Its
+    # explanation passes through as the email note.
     monkeypatch.setattr(
-        services.calendar, "classify_modes", lambda *a, **k: ["Black tie", "Athleisure"]
+        services.calendar,
+        "classify_modes",
+        lambda *a, **k: (["Black tie", "Athleisure"], "Gym at 9, so Athleisure too."),
     )
-    modes, notes = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
+    modes, notes, note = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
     assert [m["name"] for m in modes] == ["Smart casual", "Athleisure"]
     assert notes == "Today's calendar: solidcore (9:00 AM)"
+    assert note == "Gym at 9, so Athleisure too."
+
+
+def test_blank_explanation_gets_deterministic_note(ics_url, monkeypatch):
+    monkeypatch.setattr(
+        services.calendar,
+        "todays_events",
+        lambda *a, **k: [{"title": "solidcore", "time": "9:00 AM"}],
+    )
+    monkeypatch.setattr(
+        services.calendar, "classify_modes", lambda *a, **k: (["Athleisure"], "")
+    )
+    _, _, note = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
+    assert "solidcore (9:00 AM)" in note
+    assert "Smart casual" in note and "Athleisure" in note
 
 
 def test_fetch_failure_falls_back_to_all_modes(ics_url, monkeypatch):
     monkeypatch.setattr(services.calendar, "todays_events", _fail("boom", raise_=True))
-    assert calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW) == (MODES, "")
+    result = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
+    assert result == (MODES, "", "")
 
 
 def test_classifier_failure_falls_back_to_all_modes_keeps_notes(ics_url, monkeypatch):
@@ -114,10 +134,12 @@ def test_classifier_failure_falls_back_to_all_modes_keeps_notes(ics_url, monkeyp
     monkeypatch.setattr(
         services.calendar, "classify_modes", _fail("api down", raise_=True)
     )
-    modes, notes = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
+    modes, notes, note = calendar_modes(MODES, floor="Smart casual", tz=TZ, now=NOW)
     assert modes == MODES
-    # The event listing is still useful generator context even unclassified.
+    # The event listing is still useful generator context even unclassified;
+    # the email note is dropped — never show an explanation we don't have.
     assert notes == "Today's calendar: Dinner @ Quince (7:00 PM)"
+    assert note == ""
 
 
 def _fail(msg, raise_=False):
