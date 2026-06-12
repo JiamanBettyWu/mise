@@ -8,6 +8,7 @@ from services.claude import recommend_outfits
 from services.outfit_history import (
     blocked_combos,
     log_outfits,
+    recent_combos,
     recent_feedback_outfits,
     sample_wardrobe,
 )
@@ -56,8 +57,10 @@ def recommend(
     )
 
     # Recent thumbed outfits ride along as prompt context (#59) — the
-    # combination-level memory the per-item multipliers can't carry — and
-    # combination-attributed 👎s (#60) become a hard candidate blocklist (#63).
+    # combination-level memory the per-item multipliers can't carry — while
+    # combination-attributed 👎s (#60) and exact sets from the last 7 days
+    # (#17) are hard candidate blocklists (#63): set-level dedup in code;
+    # item-level rotation stays the sampler's job.
     outfits = recommend_outfits(
         weather=weather,
         wardrobe=candidate_pool,
@@ -66,6 +69,7 @@ def recommend(
         modes=modes,
         feedback_entries=recent_feedback_outfits(),
         blocked_combos=blocked_combos(),
+        recent_combos=recent_combos(),
     )
 
     history_ids = log_outfits(
