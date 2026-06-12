@@ -56,6 +56,8 @@ def recommend(
     history_ids = log_outfits(
         date.today(),
         [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
+        weather=weather,
+        notes=notes,
     )
 
     # Hydrate with full item objects so the frontend can show photos without re-querying.

@@ -34,6 +34,13 @@ FEEDBACK_FLOOR = 0.6
 FEEDBACK_CEILING = 1.4
 FEEDBACK_CONTEXT_MAX_PER_VERDICT = 5
 
+# Issue #60: optional 👎 attribution — what the thumbs-down was really about.
+# Single-choice; 'specific_items' carries the named culprits alongside.
+ATTRIBUTION_REASONS = ("specific_items", "combination", "weather", "occasion")
+# Reasons that exonerate the items: the verdict was about the assembly, the
+# weather call, or the mode fit — zero per-item blame in the multipliers.
+ITEM_EXONERATING_REASONS = ("combination", "weather", "occasion")
+
 # Issue #16: the SAMPLE_FRACTION draw can evict a small category wholesale
 # (the sandals incident's last unshipped mechanism). Each entry is a group of
 # categories sharing one floor — dresses satisfy the lower-half requirement
@@ -87,11 +94,17 @@ def sample_wardrobe(
 def log_outfits(
     on_date: date,
     mode_items: list[tuple[str, list[str]]],
+    weather: dict | None = None,
+    notes: str = "",
 ) -> list[str | None]:
     """Insert one outfit_history row per non-empty (mode, item_ids) pair.
 
     Empty `item_ids` (the "no recommendation today" skip case) are dropped —
     counting them would phantom-penalize items in future runs.
+
+    `weather` and `notes` are the recommendation-time context (#60): the
+    weekly preference-inference job (#62) needs "what was the weather / the
+    ask when she judged this", and neither can be backfilled later.
 
     Returns the inserted row ids aligned with `mode_items` (None at skipped
     positions), so callers can attach feedback links to each outfit (#39).
@@ -102,6 +115,8 @@ def log_outfits(
             "recommended_on": on_date.isoformat(),
             "mode": mode or "(default)",
             "item_ids": item_ids,
+            "weather": weather,
+            "notes": notes or None,
         }
         for mode, item_ids in mode_items
         if item_ids
@@ -113,6 +128,74 @@ def log_outfits(
     )
     ids = iter(row["id"] for row in inserted)
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
+
+
+class AttributionError(ValueError):
+    """Invalid attribution payload or row state. `.status` is the HTTP code."""
+
+    def __init__(self, message: str, status: int):
+        super().__init__(message)
+        self.status = status
+
+
+def record_attribution(
+    history_id: str,
+    reason: str | None,
+    item_ids: list[str],
+    note: str,
+) -> dict:
+    """Validate and write a 👎 attribution (#60); shared by both channels.
+
+    The web endpoint and the email landing page differ only in auth
+    (X-App-Password vs HMAC token) — semantics live here. Attribution is
+    strictly optional and only ever follows a *current* 👎: the verdict
+    endpoints wipe these fields on flip/clear, and the guarded update below
+    refuses to attach attribution to a row whose verdict changed underneath.
+
+    Raises AttributionError with an HTTP-ready status; returns the updated row.
+    """
+    note = (note or "").strip()
+    if reason is not None and reason not in ATTRIBUTION_REASONS:
+        raise AttributionError(f"unknown reason {reason!r}", 422)
+    if reason is None and not note:
+        raise AttributionError("nothing to record — pick a reason or add a note", 422)
+    if reason == "specific_items" and not item_ids:
+        raise AttributionError("'specific_items' needs at least one item", 422)
+    if reason != "specific_items":
+        item_ids = []
+
+    res = (
+        supabase()
+        .table("outfit_history")
+        .select("feedback, item_ids")
+        .eq("id", history_id)
+        .execute()
+    )
+    if not res.data:
+        raise AttributionError("outfit not found", 404)
+    row = res.data[0]
+    if row.get("feedback") != -1:
+        raise AttributionError("attribution applies to a current 👎 only", 409)
+    if item_ids and not set(item_ids) <= set(row.get("item_ids") or []):
+        raise AttributionError("named items must come from this outfit", 422)
+
+    updated = (
+        supabase()
+        .table("outfit_history")
+        .update(
+            {
+                "feedback_reason": reason,
+                "feedback_item_ids": item_ids or None,
+                "feedback_note": note or None,
+            }
+        )
+        .eq("id", history_id)
+        .eq("feedback", -1)
+        .execute()
+    )
+    if not updated.data:
+        raise AttributionError("verdict changed — attribution not recorded", 409)
+    return updated.data[0]
 
 
 def recent_feedback_outfits(today: date | None = None) -> list[dict]:
@@ -131,7 +214,10 @@ def recent_feedback_outfits(today: date | None = None) -> list[dict]:
     rows = (
         supabase()
         .table("outfit_history")
-        .select("recommended_on, mode, item_ids, feedback")
+        .select(
+            "recommended_on, mode, item_ids, feedback,"
+            " feedback_reason, feedback_item_ids, feedback_note"
+        )
         .gte("recommended_on", cutoff.isoformat())
         .not_.is_("feedback", "null")
         .order("recommended_on", desc=True)
@@ -157,6 +243,12 @@ def _select_feedback_entries(
     per polarity. Deleted items (no name) are skipped silently; an entry with
     no surviving names is dropped — a list of nothing teaches nothing.
     Non-±1 verdicts are skipped defensively, same as _feedback_multipliers.
+
+    Attribution (#60) refines dislikes: 'weather' ones are dropped entirely
+    (feedback on the forecast call, not the outfit — recorded only for now);
+    'specific_items' ones name just the culprit items, a higher-confidence
+    avoid entry than the whole assembly. Reason and note ride along so the
+    prompt can say *why* the outfit was disliked.
     """
     picked: list[dict] = []
     counts = {1: 0, -1: 0}
@@ -164,9 +256,13 @@ def _select_feedback_entries(
         verdict = row.get("feedback")
         if verdict not in counts or counts[verdict] >= FEEDBACK_CONTEXT_MAX_PER_VERDICT:
             continue
-        item_names = [
-            names_by_id[iid] for iid in (row.get("item_ids") or []) if iid in names_by_id
-        ]
+        reason = row.get("feedback_reason") if verdict == -1 else None
+        if reason == "weather":
+            continue
+        ids = row.get("item_ids") or []
+        if reason == "specific_items":
+            ids = row.get("feedback_item_ids") or ids
+        item_names = [names_by_id[iid] for iid in ids if iid in names_by_id]
         if not item_names:
             continue
         counts[verdict] += 1
@@ -176,6 +272,8 @@ def _select_feedback_entries(
                 "mode": row["mode"],
                 "verdict": verdict,
                 "item_names": item_names,
+                "reason": reason,
+                "note": (row.get("feedback_note") if verdict == -1 else None) or None,
             }
         )
     return picked
@@ -223,6 +321,12 @@ def _feedback_multipliers(rows: list[dict]) -> dict[str, float]:
         score_i = (ups_i + 1) / (ups_i + downs_i + 2)   # Laplace prior = 0.5
         mult_i  = FLOOR + (CEILING − FLOOR) × score_i   # [0,1] → [0.6, 1.4]
 
+    Attribution (#60) de-noises the labels: a 👎 attributed to the
+    combination / weather / occasion exonerates the items (zero blame —
+    the signal lives elsewhere), and one attributed to specific items puts
+    the full unit of blame on the named culprits only. Bare 👎s keep the
+    smear; 👍s are never attributed and keep theirs.
+
     Items with no verdicts are absent from the result; callers default them
     to 1.0, so behavior without feedback is unchanged (D3).
     """
@@ -233,6 +337,13 @@ def _feedback_multipliers(rows: list[dict]) -> dict[str, float]:
         verdict = row.get("feedback")
         if not item_ids or verdict not in (1, -1):
             continue
+        if verdict == -1:
+            reason = row.get("feedback_reason")
+            if reason in ITEM_EXONERATING_REASONS:
+                continue
+            if reason == "specific_items":
+                named = [iid for iid in (row.get("feedback_item_ids") or []) if iid in item_ids]
+                item_ids = named or item_ids
         credit = 1.0 / len(item_ids)
         bucket = ups if verdict == 1 else downs
         for iid in item_ids:
@@ -255,7 +366,7 @@ def _feedback_rows() -> list[dict]:
     return (
         supabase()
         .table("outfit_history")
-        .select("item_ids, feedback")
+        .select("item_ids, feedback, feedback_reason, feedback_item_ids")
         .not_.is_("feedback", "null")
         .execute()
         .data

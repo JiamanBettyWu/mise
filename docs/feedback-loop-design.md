@@ -11,7 +11,10 @@ warmth attribute, C in the issue map; catalog fully backfilled)**, **#18
 in the sampled pool)**. The whole design is now implemented; the loop's
 quality is data-dependent (verdict volume) from here.
 **Last updated:** 2026-06-12 (D2 pairing-effects trigger fired → #59; the
-next wave is scoped in issues #59–#64).
+next wave is scoped in issues #59–#64. #60 shipped same day: optional 👎
+attribution de-noises D2's smear — see the addendum in D2 — and
+`outfit_history` now records weather + notes at recommendation time for the
+weekly inference job, #62).
 
 Decision record from the scoping session for recommendation-quality work:
 thumbs up/down feedback, an inferred warmth attribute, and how both (plus a
@@ -109,6 +112,21 @@ mult_i  = 0.6 + 0.8 × score_i                        # [0,1] → [0.6, 1.4]
 - No-feedback outfits contribute nothing: silence is absence of evidence,
   not a vote.
 - Pure function of `outfit_history` rows → unit-tested in `test_sampling.py`.
+
+**Addendum (2026-06-12, #60):** the noisy-label smear is the *default*, not
+the ceiling. An optional 👎 follow-up (chips on TodayOutfit; the email
+landing page grows the same chips, reusing the verdict token as auth) records
+`feedback_reason` ∈ `specific_items | combination | weather | occasion` plus
+optional named items and free text. Consumption: `specific_items` puts the
+full unit of blame on the named culprits only; `combination`/`weather`/
+`occasion` **exonerate the items entirely** (zero blame — the signal lives at
+the assembly/forecast/mode level, and the non-weather ones feed #59's prompt
+context instead, reason-tagged). Bare 👎s keep the smear; 👍s are never
+attributed. Attribution is strictly optional — a required follow-up would
+tax the verdict tap itself, and volume is the whole game. Flipping or
+clearing a verdict wipes the attribution (it belongs to the verdict act it
+followed). Mode-scoped multipliers stay deferred: at ~3 outfits/day there's
+no data to estimate per-(item, mode) anything for months.
 
 Deliberately out of scope: pairing effects ("each piece fine, together
 wrong" — needs combination-level memory, adjacent to #17 — **trigger fired

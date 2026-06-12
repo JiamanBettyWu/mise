@@ -64,26 +64,57 @@ export default function TodayOutfit() {
   // Web twin of the email 👍/👎 (#41): same outfit_history row, authed POST
   // instead of a signed token. Optimistic — revert on failure. Tapping the
   // active thumb clears the verdict (verdict 0); the other thumb switches.
+  // Every tap also drops any attribution (#60) — the backend wipes it too.
   const sendFeedback = useCallback(
     async (index, verdict) => {
       const outfit = data?.outfits?.[index];
       if (!outfit?.history_id) return;
       const next = outfit.feedback === verdict ? 0 : verdict;
-      const apply = (fb) =>
+      const apply = (fb, attribution) =>
         setData((d) => ({
           ...d,
-          outfits: d.outfits.map((o, i) => (i === index ? { ...o, feedback: fb } : o)),
+          outfits: d.outfits.map((o, i) =>
+            i === index ? { ...o, feedback: fb, attribution } : o
+          ),
         }));
-      apply(next || null);
+      apply(next || null, null);
       try {
         await api.outfitFeedback(outfit.history_id, next);
       } catch (e) {
-        apply(outfit.feedback ?? null);
+        apply(outfit.feedback ?? null, outfit.attribution ?? null);
         setError(String(e));
       }
     },
     [data]
   );
+
+  // Optional 👎 follow-up (#60). Not optimistic — the chips collapse into
+  // "Noted" only once the attribution actually landed.
+  const sendAttribution = useCallback(
+    async (index, payload) => {
+      const outfit = data?.outfits?.[index];
+      if (!outfit?.history_id) return;
+      await api.outfitAttribution(outfit.history_id, payload);
+      setData((d) => ({
+        ...d,
+        outfits: d.outfits.map((o, i) =>
+          i === index ? { ...o, attribution: payload } : o
+        ),
+      }));
+    },
+    [data]
+  );
+
+  // Local-only: she declined the follow-up, so stop offering it for this
+  // verdict. A later verdict tap resets attribution and re-offers.
+  const skipAttribution = useCallback((index) => {
+    setData((d) => ({
+      ...d,
+      outfits: d.outfits.map((o, i) =>
+        i === index ? { ...o, attribution: { skipped: true } } : o
+      ),
+    }));
+  }, []);
 
   const generate = useCallback(async () => {
     setLoading(true);
@@ -175,7 +206,14 @@ export default function TodayOutfit() {
       )}
 
       {data?.outfits?.map((outfit, i) => (
-        <Outfit key={i} index={i} outfit={outfit} onFeedback={sendFeedback} />
+        <Outfit
+          key={i}
+          index={i}
+          outfit={outfit}
+          onFeedback={sendFeedback}
+          onAttribution={sendAttribution}
+          onSkipAttribution={skipAttribution}
+        />
       ))}
     </div>
   );
@@ -193,9 +231,10 @@ function WeatherStrip({ w, usingMyLocation }) {
   );
 }
 
-function Outfit({ index, outfit, onFeedback }) {
+function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution }) {
   const heading = outfit.label || `Option ${index + 1}`;
   const empty = !outfit.items?.length;
+  const offerAttribution = !empty && outfit.history_id && outfit.feedback === -1;
   return (
     <div className={`outfit ${empty ? 'outfit--empty' : ''}`}>
       <div className="outfit__header">
@@ -225,6 +264,20 @@ function Outfit({ index, outfit, onFeedback }) {
           )}
         </div>
         <p className="outfit__reasoning muted">{outfit.reasoning}</p>
+        {offerAttribution &&
+          (outfit.attribution ? (
+            !outfit.attribution.skipped && (
+              <p className="muted" style={{ margin: '0.5rem 0 0.25rem' }}>
+                Noted — thanks.
+              </p>
+            )
+          ) : (
+            <AttributionComposer
+              outfit={outfit}
+              onSubmit={(payload) => onAttribution(index, payload)}
+              onSkip={() => onSkipAttribution(index)}
+            />
+          ))}
       </div>
       {!empty && (
         <div className="outfit__items">
@@ -236,6 +289,87 @@ function Outfit({ index, outfit, onFeedback }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Optional 👎 follow-up (#60): turns a bare thumbs-down into an attributed
+// one. Item chips imply "specific items" and are exclusive with the three
+// outfit-level reason chips; at most one reason. Entirely skippable — the
+// verdict was already recorded the moment the thumb was tapped.
+function AttributionComposer({ outfit, onSubmit, onSkip }) {
+  const [itemIds, setItemIds] = useState([]);
+  const [reason, setReason] = useState(null);
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const toggleItem = (id) => {
+    setReason(null);
+    setItemIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  };
+  const pickReason = (r) => {
+    setItemIds([]);
+    setReason((cur) => (cur === r ? null : r));
+  };
+
+  const effectiveReason = itemIds.length ? 'specific_items' : reason;
+  const canSend = !!effectiveReason || !!note.trim();
+
+  async function submit() {
+    setSending(true);
+    setFailed(false);
+    try {
+      await onSubmit({ reason: effectiveReason, item_ids: itemIds, note: note.trim() });
+    } catch {
+      setFailed(true);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="outfit__attribution">
+      <span className="muted">What was off? (optional)</span>
+      {outfit.items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={`chip ${itemIds.includes(item.id) ? 'chip--on-attr' : ''}`}
+          aria-pressed={itemIds.includes(item.id)}
+          onClick={() => toggleItem(item.id)}
+        >
+          {item.name}
+        </button>
+      ))}
+      {[
+        ['combination', 'The combo'],
+        ['weather', 'Weather call'],
+        ['occasion', 'Occasion'],
+      ].map(([r, label]) => (
+        <button
+          key={r}
+          type="button"
+          className={`chip ${reason === r ? 'chip--on-attr' : ''}`}
+          aria-pressed={reason === r}
+          onClick={() => pickReason(r)}
+        >
+          {label}
+        </button>
+      ))}
+      <input
+        type="text"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Anything else? (optional)"
+      />
+      <button type="button" onClick={submit} disabled={!canSend || sending}>
+        {sending ? 'Sending…' : 'Send'}
+      </button>
+      <button type="button" className="ghost" onClick={onSkip} disabled={sending}>
+        Skip
+      </button>
+      {failed && <span className="error">Couldn't save — try again.</span>}
     </div>
   );
 }

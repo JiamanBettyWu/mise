@@ -54,6 +54,9 @@ export const api = {
   // verdict: 1 = thumbs up, -1 = thumbs down, 0 = clear
   outfitFeedback: (historyId, verdict) =>
     request(`/outfits/${historyId}/feedback`, { method: 'POST', body: { verdict } }),
+  // optional 👎 follow-up (#60); payload = { reason, item_ids, note }
+  outfitAttribution: (historyId, payload) =>
+    request(`/outfits/${historyId}/attribution`, { method: 'POST', body: payload }),
 
   planTrip: ({ destination, start_date, end_date, additional_notes = '', lat = null, lon = null }) =>
     request('/trips/plan', {

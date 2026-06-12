@@ -178,6 +178,66 @@ def test_feedback_ignores_unrated_and_malformed_rows():
     assert _feedback_multipliers(rows) == {}
 
 
+def test_feedback_attributed_dislikes_exonerate_items():
+    # #60: a 👎 attributed to the combination / weather call / occasion is
+    # not about the items — zero per-item blame, no multiplier at all.
+    rows = [
+        {"item_ids": ["a", "b"], "feedback": -1, "feedback_reason": reason}
+        for reason in ("combination", "weather", "occasion")
+    ]
+    assert _feedback_multipliers(rows) == {}
+
+
+def test_feedback_specific_items_focuses_the_full_blame():
+    # #60: naming culprits moves the whole unit of blame onto them —
+    # downs("culprit") = 1.0 (not 1/3), and co-occurring items take none.
+    rows = [
+        {
+            "item_ids": ["culprit", "innocent", "bystander"],
+            "feedback": -1,
+            "feedback_reason": "specific_items",
+            "feedback_item_ids": ["culprit"],
+        }
+    ]
+    mults = _feedback_multipliers(rows)
+    expected = FEEDBACK_FLOOR + (FEEDBACK_CEILING - FEEDBACK_FLOOR) * (1 / 3)
+    assert abs(mults["culprit"] - expected) < 1e-9, mults
+    assert set(mults) == {"culprit"}
+
+
+def test_feedback_stale_named_items_fall_back_to_smear():
+    # Defensive: feedback_item_ids pointing outside the outfit (deleted item,
+    # bad write) degrade to the bare-👎 smear rather than dropping the signal.
+    rows = [
+        {
+            "item_ids": ["a", "b"],
+            "feedback": -1,
+            "feedback_reason": "specific_items",
+            "feedback_item_ids": ["ghost"],
+        }
+    ]
+    mults = _feedback_multipliers(rows)
+    expected = FEEDBACK_FLOOR + (FEEDBACK_CEILING - FEEDBACK_FLOOR) * (1 / 2.5)
+    assert all(abs(mults[i] - expected) < 1e-9 for i in "ab"), mults
+
+
+def test_feedback_attribution_never_touches_likes():
+    # Attribution is 👎-only; stale fields on a 👍 row must not change its
+    # credit (the verdict write wipes them — this is the belt and suspenders).
+    clean = _feedback_multipliers([{"item_ids": ["a", "b"], "feedback": 1}])
+    stale = _feedback_multipliers(
+        [
+            {
+                "item_ids": ["a", "b"],
+                "feedback": 1,
+                "feedback_reason": "combination",
+                "feedback_item_ids": ["a"],
+            }
+        ]
+    )
+    assert clean == stale
+
+
 def test_feedback_applies_even_in_small_categories():
     # The #44 exemption lifts rotation pressure, not preference: a disliked
     # item in a 2-item category still gets its feedback multiplier.

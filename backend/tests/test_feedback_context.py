@@ -20,8 +20,14 @@ NAMES = {
 }
 
 
-def row(on, mode, ids, verdict):
-    return {"recommended_on": on, "mode": mode, "item_ids": ids, "feedback": verdict}
+def row(on, mode, ids, verdict, **attribution):
+    return {
+        "recommended_on": on,
+        "mode": mode,
+        "item_ids": ids,
+        "feedback": verdict,
+        **attribution,
+    }
 
 
 # --- _select_feedback_entries ---
@@ -37,6 +43,8 @@ def test_select_shapes_and_hydrates_names():
             "mode": "Elevated",
             "verdict": -1,
             "item_names": ["Linen blazer", "Pleated trousers", "Sport sandals"],
+            "reason": None,
+            "note": None,
         }
     ]
 
@@ -78,6 +86,54 @@ def test_select_ignores_non_verdict_rows():
     assert _select_feedback_entries(rows, NAMES) == []
 
 
+def test_select_drops_weather_attributed_dislikes():
+    # #60: a 👎 attributed to the weather call is about the forecast, not the
+    # outfit — it never reaches the prompt, and doesn't consume the cap.
+    rows = [row("2026-06-07", "Elevated", ["a"], -1, feedback_reason="weather")]
+    rows += [
+        row(f"2026-06-{6 - i:02d}", "Elevated", ["b"], -1)
+        for i in range(FEEDBACK_CONTEXT_MAX_PER_VERDICT)
+    ]
+    entries = _select_feedback_entries(rows, NAMES)
+    assert len(entries) == FEEDBACK_CONTEXT_MAX_PER_VERDICT
+    assert all(e["item_names"] == ["Pleated trousers"] for e in entries)
+
+
+def test_select_specific_items_narrows_to_named_culprits():
+    rows = [
+        row(
+            "2026-06-07",
+            "Elevated",
+            ["a", "b", "c"],
+            -1,
+            feedback_reason="specific_items",
+            feedback_item_ids=["c"],
+            feedback_note="hate these with anything dressy",
+        )
+    ]
+    entries = _select_feedback_entries(rows, NAMES)
+    assert entries[0]["item_names"] == ["Sport sandals"]
+    assert entries[0]["reason"] == "specific_items"
+    assert entries[0]["note"] == "hate these with anything dressy"
+
+
+def test_select_likes_never_carry_attribution():
+    # Attribution is 👎-only; stale fields on a flipped-to-👍 row (belt and
+    # suspenders — the verdict write wipes them) must not leak through.
+    rows = [
+        row(
+            "2026-06-07",
+            "Smart casual",
+            ["d"],
+            1,
+            feedback_reason="combination",
+            feedback_note="stale",
+        )
+    ]
+    entries = _select_feedback_entries(rows, NAMES)
+    assert entries[0]["reason"] is None and entries[0]["note"] is None
+
+
 # --- _feedback_block ---
 
 
@@ -108,6 +164,22 @@ def test_block_omits_absent_polarity_sections():
 
     likes_only = _feedback_block([entry(1)])
     assert "Liked" in likes_only and "Disliked" not in likes_only
+
+
+def test_block_renders_reason_tags_and_note():
+    block = _feedback_block(
+        [
+            {**entry(-1, names=["Linen blazer", "Sport sandals"]),
+             "reason": "combination", "note": "each fine alone, awful together"},
+            {**entry(-1, mode="Athleisure", date="2026-06-06", names=["Silk blouse"]),
+             "reason": "occasion"},
+        ]
+    )
+    assert (
+        "- Elevated, 2026-06-07: Linen blazer + Sport sandals "
+        '(the combination, not the items) — user note: "each fine alone, awful together"'
+    ) in block
+    assert "- Athleisure, 2026-06-06: Silk blouse (wrong for this occasion/mode)" in block
 
 
 def test_block_empty_entries_render_nothing():

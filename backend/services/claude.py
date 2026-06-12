@@ -229,8 +229,24 @@ def _feedback_block(entries: list[dict]) -> str:
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
+# Attributed dislikes (#60) carry their reason into the line — "what to
+# avoid" differs by reason: named culprits vs the assembly vs the mode fit.
+# Weather-attributed dislikes never reach here (filtered upstream).
+_REASON_TAGS = {
+    "specific_items": "these specific items were the problem",
+    "combination": "the combination, not the items",
+    "occasion": "wrong for this occasion/mode",
+}
+
+
 def _feedback_line(e: dict) -> str:
-    return f"- {e['mode']}, {e['date']}: {' + '.join(e['item_names'])}"
+    line = f"- {e['mode']}, {e['date']}: {' + '.join(e['item_names'])}"
+    tag = _REASON_TAGS.get(e.get("reason"))
+    if tag:
+        line += f" ({tag})"
+    if e.get("note"):
+        line += f" — user note: \"{e['note']}\""
+    return line
 
 
 def _weather_line(weather: dict) -> str:
