@@ -31,5 +31,13 @@ create table if not exists profile (
   home_location_text  text,
   home_lat            double precision,
   home_lon            double precision,
-  updated_at          timestamptz not null default now()
+  updated_at          timestamptz not null default now(),
+  -- Single-row guard: every row carries true; the unique index below makes a
+  -- second row impossible, so PUT /profile can't fork the profile.
+  singleton           boolean not null default true
 );
+
+-- Separate idempotent statements (not part of create table) so the guard also
+-- lands if the table already exists from an earlier run of this migration.
+alter table profile add column if not exists singleton boolean not null default true;
+create unique index if not exists profile_singleton on profile (singleton);

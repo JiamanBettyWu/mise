@@ -2,6 +2,52 @@ import { useEffect, useRef, useState } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import { api, setStoredPassword } from '../services/api.js';
 
+// One preference row — display or inline-edit. Shared by both sections; the
+// inferred variant adds the evidence badge and relabels the actions.
+function PrefTile({ pref, editing, editText, setEditText, editRef, onStartEdit, onSaveEdit, onCancelEdit, onDelete }) {
+  if (editing) {
+    return (
+      <div className="profile__pref-tile profile__pref-tile--editing">
+        <input
+          ref={editRef}
+          className="profile__pref-input"
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSaveEdit(pref);
+            if (e.key === 'Escape') onCancelEdit();
+          }}
+        />
+        <div className="profile__pref-actions">
+          <button onClick={() => onSaveEdit(pref)}>Save</button>
+          <button className="ghost" onClick={onCancelEdit}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const inferred = pref.source === 'inferred';
+  const n = pref.evidence_ids?.length || 0;
+  return (
+    <div className="profile__pref-tile">
+      <span className="profile__pref-text">{pref.text}</span>
+      {inferred && (
+        <span className="chip chip--on-attr profile__pref-badge">
+          inferred{n > 0 ? ` · from ${n} outfit${n === 1 ? '' : 's'}` : ''}
+        </span>
+      )}
+      <div className="profile__pref-actions">
+        <button className="ghost" onClick={() => onStartEdit(pref)}>
+          {inferred ? 'Edit & own' : 'Edit'}
+        </button>
+        <button className="ghost danger" onClick={() => onDelete(pref)}>
+          {inferred ? 'Dismiss' : 'Remove'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [locationText, setLocationText] = useState('');
@@ -77,7 +123,13 @@ export default function Profile() {
 
   async function saveEdit(pref) {
     const text = editText.trim();
-    if (!text || text === pref.text) {
+    if (!text) {
+      setEditId(null);
+      return;
+    }
+    // Saving unchanged text still PATCHes for inferred prefs: "Edit & own"
+    // promises ownership, and the backend promotes on any text write.
+    if (text === pref.text && pref.source !== 'inferred') {
       setEditId(null);
       return;
     }
@@ -94,9 +146,11 @@ export default function Profile() {
   // ---- Delete --------------------------------------------------------------
 
   async function deletePref(pref) {
+    // A user pref is hand-written and gone for good — confirm. An inferred
+    // pref is machine-made; dismissing it tombstones (status=rejected) so
+    // #62's weekly job won't resurrect it. Either way it leaves the list.
+    if (pref.source === 'user' && !confirm(`Remove "${pref.text}"?`)) return;
     await api.deletePreference(pref.id);
-    // User prefs are hard-deleted; inferred prefs are tombstoned (status=rejected).
-    // Either way, remove from the visible list.
     setPrefs((ps) => ps.filter((p) => p.id !== pref.id));
   }
 
@@ -108,6 +162,16 @@ export default function Profile() {
     (locationText !== (profile?.home_location_text || '') ||
       locationCoords.lat !== profile?.home_lat ||
       locationCoords.lon !== profile?.home_lon);
+
+  const tileHandlers = {
+    editText,
+    setEditText,
+    editRef,
+    onStartEdit: startEdit,
+    onSaveEdit: saveEdit,
+    onCancelEdit: cancelEdit,
+    onDelete: deletePref,
+  };
 
   return (
     <div>
@@ -160,36 +224,9 @@ export default function Profile() {
           </p>
 
           <div className="profile__pref-list">
-            {userPrefs.map((pref) =>
-              editId === pref.id ? (
-                <div key={pref.id} className="profile__pref-tile profile__pref-tile--editing">
-                  <input
-                    ref={editRef}
-                    className="profile__pref-input"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit(pref);
-                      if (e.key === 'Escape') cancelEdit();
-                    }}
-                  />
-                  <div className="profile__pref-actions">
-                    <button onClick={() => saveEdit(pref)}>Save</button>
-                    <button className="ghost" onClick={cancelEdit}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <div key={pref.id} className="profile__pref-tile">
-                  <span className="profile__pref-text">{pref.text}</span>
-                  <div className="profile__pref-actions">
-                    <button className="ghost" onClick={() => startEdit(pref)}>Edit</button>
-                    <button className="ghost danger" onClick={() => deletePref(pref)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              )
-            )}
+            {userPrefs.map((pref) => (
+              <PrefTile key={pref.id} pref={pref} editing={editId === pref.id} {...tileHandlers} />
+            ))}
           </div>
 
           <form className="profile__add-row" onSubmit={addPreference}>
@@ -214,41 +251,9 @@ export default function Profile() {
             </p>
           ) : (
             <div className="profile__pref-list">
-              {inferredPrefs.map((pref) =>
-                editId === pref.id ? (
-                  <div key={pref.id} className="profile__pref-tile profile__pref-tile--editing">
-                    <input
-                      ref={editRef}
-                      className="profile__pref-input"
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit(pref);
-                        if (e.key === 'Escape') cancelEdit();
-                      }}
-                    />
-                    <div className="profile__pref-actions">
-                      <button onClick={() => saveEdit(pref)}>Save</button>
-                      <button className="ghost" onClick={cancelEdit}>Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div key={pref.id} className="profile__pref-tile">
-                    <span className="profile__pref-text">{pref.text}</span>
-                    <span className="chip chip--on-attr profile__pref-badge">
-                      inferred{pref.evidence_ids?.length > 0 ? ` · from ${pref.evidence_ids.length} outfits` : ''}
-                    </span>
-                    <div className="profile__pref-actions">
-                      <button className="ghost" onClick={() => startEdit(pref)}>
-                        Edit &amp; own
-                      </button>
-                      <button className="ghost danger" onClick={() => deletePref(pref)}>
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                )
-              )}
+              {inferredPrefs.map((pref) => (
+                <PrefTile key={pref.id} pref={pref} editing={editId === pref.id} {...tileHandlers} />
+              ))}
             </div>
           )}
         </section>

@@ -5,8 +5,10 @@ post #60 — optional 👎 attribution de-noises the multiplier and the
 avoid-list, and `outfit_history` records weather + notes at recommendation
 time — and post #63 — the model proposes 3 candidates per mode and a
 deterministic filter rejects 👎-attributed combinations — post #64 —
-the daily job's modes optionally come from today's calendar — and post #17 —
-exact sets from the last 7 days are deduped by the same filter; the full
+the daily job's modes optionally come from today's calendar — post #17 —
+exact sets from the last 7 days are deduped by the same filter — and post
+#61 — profile preferences ride the user message as hard constraints and the
+profile's home location is the default weather coordinate; the full
 feedback-loop design of #39–#44 was implemented in PR #58 and earlier).
 This is the *how it works* reference; the *why we chose it* decision record is
 [feedback-loop-design.md](feedback-loop-design.md). When the two disagree, the
@@ -17,6 +19,16 @@ is where almost all the math lives.
 Used by `POST /outfits/recommend` (web) and `jobs/daily_outfit.py` (the morning
 email, GitHub Actions cron). Same code path; the job passes named modes
 (Smart casual / Athleisure / Elevated), the web UI passes none.
+
+Two profile inputs (#61) feed the pipeline before any stage runs: when no
+explicit coordinates are passed, the weather lookup prefers the `profile`
+table's home location (editable on the Profile page) over the
+`WEATHER_LAT`/`WEATHER_LON` env vars — changing cities is a UI edit, not a
+three-place env change. And every *active* statement in the `preferences`
+table (user-written, or #62-inferred and not dismissed) is rendered into the
+user message as a "User preferences:" block the system prompt instructs the
+model to treat as hard constraints. Both reads fail soft: a missing table or
+query error logs a warning and falls back to env vars / no block.
 
 Which modes the job passes is itself an input, not part of the pipeline:
 with the optional `CALENDAR_ICS_URL` secret set, today's Google Calendar
@@ -243,6 +255,15 @@ measure it.
 
 Prompt rules that interact with the sampler:
 
+- **User preferences** (#61): active `preferences` rows ride the user message
+  as a bulleted "User preferences:" block (`_preferences_block` in
+  `claude.py`); a static system-prompt bullet tells the model each is a hard
+  constraint — honor it in every outfit, or briefly acknowledge in
+  `reasoning` when impossible. This is the *semantic* memory layer ("I never
+  like sporty footwear with elevated") next to #59's episodic block and the
+  Stage 3 numeric reflexes — none replaces another. Like the #59 block, it
+  lives in the uncached user message so the system prompt stays
+  byte-identical for caching.
 - **Layered warmth** (#18): combined outfit warmth should suit the high/low —
   this soft, compositional reasoning is the *replacement* for any item-level
   weather weighting (only the model can know a tee is a base layer today).
@@ -366,3 +387,4 @@ Decided against *for now*, with the trigger that would revisit each:
 | Email feedback GET + attribution landing page | `backend/routers/feedback.py` | — |
 | Daily job + modes | `jobs/daily_outfit.py` | — |
 | Calendar → modes (#64) | `backend/services/calendar.py` + `claude.py` (`classify_modes`) | `tests/test_calendar.py` |
+| Profile prefs + home location (#61) | `backend/routers/profile.py` (CRUD + #62 contracts) + `recommend.py` (reads) + `claude.py` (`_preferences_block`) | `tests/test_preferences.py` |

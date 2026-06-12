@@ -10,6 +10,33 @@ router = APIRouter(prefix="/profile", dependencies=[Depends(require_password)])
 
 
 # ---------------------------------------------------------------------------
+# #62 contracts, as pure functions (tested in tests/test_preferences.py)
+# ---------------------------------------------------------------------------
+
+
+def apply_promotion(source: str, patch: dict) -> dict:
+    """Editing an inferred pref's text promotes it to user-owned (#61 → #62 contract).
+
+    Once promoted, the weekly inference job (#62) reads it as context but never
+    writes to it again. Status-only patches don't promote — un-rejecting an
+    inferred pref shouldn't claim ownership of it.
+    """
+    if source == "inferred" and "text" in patch:
+        return {**patch, "source": "user"}
+    return patch
+
+
+def delete_disposition(source: str) -> str:
+    """'delete' for user prefs, 'tombstone' for inferred ones.
+
+    #62 re-derives the inferred set every run, so a hard delete would be
+    resurrected next week; status='rejected' is kept as the do-not-re-emit
+    marker. User prefs have no job that could bring them back.
+    """
+    return "tombstone" if source == "inferred" else "delete"
+
+
+# ---------------------------------------------------------------------------
 # Profile (single-row home location)
 # ---------------------------------------------------------------------------
 
@@ -25,9 +52,8 @@ def get_profile():
 @router.put("", response_model=Profile)
 def upsert_profile(body: ProfileUpdate):
     existing = supabase().table("profile").select("id").limit(1).execute()
-    now = datetime.now(timezone.utc).isoformat()
-    payload = {k: v for k, v in body.model_dump().items()}
-    payload["updated_at"] = now
+    payload = body.model_dump()
+    payload["updated_at"] = _now()
 
     if existing.data:
         row_id = existing.data[0]["id"]
@@ -83,14 +109,9 @@ def update_preference(pref_id: str, body: PreferenceUpdate):
     if not existing.data:
         raise HTTPException(status_code=404, detail="Preference not found")
 
-    row = existing.data[0]
-    now = datetime.now(timezone.utc).isoformat()
-    patch = {k: v for k, v in body.model_dump(exclude_none=True).items()}
-    patch["updated_at"] = now
-
-    # Editing an inferred pref promotes it to user-owned (#61 contract for #62).
-    if row["source"] == "inferred" and "text" in patch:
-        patch["source"] = "user"
+    patch = body.model_dump(exclude_none=True)
+    patch = apply_promotion(existing.data[0]["source"], patch)
+    patch["updated_at"] = _now()
 
     res = (
         supabase()
@@ -110,10 +131,13 @@ def delete_preference(pref_id: str):
     if not existing.data:
         raise HTTPException(status_code=404, detail="Preference not found")
 
-    source = existing.data[0]["source"]
-    if source == "inferred":
-        # Tombstone so #62's weekly job won't resurrect it.
-        now = datetime.now(timezone.utc).isoformat()
-        supabase().table("preferences").update({"status": "rejected", "updated_at": now}).eq("id", pref_id).execute()
+    if delete_disposition(existing.data[0]["source"]) == "tombstone":
+        supabase().table("preferences").update(
+            {"status": "rejected", "updated_at": _now()}
+        ).eq("id", pref_id).execute()
     else:
         supabase().table("preferences").delete().eq("id", pref_id).execute()
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()

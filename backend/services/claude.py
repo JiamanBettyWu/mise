@@ -280,9 +280,7 @@ def recommend_outfits(
     if feedback_entries:
         user_blocks.append(_feedback_block(feedback_entries))
     if preferences:
-        user_blocks.append(
-            "User preferences:\n" + "\n".join(f"- {p}" for p in preferences)
-        )
+        user_blocks.append(_preferences_block(preferences))
     user_blocks.append("Wardrobe inventory (JSON):")
     user_blocks.append(json.dumps(wardrobe, ensure_ascii=False))
 
@@ -424,6 +422,15 @@ def _select_candidates(
             }
         )
     return picked
+
+
+def _preferences_block(preferences: list[str]) -> str:
+    """Pure: render active profile preferences (#61) as the prompt section the
+    system prompt's hard-constraint bullet refers to. Empty list → empty string.
+    """
+    if not preferences:
+        return ""
+    return "User preferences:\n" + "\n".join(f"- {p}" for p in preferences)
 
 
 def _feedback_block(entries: list[dict]) -> str:
