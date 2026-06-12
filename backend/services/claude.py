@@ -17,6 +17,11 @@ MODEL = "claude-sonnet-4-6"
 # deterministic drop_extras fallback kicks in.
 MAX_REPAIR_ATTEMPTS = 2
 
+# Two-stage lite (#63): candidates requested per outfit entry. The value is
+# baked into OUTFIT_SYSTEM_PROMPT as a literal "3" — change both together
+# (the system prompt must stay byte-identical for its cache_control prefix).
+CANDIDATES_PER_OUTFIT = 3
+
 # Shared between the vision-tagging prompt and the one-off metadata backfill
 # (jobs/backfill_warmth.py) so the two can't drift apart (issue #40).
 WARMTH_SCALE = """\
@@ -128,27 +133,38 @@ Each outfit should:
   NOT recreate them or chase near-substitutes; favor variety. Items named
   there may be absent from today's inventory; still use ONLY inventory items.
 
-If the user provides a list of MODES, return exactly one outfit per mode in the
-SAME ORDER. Each outfit must fit the mode's vibe. Repeat the mode name in the
-outfit's `label` field. If no modes are provided, set `label` to an empty string
-and return the requested count.
+If the user provides a list of MODES, return exactly one outfit entry per mode
+in the SAME ORDER. Each entry must fit the mode's vibe. Repeat the mode name in
+the entry's `label` field. If no modes are provided, set `label` to an empty
+string and return the requested number of entries.
+
+For each entry, propose 3 CANDIDATE outfits, ordered best-first. Candidates
+must differ meaningfully from each other — different anchor pieces, not the
+same outfit with one accessory swapped. Every candidate must independently
+satisfy ALL the rules above, including the slot-omission rule: a candidate
+that notes a gap in its `reasoning` must actually omit that slot from its
+`item_ids`.
 
 If no suitable outfit can be assembled for a given mode under today's weather
 (e.g. the wardrobe lacks elevated pieces, or every option would be wildly
 inappropriate for the conditions), DO NOT force a bad suggestion. Instead,
-return the entry with `item_ids: []` and a brief `reasoning` that begins with
-"No <mode-name> recommendation available today" and explains why in one
-sentence. Keep the entry in the same position; do not drop modes. When you
-skip a mode this way, `item_ids` MUST be the empty list — never combine the
-"No … recommendation available today" reasoning with non-empty item_ids.
+return the entry with a SINGLE candidate whose `item_ids` is [] and whose
+`reasoning` begins with "No <mode-name> recommendation available today" and
+explains why in one sentence. Keep the entry in the same position; do not drop
+modes. When you skip a mode this way, `item_ids` MUST be the empty list —
+never combine the "No … recommendation available today" reasoning with
+non-empty item_ids.
 
 Return ONLY a JSON object of the shape:
 {
   "outfits": [
     {
       "label": "<mode name or empty string>",
-      "item_ids": ["<uuid>", "<uuid>", ...],
-      "reasoning": "1-2 sentences"
+      "candidates": [
+        {"item_ids": ["<uuid>", "<uuid>", ...], "reasoning": "1-2 sentences"},
+        {"item_ids": ["<uuid>", "<uuid>", ...], "reasoning": "1-2 sentences"},
+        {"item_ids": ["<uuid>", "<uuid>", ...], "reasoning": "1-2 sentences"}
+      ]
     },
     ...
   ]
@@ -165,6 +181,7 @@ def recommend_outfits(
     notes: str = "",
     modes: list[dict] | None = None,
     feedback_entries: list[dict] | None = None,
+    blocked_combos: set[frozenset[str]] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
@@ -174,14 +191,23 @@ def recommend_outfits(
     `feedback_entries` (from outfit_history.recent_feedback_outfits, #59) is
     rendered into the user message — NOT the system prompt, which must stay
     byte-identical to keep its cache_control prefix valid across calls.
+
+    Two-stage lite (#63): the single call returns CANDIDATES_PER_OUTFIT
+    candidates per entry; deterministic selection (_select_candidates) takes
+    the first candidate that isn't a 👎-attributed combination
+    (`blocked_combos`, from outfit_history.blocked_combos) and passes
+    structural validation. _enforce_structure then only has to repair entries
+    where no candidate survived.
     """
     user_blocks = [_weather_line(weather)]
     if modes:
-        user_blocks.append("Modes (return one outfit per mode, in this order):")
+        user_blocks.append("Modes (return one outfit entry per mode, in this order):")
         for m in modes:
             user_blocks.append(f"- {m['name']}: {m['description']}")
     else:
-        user_blocks.append(f"Please return exactly {n} outfit{'s' if n != 1 else ''}.")
+        user_blocks.append(
+            f"Please return exactly {n} outfit entr{'ies' if n != 1 else 'y'}."
+        )
     if notes.strip():
         user_blocks.append(f"User notes for today: {notes.strip()}")
     if feedback_entries:
@@ -191,7 +217,9 @@ def recommend_outfits(
 
     resp = client().messages.create(
         model=MODEL,
-        max_tokens=1024,
+        # 3 candidates per entry ≈ 3× the old payload; headroom keeps
+        # parse_json's stop_reason=max_tokens diagnostics a rarity.
+        max_tokens=4096,
         system=[
             {
                 "type": "text",
@@ -202,8 +230,101 @@ def recommend_outfits(
         messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
     )
     parsed = parse_json(resp)
-    outfits = parsed.get("outfits", [])
+    entries = _normalize_entries(parsed.get("outfits", []))
+    types_by_id = {item["id"]: item.get("type", "") for item in wardrobe}
+    outfits = _select_candidates(entries, blocked_combos or set(), types_by_id)
     return _enforce_structure(outfits, wardrobe, weather, modes, notes)
+
+
+def _normalize_entries(outfits: list[dict]) -> list[dict]:
+    """Pure: coerce each model entry to {label, candidates: [...]}.
+
+    Tolerates the pre-#63 flat shape ({label, item_ids, reasoning}) by
+    wrapping it as a single candidate — repair responses and stubborn models
+    both produce it.
+    """
+    entries = []
+    for o in outfits:
+        if "candidates" in o:
+            candidates = [c for c in (o.get("candidates") or []) if isinstance(c, dict)]
+        else:
+            candidates = [
+                {"item_ids": o.get("item_ids", []), "reasoning": o.get("reasoning", "")}
+            ]
+        entries.append({"label": o.get("label", ""), "candidates": candidates})
+    return entries
+
+
+def _select_candidates(
+    entries: list[dict],
+    blocked_combos: set[frozenset[str]],
+    types_by_id: dict[str, str],
+) -> list[dict]:
+    """Pure-ish (logs): stage 2 of the two-stage lite (#63).
+
+    Per entry, take the first candidate that (1) is not a 👎-attributed
+    combination — a recorded fact, so it's enforced in code, not prose — and
+    (2) passes structural validation (#46). Every rejection is logged with
+    its exact reason. Fallbacks, in order: a non-blocked but structurally
+    invalid candidate (the existing repair machinery downstream fixes it);
+    if *every* candidate is a blocked combo, a skip entry — serving a
+    known-bad outfit would defeat the filter, and the skip phrasing matches
+    what _is_skip / the email template already handle.
+    """
+    picked = []
+    for i, entry in enumerate(entries):
+        label = entry.get("label") or f"entry {i + 1}"
+        chosen = None
+        repairable = None
+        for j, cand in enumerate(entry["candidates"]):
+            item_ids = cand.get("item_ids") or []
+            if item_ids and frozenset(item_ids) in blocked_combos:
+                log.info(
+                    "candidate %d/%d rejected [%s]: matches a 👎-attributed combination",
+                    j + 1,
+                    len(entry["candidates"]),
+                    label,
+                )
+                continue
+            violations = validate_outfit(item_ids, types_by_id)
+            if violations:
+                log.info(
+                    "candidate %d/%d rejected [%s]: structural: %s",
+                    j + 1,
+                    len(entry["candidates"]),
+                    label,
+                    ", ".join(violations),
+                )
+                repairable = repairable or cand
+                continue
+            if j:
+                log.info("selected candidate %d/%d for [%s]",
+                         j + 1, len(entry["candidates"]), label)
+            chosen = cand
+            break
+        if chosen is None:
+            chosen = repairable
+        if chosen is None:
+            log.warning(
+                "all candidates for [%s] matched 👎-attributed combinations; skipping",
+                label,
+            )
+            chosen = {
+                "item_ids": [],
+                "reasoning": (
+                    f"No {entry.get('label') or 'outfit'} recommendation available "
+                    "today — every candidate repeated a combination you previously "
+                    "disliked."
+                ),
+            }
+        picked.append(
+            {
+                "label": entry.get("label", ""),
+                "item_ids": chosen.get("item_ids", []),
+                "reasoning": chosen.get("reasoning", ""),
+            }
+        )
+    return picked
 
 
 def _feedback_block(entries: list[dict]) -> str:
@@ -323,9 +444,11 @@ def _repair_outfits(
     mode_by_name = {m["name"]: m for m in (modes or [])}
     blocks = [
         "Your previous outfit response contained structural violations. Return "
-        'corrected versions of ONLY the outfits listed below, in this order, as '
-        '{"outfits": [...]} in the usual format. Keep each outfit\'s label, fix '
-        "the violations, and keep the outfit coherent for its mode and the weather.",
+        "corrected versions of ONLY the outfits listed below, in this order, as "
+        '{"outfits": [{"label": ..., "item_ids": [...], "reasoning": ...}, ...]} '
+        "— ONE corrected outfit per entry, no candidates array. Keep each "
+        "outfit's label, fix the violations, and keep the outfit coherent for "
+        "its mode and the weather.",
         _weather_line(weather),
     ]
     if notes.strip():
@@ -356,6 +479,12 @@ def _repair_outfits(
             messages=[{"role": "user", "content": "\n\n".join(blocks)}],
         )
         repaired = parse_json(resp).get("outfits", [])
+        # The system prompt teaches the candidates shape; if the model uses it
+        # here despite the flat-shape instruction, take each entry's first.
+        repaired = [
+            {"label": e["label"], **e["candidates"][0]} if e["candidates"] else None
+            for e in _normalize_entries(repaired)
+        ]
     except Exception:
         log.warning("outfit repair call failed; will retry or fall back", exc_info=True)
         return [None] * len(failed)

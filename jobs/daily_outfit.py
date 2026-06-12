@@ -6,6 +6,7 @@ We send unconditionally whenever the job runs; one cron line means one run means
 one email. `TZ` is only used to label the email with the local date.
 """
 
+import logging
 import os
 import sys
 from datetime import datetime
@@ -14,6 +15,11 @@ from zoneinfo import ZoneInfo
 
 # Make `services`, `db`, etc. importable when run as `python jobs/daily_outfit.py`.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+
+# Surface the pipeline's INFO diagnostics (candidate pool, #63 candidate
+# rejections) in the Actions log — "why was candidate 1 rejected?" must have
+# an exact answer there.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 from dotenv import load_dotenv
 

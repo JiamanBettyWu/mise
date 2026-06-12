@@ -1,16 +1,20 @@
 """Shared outfit recommendation logic — used by the API router and the daily cron."""
 
+import logging
 from datetime import date
 
 from db.supabase import client as supabase
 from services.claude import recommend_outfits
 from services.outfit_history import (
+    blocked_combos,
     log_outfits,
     recent_feedback_outfits,
     sample_wardrobe,
 )
 from services.weather import get_today
 from services.weather_gate import gate_extremes
+
+log = logging.getLogger("wardrobe.recommend")
 
 WARDROBE_FIELDS = (
     "id, name, type, color, formality, season, fabric, warmth, brand, description"
@@ -42,8 +46,18 @@ def recommend(
     wearable = gate_extremes(wardrobe, weather)
     candidate_pool = sample_wardrobe(wearable, modes=modes)
 
+    # One line of observability (#63): when a mode lacks the right item, this
+    # answers "was it sampled out of the pool, or did the model ignore it?"
+    log.info(
+        "candidate pool (%d of %d after gate + sampling): %s",
+        len(candidate_pool),
+        wardrobe_size,
+        ", ".join(sorted(item.get("name", item["id"]) for item in candidate_pool)),
+    )
+
     # Recent thumbed outfits ride along as prompt context (#59) — the
-    # combination-level memory the per-item multipliers can't carry.
+    # combination-level memory the per-item multipliers can't carry — and
+    # combination-attributed 👎s (#60) become a hard candidate blocklist (#63).
     outfits = recommend_outfits(
         weather=weather,
         wardrobe=candidate_pool,
@@ -51,6 +65,7 @@ def recommend(
         notes=notes,
         modes=modes,
         feedback_entries=recent_feedback_outfits(),
+        blocked_combos=blocked_combos(),
     )
 
     history_ids = log_outfits(

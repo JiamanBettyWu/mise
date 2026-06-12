@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -11,6 +12,11 @@ from routers import clothes, feedback, geo, outfits, trips
 
 # Load the single repo-root .env regardless of cwd. See ENV setup in README.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+# The app's diagnostic logs (candidate pool, #63 rejection reasons) are INFO;
+# without a root handler at INFO, Python's last-resort handler shows only
+# WARNING+. Uvicorn's own loggers keep their handlers (propagate=False).
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="Wardrobe AI")
 
