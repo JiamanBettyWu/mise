@@ -13,6 +13,10 @@ log = logging.getLogger("wardrobe.claude")
 
 MODEL = "claude-sonnet-4-6"
 
+# Calendar → modes classification (#64) is a tiny once-a-day call; a
+# Haiku-class model is plenty and keeps the job cheap.
+MODE_CLASSIFIER_MODEL = "claude-haiku-4-5-20251001"
+
 # Outfit structural repair (issue #46): how many targeted re-asks before the
 # deterministic drop_extras fallback kicks in.
 MAX_REPAIR_ATTEMPTS = 2
@@ -100,6 +104,44 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
     )
 
     return parse_json(resp)
+
+
+MODE_CLASSIFIER_PROMPT = """You select which outfit "modes" a day's plans call
+for. Given today's calendar events (titles and times) and the available modes
+with descriptions, return ONLY a JSON object:
+{"modes": ["<mode name>", ...]}
+
+Include a mode only when an event clearly calls for it — a workout class calls
+for an athletic mode; a dinner reservation, date, or event calls for a dressier
+mode. Routine events (errands, calls, appointments) that don't change what to
+wear should not add modes. Use the exact mode names given. An empty list is a
+valid answer. No commentary, no markdown fences."""
+
+
+def classify_modes(events: list[dict], modes: list[dict]) -> list[str]:
+    """One Haiku-class call: today's calendar events → applicable modes (#64).
+
+    Returns raw mode-name strings. The caller (services.calendar) validates
+    against the known list, always re-adds the floor mode, and treats any
+    exception as "fall back to all modes" — so this function can just raise.
+    Keyword rules were considered and rejected in the issue: titles drift
+    ("PT session", "Dinner @ Quince") and a keyword list goes stale silently.
+    """
+    blocks = [
+        "Today's calendar events:",
+        *[f"- {e['title']} ({e['time']})" for e in events],
+        "",
+        "Available modes:",
+        *[f"- {m['name']}: {m['description']}" for m in modes],
+    ]
+    resp = client().messages.create(
+        model=MODE_CLASSIFIER_MODEL,
+        max_tokens=256,
+        system=MODE_CLASSIFIER_PROMPT,
+        messages=[{"role": "user", "content": "\n".join(blocks)}],
+    )
+    parsed = parse_json(resp)
+    return [str(name) for name in parsed.get("modes", [])]
 
 
 OUTFIT_SYSTEM_PROMPT = """You are a personal stylist. Given today's weather and

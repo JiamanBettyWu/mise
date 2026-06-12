@@ -42,4 +42,8 @@ jobs:
           # FEEDBACK_SECRET must match the Render env var of the same name.
           FEEDBACK_SECRET: ${{ secrets.FEEDBACK_SECRET }}
           BACKEND_PUBLIC_URL: ${{ secrets.BACKEND_PUBLIC_URL }}
+          # Calendar-driven modes (#64): Google Calendar "secret address in
+          # iCal format" URL. Presence IS the toggle — leave the secret unset
+          # to keep the hardcoded three-modes-daily behavior.
+          CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
         run: python jobs/daily_outfit.py

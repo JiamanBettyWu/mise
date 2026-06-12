@@ -10,3 +10,5 @@ pillow>=10.4
 pillow-heif>=0.18
 langgraph>=1.1.10
 tzdata>=2024.1
+icalendar>=7.1.2
+recurring-ical-events>=3.8.2
