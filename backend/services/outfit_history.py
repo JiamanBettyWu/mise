@@ -32,6 +32,7 @@ SAMPLE_FRACTION = 0.7
 SMALL_CATEGORY_MAX = 5
 FEEDBACK_FLOOR = 0.6
 FEEDBACK_CEILING = 1.4
+FEEDBACK_CONTEXT_MAX_PER_VERDICT = 5
 
 # Issue #16: the SAMPLE_FRACTION draw can evict a small category wholesale
 # (the sandals incident's last unshipped mechanism). Each entry is a group of
@@ -112,6 +113,72 @@ def log_outfits(
     )
     ids = iter(row["id"] for row in inserted)
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
+
+
+def recent_feedback_outfits(today: date | None = None) -> list[dict]:
+    """Recently thumbed outfits, name-hydrated, for prompt context (#59).
+
+    Episodic combination-level memory: the per-item multiplier (#42) smears a
+    verdict across items, so a bad *combination* of individually-fine items
+    can recur — showing the model the actual assemblies is the cheapest fix.
+    Window deliberately reuses HISTORY_WINDOW_DAYS: the prompt's episodic
+    memory and the sampler's rotation pressure share one horizon.
+
+    Returns entries shaped by _select_feedback_entries, newest first.
+    """
+    today = today or date.today()
+    cutoff = today - timedelta(days=HISTORY_WINDOW_DAYS)
+    rows = (
+        supabase()
+        .table("outfit_history")
+        .select("recommended_on, mode, item_ids, feedback")
+        .gte("recommended_on", cutoff.isoformat())
+        .not_.is_("feedback", "null")
+        .order("recommended_on", desc=True)
+        .execute()
+        .data
+        or []
+    )
+    ids = sorted({iid for row in rows for iid in (row.get("item_ids") or [])})
+    names: dict[str, str] = {}
+    if ids:
+        res = supabase().table("clothing_items").select("id, name").in_("id", ids).execute()
+        names = {r["id"]: r["name"] for r in (res.data or [])}
+    return _select_feedback_entries(rows, names)
+
+
+def _select_feedback_entries(
+    rows: list[dict],
+    names_by_id: dict[str, str],
+) -> list[dict]:
+    """Pure: shape verdict rows into capped per-polarity prompt entries.
+
+    Expects rows newest-first; keeps at most FEEDBACK_CONTEXT_MAX_PER_VERDICT
+    per polarity. Deleted items (no name) are skipped silently; an entry with
+    no surviving names is dropped — a list of nothing teaches nothing.
+    Non-±1 verdicts are skipped defensively, same as _feedback_multipliers.
+    """
+    picked: list[dict] = []
+    counts = {1: 0, -1: 0}
+    for row in rows:
+        verdict = row.get("feedback")
+        if verdict not in counts or counts[verdict] >= FEEDBACK_CONTEXT_MAX_PER_VERDICT:
+            continue
+        item_names = [
+            names_by_id[iid] for iid in (row.get("item_ids") or []) if iid in names_by_id
+        ]
+        if not item_names:
+            continue
+        counts[verdict] += 1
+        picked.append(
+            {
+                "date": row["recommended_on"],
+                "mode": row["mode"],
+                "verdict": verdict,
+                "item_names": item_names,
+            }
+        )
+    return picked
 
 
 def _sampling_weights(

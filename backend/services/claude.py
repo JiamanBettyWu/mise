@@ -122,6 +122,11 @@ Each outfit should:
 - Favor variety across days. The inventory order is randomized and does not
   imply preference; explore the full set rather than defaulting to the first
   few items, unless weather or mode genuinely require a specific piece.
+- The user message may include a "Recent outfit feedback" section listing
+  outfits the user recently disliked or liked. Avoid recombining assemblies
+  similar to a disliked outfit. Liked outfits are style direction ONLY — do
+  NOT recreate them or chase near-substitutes; favor variety. Items named
+  there may be absent from today's inventory; still use ONLY inventory items.
 
 If the user provides a list of MODES, return exactly one outfit per mode in the
 SAME ORDER. Each outfit must fit the mode's vibe. Repeat the mode name in the
@@ -159,11 +164,16 @@ def recommend_outfits(
     n: int,
     notes: str = "",
     modes: list[dict] | None = None,
+    feedback_entries: list[dict] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
     If `modes` is provided, returns one outfit per mode in order; `n` is ignored.
     Each mode is a dict with keys `name` and `description`.
+
+    `feedback_entries` (from outfit_history.recent_feedback_outfits, #59) is
+    rendered into the user message — NOT the system prompt, which must stay
+    byte-identical to keep its cache_control prefix valid across calls.
     """
     user_blocks = [_weather_line(weather)]
     if modes:
@@ -174,6 +184,8 @@ def recommend_outfits(
         user_blocks.append(f"Please return exactly {n} outfit{'s' if n != 1 else ''}.")
     if notes.strip():
         user_blocks.append(f"User notes for today: {notes.strip()}")
+    if feedback_entries:
+        user_blocks.append(_feedback_block(feedback_entries))
     user_blocks.append("Wardrobe inventory (JSON):")
     user_blocks.append(json.dumps(wardrobe, ensure_ascii=False))
 
@@ -192,6 +204,33 @@ def recommend_outfits(
     parsed = parse_json(resp)
     outfits = parsed.get("outfits", [])
     return _enforce_structure(outfits, wardrobe, weather, modes, notes)
+
+
+def _feedback_block(entries: list[dict]) -> str:
+    """Pure: render recent thumbed outfits (#59) as the prompt section the
+    system prompt's feedback bullet refers to.
+
+    Dislikes are the avoid-list; likes are deliberately captioned as style
+    direction with a don't-recreate instruction — recency weighting just
+    suppressed those exact items, and the model must not fight that by
+    hunting near-substitutes. Empty entries → empty string.
+    """
+    disliked = [e for e in entries if e["verdict"] == -1]
+    liked = [e for e in entries if e["verdict"] == 1]
+    lines = ["Recent outfit feedback:"]
+    if disliked:
+        lines.append("Disliked (avoid recombining similar assemblies):")
+        lines += [_feedback_line(e) for e in disliked]
+    if liked:
+        lines.append(
+            "Liked (style direction only — do not recreate these exact outfits):"
+        )
+        lines += [_feedback_line(e) for e in liked]
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
+def _feedback_line(e: dict) -> str:
+    return f"- {e['mode']}, {e['date']}: {' + '.join(e['item_names'])}"
 
 
 def _weather_line(weather: dict) -> str:

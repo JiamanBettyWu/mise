@@ -1,6 +1,8 @@
 # The daily outfit recommendation algorithm
 
-**As of 2026-06-11** (post PR #58 — the full feedback-loop design is implemented).
+**As of 2026-06-12** (post #59 — recent thumbed outfits now ride along as
+prompt context; the full feedback-loop design of #39–#44 was implemented in
+PR #58 and earlier).
 This is the *how it works* reference; the *why we chose it* decision record is
 [feedback-loop-design.md](feedback-loop-design.md). When the two disagree, the
 code wins: [`services/recommend.py`](../backend/services/recommend.py) is the
@@ -200,6 +202,18 @@ the model. Prompt rules that interact with the sampler:
   weather weighting (only the model can know a tee is a base layer today).
 - **Slot omission** (#43): if nothing in the pool suits a slot for the mode,
   omit the slot and say so in `reasoning` — never force an off-mode item.
+- **Recent feedback context** (#59): the user message also carries up to 5
+  disliked and 5 liked outfits from the last 7 days (same window as recency —
+  one episodic horizon), each as mode + date + item names
+  (`recent_feedback_outfits` in `outfit_history.py`, rendered by
+  `_feedback_block` in `claude.py`). Dislikes are an avoid-list for similar
+  assemblies — the *combination-level* memory the per-item multiplier (Stage
+  3) structurally can't carry. Likes are captioned style-direction-only with
+  an explicit don't-recreate instruction, so they can't fight the
+  anti-repetition machinery (recency just suppressed those exact items; the
+  model must not chase near-substitutes). Injected into the uncached user
+  message — the system prompt stays byte-identical for prompt caching. The
+  #46 repair calls omit the block: they fix structure, not taste.
 - **Structural validation** (#46): pure `validate_outfit` (≤1 bottoms, ≤1
   footwear, no dupe/unknown ids; no minimums — omission stays valid) → up to
   `MAX_REPAIR_ATTEMPTS = 2` *targeted* repair calls quoting the violations
@@ -251,9 +265,12 @@ regardless of everything above.
 
 Decided against *for now*, with the trigger that would revisit each:
 
-- **Pairing effects** ("each piece fine, together wrong") — needs
-  combination-level memory; adjacent to #17 (dedup exact outfit repeats,
-  conditional on observing repeats).
+- **Pairing effects** ("each piece fine, together wrong") — the revisit
+  trigger fired 2026-06-12: #59 ships a *prompt-level* episodic version
+  (recent thumbed outfits injected as context, Stage 5). *Statistical*
+  combination-level memory stays out of scope; #63 adds a deterministic
+  filter for 👎-attributed combos once #60's attribution exists. Adjacent
+  to #17 (dedup exact outfit repeats).
 - **Joint estimation** (regression of verdicts on item indicators, instead of
   smoothed counting) — needs months of verdicts before it beats the smoothed
   counts; revisit after the eval harness (#30).
@@ -277,6 +294,7 @@ Decided against *for now*, with the trigger that would revisit each:
 |---|---|---|
 | Pipeline orchestration | `backend/services/recommend.py` | (e2e via `RUN_E2E=1`) |
 | Sampling: recency, feedback, draw, floors | `backend/services/outfit_history.py` | `tests/test_sampling.py` |
+| Recent-feedback prompt context (#59) | `outfit_history.py` (fetch/shape) + `claude.py` (render) | `tests/test_feedback_context.py` |
 | Extremes gate | `backend/services/weather_gate.py` | `tests/test_weather_gate.py` |
 | type→category map | `backend/services/categories.py` | (covered via sampling/validation tests) |
 | Outfit prompt, validation, repair | `backend/services/claude.py` | `tests/test_validation.py` |

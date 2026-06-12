@@ -4,7 +4,11 @@ from datetime import date
 
 from db.supabase import client as supabase
 from services.claude import recommend_outfits
-from services.outfit_history import log_outfits, sample_wardrobe
+from services.outfit_history import (
+    log_outfits,
+    recent_feedback_outfits,
+    sample_wardrobe,
+)
 from services.weather import get_today
 from services.weather_gate import gate_extremes
 
@@ -38,8 +42,15 @@ def recommend(
     wearable = gate_extremes(wardrobe, weather)
     candidate_pool = sample_wardrobe(wearable, modes=modes)
 
+    # Recent thumbed outfits ride along as prompt context (#59) — the
+    # combination-level memory the per-item multipliers can't carry.
     outfits = recommend_outfits(
-        weather=weather, wardrobe=candidate_pool, n=n, notes=notes, modes=modes
+        weather=weather,
+        wardrobe=candidate_pool,
+        n=n,
+        notes=notes,
+        modes=modes,
+        feedback_entries=recent_feedback_outfits(),
     )
 
     history_ids = log_outfits(
