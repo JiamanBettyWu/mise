@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import { api, setStoredPassword } from '../services/api.js';
 
+// Lingering "✓ Saved" confirmation. Remounts on every trigger (the counter is
+// the key at the call site) so consecutive saves restart the fade animation.
+function Flash({ children }) {
+  return <span className="profile__flash">✓ {children}</span>;
+}
+
 // One preference row — display or inline-edit. Shared by both sections; the
 // inferred variant adds the evidence badge and relabels the actions.
 function PrefTile({ pref, editing, editText, setEditText, editRef, onStartEdit, onSaveEdit, onCancelEdit, onDelete }) {
@@ -53,11 +59,20 @@ export default function Profile() {
   const [locationText, setLocationText] = useState('');
   const [locationCoords, setLocationCoords] = useState(null);
   const [locationSaving, setLocationSaving] = useState(false);
-  const [locationSaved, setLocationSaved] = useState(false);
 
   const [prefs, setPrefs] = useState([]);
   const [newText, setNewText] = useState('');
   const [adding, setAdding] = useState(false);
+
+  // Flash counters: bumping remounts the <Flash> (key) and restarts its fade.
+  const [locationFlash, setLocationFlash] = useState(0);
+  const [prefsFlash, setPrefsFlash] = useState({ n: 0, msg: '' });
+
+  // Failed requests must be visible — a dead backend otherwise reads as
+  // "my preferences vanished" (or never listed at all).
+  const [loadError, setLoadError] = useState('');
+  const [locationError, setLocationError] = useState('');
+  const [prefsError, setPrefsError] = useState('');
 
   // editingId → current draft text
   const [editId, setEditId] = useState(null);
@@ -65,25 +80,38 @@ export default function Profile() {
   const editRef = useRef(null);
 
   useEffect(() => {
-    api.getProfile().then((p) => {
-      setProfile(p);
-      setLocationText(p?.home_location_text || '');
-      if (p?.home_lat != null && p?.home_lon != null) {
-        setLocationCoords({ lat: p.home_lat, lon: p.home_lon });
-      }
-    });
-    api.listPreferences().then(setPrefs);
+    api.getProfile()
+      .then((p) => {
+        setProfile(p);
+        setLocationText(p?.home_location_text || '');
+        if (p?.home_lat != null && p?.home_lon != null) {
+          setLocationCoords({ lat: p.home_lat, lon: p.home_lon });
+        }
+      })
+      .catch((err) => setLoadError(loadErrorMessage(err)));
+    api.listPreferences()
+      .then(setPrefs)
+      .catch((err) => setLoadError(loadErrorMessage(err)));
   }, []);
 
   useEffect(() => {
     if (editRef.current) editRef.current.focus();
   }, [editId]);
 
+  function loadErrorMessage(err) {
+    const msg = err?.message ?? '';
+    if (msg.startsWith('404')) {
+      return 'The backend doesn’t have the /profile endpoints yet — it’s probably running main; deploy this branch (and run the SQL migration) first.';
+    }
+    return `Couldn’t load profile data: ${msg || 'is the backend running?'}`;
+  }
+
   // ---- Location save -------------------------------------------------------
 
   async function saveLocation() {
     if (!locationCoords) return;
     setLocationSaving(true);
+    setLocationError('');
     try {
       const updated = await api.updateProfile({
         home_location_text: locationText,
@@ -91,8 +119,9 @@ export default function Profile() {
         home_lon: locationCoords.lon,
       });
       setProfile(updated);
-      setLocationSaved(true);
-      setTimeout(() => setLocationSaved(false), 2000);
+      setLocationFlash((n) => n + 1);
+    } catch (err) {
+      setLocationError(`Save failed: ${err?.message ?? 'unknown error'}`);
     } finally {
       setLocationSaving(false);
     }
@@ -105,10 +134,14 @@ export default function Profile() {
     const text = newText.trim();
     if (!text) return;
     setAdding(true);
+    setPrefsError('');
     try {
       const created = await api.createPreference(text);
       setPrefs((p) => [...p, created]);
       setNewText('');
+      setPrefsFlash((f) => ({ n: f.n + 1, msg: 'Added' }));
+    } catch (err) {
+      setPrefsError(`Couldn’t add: ${err?.message ?? 'unknown error'}`);
     } finally {
       setAdding(false);
     }
@@ -133,9 +166,15 @@ export default function Profile() {
       setEditId(null);
       return;
     }
-    const updated = await api.updatePreference(pref.id, { text });
-    setPrefs((ps) => ps.map((p) => (p.id === updated.id ? updated : p)));
-    setEditId(null);
+    setPrefsError('');
+    try {
+      const updated = await api.updatePreference(pref.id, { text });
+      setPrefs((ps) => ps.map((p) => (p.id === updated.id ? updated : p)));
+      setEditId(null);
+      setPrefsFlash((f) => ({ n: f.n + 1, msg: 'Saved' }));
+    } catch (err) {
+      setPrefsError(`Couldn’t save: ${err?.message ?? 'unknown error'}`);
+    }
   }
 
   function cancelEdit() {
@@ -150,8 +189,13 @@ export default function Profile() {
     // pref is machine-made; dismissing it tombstones (status=rejected) so
     // #62's weekly job won't resurrect it. Either way it leaves the list.
     if (pref.source === 'user' && !confirm(`Remove "${pref.text}"?`)) return;
-    await api.deletePreference(pref.id);
-    setPrefs((ps) => ps.filter((p) => p.id !== pref.id));
+    setPrefsError('');
+    try {
+      await api.deletePreference(pref.id);
+      setPrefs((ps) => ps.filter((p) => p.id !== pref.id));
+    } catch (err) {
+      setPrefsError(`Couldn’t remove: ${err?.message ?? 'unknown error'}`);
+    }
   }
 
   const userPrefs = prefs.filter((p) => p.source === 'user');
@@ -191,6 +235,8 @@ export default function Profile() {
       </div>
 
       <div className="form-page">
+        {loadError && <div className="error">{loadError}</div>}
+
         {/* ---- Basics ---- */}
         <section className="profile__section">
           <h2 className="profile__section-heading">Basics</h2>
@@ -211,9 +257,11 @@ export default function Profile() {
               onClick={saveLocation}
               disabled={!locationDirty || locationSaving}
             >
-              {locationSaving ? 'Saving…' : locationSaved ? 'Saved' : 'Save'}
+              {locationSaving ? 'Saving…' : 'Save'}
             </button>
+            {locationFlash > 0 && <Flash key={locationFlash}>Saved</Flash>}
           </div>
+          {locationError && <div className="error">{locationError}</div>}
         </section>
 
         {/* ---- Your aesthetic ---- */}
@@ -239,7 +287,9 @@ export default function Profile() {
             <button type="submit" disabled={!newText.trim() || adding}>
               {adding ? 'Adding…' : 'Add'}
             </button>
+            {prefsFlash.n > 0 && <Flash key={prefsFlash.n}>{prefsFlash.msg}</Flash>}
           </form>
+          {prefsError && <div className="error">{prefsError}</div>}
         </section>
 
         {/* ---- Learned from your feedback ---- */}

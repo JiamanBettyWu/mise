@@ -810,3 +810,20 @@ textarea {
   font-style: italic;
   margin: 0;
 }
+
+/* Lingering save confirmation: holds ~1.5s, then fades. A button-label swap
+   ("Save" → "Saved") jitters the layout and vanishes too fast to register;
+   this sits beside the button instead. Remounted per save to restart. */
+.profile__flash {
+  align-self: center;
+  font-size: 0.85rem;
+  color: rgba(20, 20, 40, 0.65);
+  pointer-events: none;
+  animation: profile-flash 2.2s ease forwards;
+}
+@keyframes profile-flash {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
