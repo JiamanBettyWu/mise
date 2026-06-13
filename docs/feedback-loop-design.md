@@ -332,6 +332,19 @@ set — never empty. That leaves the one genuine wipe — call succeeded, model
 returned `[]` — as correct re-derivation, logged loudly because nonempty→empty
 on *more* data is a red flag, not routine.
 
+**Heartbeat, not failure log.** The job stamps `profile.preferences_reviewed_at
+= now()` as the last action of a *successful* run (`run()` reaches that line
+only if the graph didn't raise — so a failure leaves it stale), for any healthy
+outcome including "found nothing" and "too little evidence". The Profile UI
+shows it as relative time ("reviewed 9 days ago"). This surfaces job health as
+**staleness**, deliberately not as an explicit failure record: a "last failed"
+field can only catch failures the job survives long enough to write, and misses
+the silent ones — Supabase down, runner killed, or (real for a calm-paced repo)
+**GitHub auto-disabling the scheduled workflow after 60 days with no commits**.
+A freshness signal catches all of them; the absence of a recent success is the
+alarm. First live run shipped one pref ("prefers sandals over sneakers in
+athleisure", from 6 outfits), confirming the full path end to end.
+
 **Evidence cited by index, not UUID.** The prompt numbers each verdict `[1]…
 [N]` and asks the model to cite those numbers; `validate_node` maps them back
 to real `outfit_history.id`s. UUIDs are token-heavy and the model transcribes

@@ -727,6 +727,20 @@ textarea {
   color: rgba(20, 20, 40, 0.9);
 }
 
+/* Heading + the inference job's "reviewed N days ago" heartbeat (#62) on one
+   baseline; wraps on narrow phones rather than crushing the note. */
+.profile__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.profile__reviewed {
+  white-space: nowrap;
+}
+
 .profile__label {
   font-size: 0.88rem;
   font-weight: 600;

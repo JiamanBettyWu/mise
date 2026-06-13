@@ -2,6 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import { api, setStoredPassword } from '../services/api.js';
 
+// Relative "time ago" for the inference job's last-success heartbeat (#62).
+// Days is the largest unit on purpose: a weekly job reads clearest in days
+// ("9 days ago" = a run was missed), and "last week"/"last month" are too
+// vague for a staleness signal. Returns null for missing/unparseable input.
+function timeAgo(iso) {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  const sec = Math.round((then.getTime() - Date.now()) / 1000); // < 0 = past
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  for (const [unit, secs] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
+    if (Math.abs(sec) >= secs) return rtf.format(Math.round(sec / secs), unit);
+  }
+  return 'just now';
+}
+
 // Lingering "✓ Saved" confirmation. Remounts on every trigger (the counter is
 // the key at the call site) so consecutive saves restart the fade animation.
 function Flash({ children }) {
@@ -200,6 +216,7 @@ export default function Profile() {
 
   const userPrefs = prefs.filter((p) => p.source === 'user');
   const inferredPrefs = prefs.filter((p) => p.source === 'inferred');
+  const reviewedAgo = timeAgo(profile?.preferences_reviewed_at);
 
   const locationDirty =
     locationCoords &&
@@ -294,10 +311,22 @@ export default function Profile() {
 
         {/* ---- Learned from your feedback ---- */}
         <section className="profile__section">
-          <h2 className="profile__section-heading">Learned from your feedback</h2>
+          <div className="profile__section-head">
+            <h2 className="profile__section-heading">Learned from your feedback</h2>
+            {reviewedAgo && (
+              <span
+                className="profile__reviewed muted"
+                title={profile.preferences_reviewed_at}
+              >
+                Reviewed {reviewedAgo}
+              </span>
+            )}
+          </div>
           {inferredPrefs.length === 0 ? (
             <p className="profile__empty muted">
-              These appear once the weekly review job ships.
+              {profile?.preferences_reviewed_at
+                ? 'No patterns learned from your feedback yet.'
+                : 'These appear after the weekly review job first runs.'}
             </p>
           ) : (
             <div className="profile__pref-list">

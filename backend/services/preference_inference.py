@@ -42,6 +42,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import datetime, timezone
 from typing import TypedDict
 
 from db.supabase import client as supabase
@@ -496,14 +497,40 @@ def build_graph():
 _APP = build_graph()
 
 
+def _record_reviewed() -> None:
+    """Stamp profile.preferences_reviewed_at = now() — the job's heartbeat (#62).
+
+    Written only after a fully successful graph run (run() reaches this line
+    only if _APP.invoke didn't raise), so the value goes stale on any failure
+    and the Profile UI's "reviewed N days ago" becomes the alarm. Upserts the
+    single profile row the same way PUT /profile does — create if missing, so a
+    user who never set a home location still gets a heartbeat.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    existing = supabase().table("profile").select("id").limit(1).execute()
+    if existing.data:
+        supabase().table("profile").update(
+            {"preferences_reviewed_at": now}
+        ).eq("id", existing.data[0]["id"]).execute()
+    else:
+        supabase().table("profile").insert(
+            {"preferences_reviewed_at": now}
+        ).execute()
+
+
 def run() -> dict:
     """Run the weekly inference graph. Returns a small summary dict.
 
     On insufficient evidence the graph short-circuits to END and `written` is
     absent — the caller (jobs/infer_preferences.py) treats that as a no-op
     success. Any exception from the Claude call propagates so the job can exit
-    nonzero with the table untouched."""
+    nonzero with the table untouched.
+
+    A clean return — for ANY healthy outcome (wrote prefs, found none, or too
+    little evidence) — stamps the heartbeat last, so a failure is the only thing
+    that leaves it stale."""
     final = _APP.invoke({})
+    _record_reviewed()
     return {
         "verdicts": len(final.get("verdicts", [])),
         "written": final.get("written"),

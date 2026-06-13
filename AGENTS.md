@@ -70,6 +70,7 @@ Things that bite if you don't know them (full rationale in D8 of [docs/feedback-
 - **`upsert_node` inserts the fresh set BEFORE deleting the prior ids** — PostgREST has no transaction, so ordering is the only atomicity lever. A failed run leaves the old set present, never empty; the graph only reaches `upsert` if the Claude call + parse succeeded.
 - **The model cites evidence by 1-based index, not UUID** (UUIDs are token-heavy and mis-transcribed); `validate_node` maps indices → real ids and drops statements below the evidence floor or colliding with a rejected tombstone.
 - A failed weekly run **costs nothing** — that's why this is the low-risk place for LangGraph reps, and why nodes can just raise.
+- **Heartbeat:** a successful `run()` stamps `profile.preferences_reviewed_at`; a failure leaves it stale, and the Profile UI shows it as relative time ("reviewed 9 days ago"). Health is surfaced as staleness, not a failure log — that's the only signal that also catches a silently-disabled cron (GitHub disables scheduled workflows after 60 days of no commits).
 
 ## Architecture: other things that take >1 file to see
 

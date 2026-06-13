@@ -98,6 +98,10 @@ class Profile(BaseModel):
     home_lat: Optional[float] = None
     home_lon: Optional[float] = None
     updated_at: Optional[datetime] = None
+    # Heartbeat for the weekly inference job (#62): last successful run, surfaced
+    # in the profile UI as relative time. Read-only — not in ProfileUpdate, so
+    # the PUT /profile form can't clobber it.
+    preferences_reviewed_at: Optional[datetime] = None
 
 
 # ---- Trip planner ---------------------------------------------------------
