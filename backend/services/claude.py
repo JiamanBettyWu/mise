@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import os
+import re
 from functools import lru_cache
 
 from anthropic import Anthropic
@@ -620,15 +621,34 @@ def _repair_outfits(
     return repaired + [None] * (len(failed) - len(repaired))
 
 
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+
+
+def _extract_json(text: str) -> str:
+    """Best-effort isolate the JSON payload from a model response.
+
+    Every prompt asks for raw JSON, but "return ONLY JSON" is a request, not a
+    guarantee — a reasoning-capable model sometimes (a) wraps the object in a
+    ```json fence or (b), seen on the weekly inference call (#62), narrates its
+    analysis in prose first and emits the JSON at the end. Strategy: take the
+    first fenced block if present, else the span from the first '{' to the last
+    '}'. Falls back to the original text so parse_json's diagnostics still fire
+    on genuinely unparseable (e.g. truncated) output. The happy path — a clean
+    object with no wrapper — is unchanged: the span is the whole string.
+    """
+    fenced = _JSON_FENCE_RE.search(text)
+    if fenced:
+        return fenced.group(1).strip()
+    start, end = text.find("{"), text.rfind("}")
+    if 0 <= start < end:
+        return text[start : end + 1]
+    return text
+
+
 def parse_json(resp) -> dict:
     text = "".join(block.text for block in resp.content if block.type == "text").strip()
-    if text.startswith("```"):
-        text = text.split("```", 2)[1]
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.strip("` \n")
     try:
-        return json.loads(text)
+        return json.loads(_extract_json(text))
     except json.JSONDecodeError as e:
         stop_reason = getattr(resp, "stop_reason", None)
         preview = text[:500]
