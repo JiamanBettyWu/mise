@@ -17,6 +17,11 @@ export default function DestinationCombobox({ value, onChange, onSelect }) {
   // (a selection), where we already have the chosen location and don't want
   // the dropdown to re-open.
   const skipNextFetchRef = useRef(false);
+  // Only open the menu while the input is focused: parents may set `value`
+  // programmatically (e.g. Profile loading a saved location), and the
+  // resulting fetch must not pop the menu under nobody's cursor. A ref, not
+  // state — the debounced closure below would capture a stale state value.
+  const focusedRef = useRef(false);
 
   useEffect(() => {
     if (skipNextFetchRef.current) {
@@ -37,7 +42,7 @@ export default function DestinationCombobox({ value, onChange, onSelect }) {
         const rows = await api.searchGeo(q);
         if (cancelled) return;
         setResults(rows);
-        setOpen(rows.length > 0);
+        setOpen(rows.length > 0 && focusedRef.current);
         setHighlight(-1);
       } catch {
         if (!cancelled) {
@@ -99,8 +104,14 @@ export default function DestinationCombobox({ value, onChange, onSelect }) {
           // Free-text typing invalidates any previously-selected coords.
           onSelect(null);
         }}
-        onFocus={() => results.length > 0 && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => {
+          focusedRef.current = true;
+          if (results.length > 0) setOpen(true);
+        }}
+        onBlur={() => {
+          focusedRef.current = false;
+          setTimeout(() => setOpen(false), 150);
+        }}
         onKeyDown={handleKeyDown}
         placeholder="e.g. Oaxaca, Mexico"
         autoComplete="off"

@@ -64,6 +64,42 @@ class TagSuggestion(ClothingItemBase):
     photo_url: str = Field(..., description="Public URL of the uploaded photo")
 
 
+# ---- Profile & preferences ------------------------------------------------
+
+
+class PreferenceCreate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=500)
+
+
+class PreferenceUpdate(BaseModel):
+    text: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    status: Optional[Literal["active", "rejected"]] = None
+
+
+class Preference(BaseModel):
+    id: str
+    text: str
+    source: Literal["user", "inferred"]
+    status: Literal["active", "rejected"]
+    evidence_ids: list[str] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProfileUpdate(BaseModel):
+    home_location_text: Optional[str] = None
+    home_lat: Optional[float] = None
+    home_lon: Optional[float] = None
+
+
+class Profile(BaseModel):
+    id: Optional[str] = None
+    home_location_text: Optional[str] = None
+    home_lat: Optional[float] = None
+    home_lon: Optional[float] = None
+    updated_at: Optional[datetime] = None
+
+
 # ---- Trip planner ---------------------------------------------------------
 
 

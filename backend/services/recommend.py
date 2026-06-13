@@ -17,6 +17,36 @@ from services.weather_gate import gate_extremes
 
 log = logging.getLogger("wardrobe.recommend")
 
+
+def _get_home_coords() -> tuple[float, float] | None:
+    """Return (lat, lon) from the profile row, or None if not set."""
+    try:
+        res = supabase().table("profile").select("home_lat,home_lon").limit(1).execute()
+        if res.data:
+            row = res.data[0]
+            if row.get("home_lat") is not None and row.get("home_lon") is not None:
+                return float(row["home_lat"]), float(row["home_lon"])
+    except Exception:
+        log.warning("could not read profile for home coords", exc_info=True)
+    return None
+
+
+def _get_active_preferences() -> list[str]:
+    """Return the text of all active user-provided preferences."""
+    try:
+        res = (
+            supabase()
+            .table("preferences")
+            .select("text")
+            .eq("status", "active")
+            .order("created_at")
+            .execute()
+        )
+        return [row["text"] for row in (res.data or [])]
+    except Exception:
+        log.warning("could not read preferences", exc_info=True)
+        return []
+
 WARDROBE_FIELDS = (
     "id, name, type, color, formality, season, fabric, warmth, brand, description"
 )
@@ -30,7 +60,14 @@ def recommend(
     lon: float | None = None,
     modes: list[dict] | None = None,
 ) -> dict:
+    # Profile home location is the weather fallback; env vars are the last resort.
+    if lat is None or lon is None:
+        home = _get_home_coords()
+        if home:
+            lat, lon = home
+
     weather = get_today(lat=lat, lon=lon)
+    preferences = _get_active_preferences()
 
     q = supabase().table("clothing_items").select(WARDROBE_FIELDS).eq("available", True)
     if travel_mode:
@@ -70,6 +107,7 @@ def recommend(
         feedback_entries=recent_feedback_outfits(),
         blocked_combos=blocked_combos(),
         recent_combos=recent_combos(),
+        preferences=preferences or None,
     )
 
     history_ids = log_outfits(

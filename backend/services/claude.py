@@ -192,6 +192,10 @@ Each outfit should:
   similar to a disliked outfit. Liked outfits are style direction ONLY — do
   NOT recreate them or chase near-substitutes; favor variety. Items named
   there may be absent from today's inventory; still use ONLY inventory items.
+- The user message may include a "User preferences" section listing explicit
+  style statements. Treat each as a hard constraint — honor it in every
+  outfit, and if you cannot, briefly acknowledge it in that outfit's
+  reasoning.
 
 If the user provides a list of MODES, return exactly one outfit entry per mode
 in the SAME ORDER. Each entry must fit the mode's vibe. Repeat the mode name in
@@ -243,6 +247,7 @@ def recommend_outfits(
     feedback_entries: list[dict] | None = None,
     blocked_combos: set[frozenset[str]] | None = None,
     recent_combos: set[frozenset[str]] | None = None,
+    preferences: list[str] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
@@ -274,6 +279,8 @@ def recommend_outfits(
         user_blocks.append(f"User notes for today: {notes.strip()}")
     if feedback_entries:
         user_blocks.append(_feedback_block(feedback_entries))
+    if preferences:
+        user_blocks.append(_preferences_block(preferences))
     user_blocks.append("Wardrobe inventory (JSON):")
     user_blocks.append(json.dumps(wardrobe, ensure_ascii=False))
 
@@ -415,6 +422,15 @@ def _select_candidates(
             }
         )
     return picked
+
+
+def _preferences_block(preferences: list[str]) -> str:
+    """Pure: render active profile preferences (#61) as the prompt section the
+    system prompt's hard-constraint bullet refers to. Empty list → empty string.
+    """
+    if not preferences:
+        return ""
+    return "User preferences:\n" + "\n".join(f"- {p}" for p in preferences)
 
 
 def _feedback_block(entries: list[dict]) -> str:
