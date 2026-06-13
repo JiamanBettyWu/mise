@@ -193,9 +193,16 @@ Each outfit should:
   NOT recreate them or chase near-substitutes; favor variety. Items named
   there may be absent from today's inventory; still use ONLY inventory items.
 - The user message may include a "User preferences" section listing explicit
-  style statements. Treat each as a hard constraint — honor it in every
-  outfit, and if you cannot, briefly acknowledge it in that outfit's
-  reasoning.
+  style statements the user wrote herself. Treat each as a hard constraint —
+  honor it in every outfit, and if you cannot, briefly acknowledge it in that
+  outfit's reasoning.
+- The user message may also include a "Learned preferences" section: patterns
+  inferred from the user's past thumbs feedback. Treat these as SOFT — lean
+  toward them when choosing between otherwise comparable options, but they are
+  guesses that may be wrong. Do NOT force them, do NOT sacrifice
+  weather-appropriateness or coherence for them, and never skip a mode or
+  acknowledge them in `reasoning` on their account. A hard "User preference"
+  always wins over a "Learned preference" if the two ever conflict.
 
 If the user provides a list of MODES, return exactly one outfit entry per mode
 in the SAME ORDER. Each entry must fit the mode's vibe. Repeat the mode name in
@@ -248,6 +255,7 @@ def recommend_outfits(
     blocked_combos: set[frozenset[str]] | None = None,
     recent_combos: set[frozenset[str]] | None = None,
     preferences: list[str] | None = None,
+    inferred_preferences: list[str] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
@@ -281,6 +289,8 @@ def recommend_outfits(
         user_blocks.append(_feedback_block(feedback_entries))
     if preferences:
         user_blocks.append(_preferences_block(preferences))
+    if inferred_preferences:
+        user_blocks.append(_inferred_preferences_block(inferred_preferences))
     user_blocks.append("Wardrobe inventory (JSON):")
     user_blocks.append(json.dumps(wardrobe, ensure_ascii=False))
 
@@ -425,12 +435,25 @@ def _select_candidates(
 
 
 def _preferences_block(preferences: list[str]) -> str:
-    """Pure: render active profile preferences (#61) as the prompt section the
-    system prompt's hard-constraint bullet refers to. Empty list → empty string.
+    """Pure: render user-authored preferences (#61) as the prompt section the
+    system prompt's HARD-constraint bullet refers to. Empty list → empty string.
     """
     if not preferences:
         return ""
     return "User preferences:\n" + "\n".join(f"- {p}" for p in preferences)
+
+
+def _inferred_preferences_block(preferences: list[str]) -> str:
+    """Pure: render inferred preferences (#62) as the prompt section the
+    system prompt's SOFT-preference bullet refers to.
+
+    A separate block from _preferences_block on purpose: inferred prefs are a
+    weekly job's guess from past feedback, so they nudge rather than bind, and
+    a hard user pref outranks them on conflict. Empty list → empty string.
+    """
+    if not preferences:
+        return ""
+    return "Learned preferences:\n" + "\n".join(f"- {p}" for p in preferences)
 
 
 def _feedback_block(entries: list[dict]) -> str:

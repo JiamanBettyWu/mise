@@ -48,3 +48,4 @@ Once manual works, the schedule kicks in automatically:
 - GitHub Actions schedules are **best effort**. Real fire time can drift ~5–15 min late. For a personal morning email, that's fine.
 - If you want to change the recipient timezone, edit `TZ` in [jobs/daily_outfit.py](../jobs/daily_outfit.py) and adjust the cron times in [.github/workflows/daily-outfit.yml](../.github/workflows/daily-outfit.yml).
 - If the email lands in spam: open it, "Mark as not spam", and Gmail will trust the sender for future messages (since you're sending to yourself, this should stick fast).
+- A second cron, **Weekly preference inference** ([.github/workflows/infer-preferences.yml](../.github/workflows/infer-preferences.yml), #62), runs Sunday nights and needs **no new secrets** — it reuses `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ANTHROPIC_API_KEY` from the table above. Trigger it the same way (Actions tab → Run workflow) to test.

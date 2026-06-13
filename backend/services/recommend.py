@@ -31,21 +31,30 @@ def _get_home_coords() -> tuple[float, float] | None:
     return None
 
 
-def _get_active_preferences() -> list[str]:
-    """Return the text of all active user-provided preferences."""
+def _get_active_preferences() -> tuple[list[str], list[str]]:
+    """Return (user_texts, inferred_texts) for all active preferences.
+
+    Split by source because they enter the prompt differently: user-authored
+    prefs (#61) are HARD constraints, inferred ones (#62) are SOFT — a weekly
+    job's guess that may be wrong, so it nudges rather than binds. See
+    claude._preferences_block vs _inferred_preferences_block.
+    """
     try:
         res = (
             supabase()
             .table("preferences")
-            .select("text")
+            .select("text, source")
             .eq("status", "active")
             .order("created_at")
             .execute()
         )
-        return [row["text"] for row in (res.data or [])]
+        user, inferred = [], []
+        for row in res.data or []:
+            (inferred if row.get("source") == "inferred" else user).append(row["text"])
+        return user, inferred
     except Exception:
         log.warning("could not read preferences", exc_info=True)
-        return []
+        return [], []
 
 WARDROBE_FIELDS = (
     "id, name, type, color, formality, season, fabric, warmth, brand, description"
@@ -67,7 +76,7 @@ def recommend(
             lat, lon = home
 
     weather = get_today(lat=lat, lon=lon)
-    preferences = _get_active_preferences()
+    user_prefs, inferred_prefs = _get_active_preferences()
 
     q = supabase().table("clothing_items").select(WARDROBE_FIELDS).eq("available", True)
     if travel_mode:
@@ -107,7 +116,8 @@ def recommend(
         feedback_entries=recent_feedback_outfits(),
         blocked_combos=blocked_combos(),
         recent_combos=recent_combos(),
-        preferences=preferences or None,
+        preferences=user_prefs or None,
+        inferred_preferences=inferred_prefs or None,
     )
 
     history_ids = log_outfits(

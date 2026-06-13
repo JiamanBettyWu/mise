@@ -1,0 +1,35 @@
+name: Weekly preference inference
+
+on:
+  # Sunday night ET: 01:20 UTC Monday is ~9:20pm EDT / 8:20pm EST Sunday. The
+  # week's verdicts are settled into inferred preferences before Monday's daily
+  # email (08:20 UTC), with ~7h of slack to absorb GitHub's best-effort cron
+  # delays (routinely 1-3h, same caveat as daily-outfit.yml). The :20 minute
+  # dodges :00, the platform's most congested slot. One cron line = one run.
+  schedule:
+    - cron: "20 1 * * 1"
+  # Allow manual trigger from the Actions tab for testing.
+  workflow_dispatch:
+
+jobs:
+  infer-preferences:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Run preference inference job
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python jobs/infer_preferences.py

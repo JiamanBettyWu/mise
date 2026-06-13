@@ -16,7 +16,8 @@ attribution de-noises D2's smear — see the addendum in D2 — and
 `outfit_history` now records weather + notes at recommendation time for the
 weekly inference job, #62. #63 also shipped: 3 candidates per mode + a
 deterministic filter that hard-blocks combination-attributed 👎 combos —
-the enforcement layer the D2 addendum routes that signal to).
+the enforcement layer the D2 addendum routes that signal to. **#62 shipped:
+the weekly preference-inference job — D8 below.**)
 
 Decision record from the scoping session for recommendation-quality work:
 thumbs up/down feedback, an inferred warmth attribute, and how both (plus a
@@ -261,3 +262,88 @@ outfit with off-mode shoes.* This is also the only layer that handles
 mode-relevant scarcity (see D6 caveat), since the model is the only component
 that knows what "dressy enough for Elevated" means. Renderers already handle
 arbitrary item lists, so no frontend/email changes needed.
+
+## D8 — Weekly preference inference: re-derive, cite, never overwrite (#62)
+
+The second half of the preference-profile plan (first half = #61, the
+user-authored prefs + the profile UI). A weekly GitHub Actions cron
+(`jobs/infer_preferences.py` → the `preference_inference.py` LangGraph) reads
+the full outfit-verdict history — each 👍/👎 with its #60 attribution, the
+weather it was judged under, and that day's notes — and asks the model to
+distill *why* outfits landed well or badly into short style statements written
+to the `preferences` table as `source = 'inferred'`. Those rows then feed
+generation and render in the profile UI, which #61 built ready: no UI or schema
+change here. They feed the prompt as **soft** preferences, deliberately
+distinct from user-authored ones — see guardrail 1.
+
+**Where it sits in the three-layer mental model (#61).** #59 is episodic
+memory ("don't repeat *this week's* mistake"); the #42 multipliers are the
+numeric reflex; this is **semantic memory** ("she *never* likes sporty
+footwear with elevated"). It complements, doesn't replace — and it's the only
+layer that turns the verdict stream into prose a human can read and correct.
+
+Four guardrails, and why each is load-bearing:
+
+1. **A wrong inferred preference is a systematic bias, not a bounded nudge.**
+   The numeric loop self-corrects by construction (D3's floor guarantees a
+   buried item keeps auditioning). An inferred "avoid linen" injected into
+   *every* future generation has **no equivalent floor**. So the editable UI
+   *is* the floor — which only works if inferred prefs are **legible**: short,
+   specific, and each **citing the `outfit_history` rows it came from**
+   (`evidence_ids`). Evidence is mandatory; a statement with < 3 backing
+   verdicts is dropped in `validate_node` (a pattern you can only support with
+   one or two outfits is noise). **Second floor, added when #62 shipped:
+   inferred prefs enter the prompt as SOFT preferences, not hard constraints.**
+   User-authored prefs (#61) stay hard ("honor in every outfit, acknowledge if
+   you can't"); inferred ones get a separate "Learned preferences" block the
+   model is told to lean toward but never force, never sacrifice weather/
+   coherence for, and never skip a mode over — a hard pref wins on conflict.
+   So a wrong inference *nudges* the distribution rather than *binding* every
+   outfit, and the editable UI is the user's correction on top of that. (Both
+   blocks live in the user message, not `OUTFIT_SYSTEM_PROMPT`, so its
+   cache_control prefix stays byte-identical — same discipline as #59.)
+2. **"Insufficient evidence" is a valid output.** Two layers: a hard
+   `MIN_VERDICTS = 10` floor (`check_evidence` routes straight to END below it,
+   touching nothing — a cold-start run must not wipe an existing set), and the
+   prompt itself tells the model an empty list is success. Never force an
+   inference to fill space.
+3. **Re-derive, don't append.** Each run regenerates the inferred set from the
+   whole verdict history rather than accumulating forever — dedup/merge by
+   re-derivation. `upsert_node` replaces the prior `source='inferred',
+   status='active'` rows wholesale.
+4. **Promote-on-edit, never overwrite** (the D5 warmth pattern). Anything the
+   user authored *or edited* is hers: the job reads `source='user'` rows as
+   context but never writes to them. Editing an inferred pref promotes it to
+   `source='user'` (router, #61); dismissing one tombstones it to
+   `status='rejected'`, which the job must not re-emit.
+
+**The atomicity trap (the non-obvious part).** "Re-derive" tempts you to
+*delete the active inferred set, then insert the fresh one*. But if the Claude
+call or JSON parse fails **after** the delete, you've wiped every inferred pref
+the user hadn't yet edited and inserted nothing — which breaks the issue's own
+promise that a failed weekly run costs nothing. Two rules close it: (a)
+**only mutate on success** — a thrown/garbled call aborts with the table
+untouched, and a *failed* call is never conflated with an *empty* inference;
+(b) **insert-then-delete-old**, not delete-then-insert. PostgREST gives no
+transaction, so ordering is the only atomicity lever: insert the fresh set,
+then delete exactly the prior ids captured in `fetch_node`. A mid-run crash
+then leaves a stale-but-present (or briefly duplicated, self-healing next week)
+set — never empty. That leaves the one genuine wipe — call succeeded, model
+returned `[]` — as correct re-derivation, logged loudly because nonempty→empty
+on *more* data is a red flag, not routine.
+
+**Evidence cited by index, not UUID.** The prompt numbers each verdict `[1]…
+[N]` and asks the model to cite those numbers; `validate_node` maps them back
+to real `outfit_history.id`s. UUIDs are token-heavy and the model transcribes
+them wrong — indices are robust, and out-of-range/non-int citations just drop.
+
+**LangGraph on purpose.** Unlike the daily path, a failed weekly run is free,
+so this is the deliberate low-risk place to take LangGraph reps (a stated
+learning goal). It's the second graph after the trip planner; nodes can raise.
+
+Known limitations, not over-engineered away (personal app, ~10–20 verdicts/
+week): the tombstone re-emit guard is **best-effort** — model instruction plus
+a normalized exact-text match catches restatements, but a clever paraphrase
+can slip through, and the editable UI catches it again. And "full history" is
+**unbounded** — fine now, but at ~1000 verdicts/year the single-call prompt
+gets heavy; a cap or rolling summary is a future issue, not this one.
