@@ -8,9 +8,9 @@ only thing standing between "dismissed" and "resurrected next Monday".
 """
 
 from routers.profile import apply_promotion, delete_disposition
-from services.claude import _preferences_block
+from services.claude import _inferred_preferences_block, _preferences_block
 
-# --- _preferences_block ---
+# --- _preferences_block (user-authored → hard constraints) ---
 
 
 def test_block_renders_one_bullet_per_preference():
@@ -24,6 +24,21 @@ def test_block_renders_one_bullet_per_preference():
 
 def test_block_empty_list_renders_nothing():
     assert _preferences_block([]) == ""
+
+
+# --- _inferred_preferences_block (#62 inferred → soft, separate header) ---
+
+
+def test_inferred_block_uses_a_distinct_header():
+    block = _inferred_preferences_block(["Likes earth tones on cold days"])
+    assert block == "Learned preferences:\n- Likes earth tones on cold days"
+    # Must NOT reuse the hard-constraint header, or the soft/hard distinction
+    # the system prompt draws collapses.
+    assert "User preferences" not in block
+
+
+def test_inferred_block_empty_list_renders_nothing():
+    assert _inferred_preferences_block([]) == ""
 
 
 # --- apply_promotion (#62 contract: editing an inferred pref makes it yours) ---

@@ -35,9 +35,9 @@ uv --project backend run python jobs/backfill_warmth.py --dry-run   # warmth bac
 - `gh pr create` / `gh issue create` — workflow is branch-per-issue, PR closes via `Closes #N`.
 - `gh run view <id> --log` — fetch GitHub Actions run logs (the daily-outfit workflow runs every morning).
 
-## Architecture: the "two AI pipelines" worth knowing
+## Architecture: the AI pipelines worth knowing
 
-The backend has **two distinct AI flows**. Reading both before changing either saves time.
+The backend has **three distinct AI flows**. Reading the relevant one before changing it saves time. Two are LangGraphs (trip planner, preference inference); the daily recommender is plain straight-line Python.
 
 **1. Daily outfit recommender** — [`services/recommend.py`](backend/services/recommend.py)
 A straight-line Python function: pull weather → load catalog → extremes gate ([`services/weather_gate.py`](backend/services/weather_gate.py), drops warmth-absurd items, #18) → weighted sampling ([`services/outfit_history.py`](backend/services/outfit_history.py); weight = recency (#15/#44) × feedback multiplier from thumbs verdicts (#42), pool topped up to per-category floors (#16)) → ask the model to pick outfits for one or more "modes" (smart casual / athleisure / elevated). Used by `POST /outfits/today` and by the cron job. The cron job's modes are calendar-driven when the optional `CALENDAR_ICS_URL` Actions secret is set ([`services/calendar.py`](backend/services/calendar.py), #64): no events today → Smart casual only, otherwise a Haiku call maps events to modes (floor mode always included; any failure → all three modes). Secret unset = toggle off, hardcoded three modes. Verdicts arrive via emailed 👍/👎 links (#39) or the web thumbs on TodayOutfit (#41) — same `outfit_history.feedback` column either way. **Not a LangGraph.** Full algorithm reference with formulas, constants, and worked examples: [docs/recommendation-algorithm.md](docs/recommendation-algorithm.md).
@@ -54,6 +54,22 @@ get_weather → get_catalog → reason_and_select ──(has_gaps)──→ sear
 - `check_gaps` is a router function (returns a string label, doesn't mutate state); `add_conditional_edges` dispatches on it.
 - Nodes return **partial state dicts** (`return {"weather": ...}`); they never mutate `state` in place. LangGraph merges the dict into the journal.
 - `search_purchases_node` is currently a **stub** producing placeholder `PurchaseResult`s. Real search backend is tracked in [issue #10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10).
+
+**3. Weekly preference inference** — [`services/preference_inference.py`](backend/services/preference_inference.py)
+A LangGraph `StateGraph` over an `InferenceState` TypedDict, run from a weekly GitHub Actions cron ([`jobs/infer_preferences.py`](jobs/infer_preferences.py), [`.github/workflows/infer-preferences.yml`](.github/workflows/infer-preferences.yml)):
+
+```
+fetch ──> check_evidence ──(enough)──> infer ──> validate ──> upsert ──> END
+                          └──(too few)──────────────────────────────────> END
+```
+
+It reads the full outfit-verdict history (with #60 attribution + weather + notes) and distills durable style preferences into the `preferences` table as `source = 'inferred'`, **re-derived from scratch each run** (#62). Those rows then feed generation and render/edit in the profile UI (#61). No new migration: the `preferences` schema (`source`/`status`/`evidence_ids`) was built for this in #61. **Inferred prefs feed the prompt as SOFT preferences, distinct from user-authored ones:** `recommend._get_active_preferences()` returns `(user, inferred)` split by source, and `claude.py` renders two blocks — "User preferences" (hard constraint) and "Learned preferences" (nudge, may be wrong, loses to a hard pref on conflict). A wrong inference therefore degrades gracefully instead of binding every outfit.
+
+Things that bite if you don't know them (full rationale in D8 of [docs/feedback-loop-design.md](docs/feedback-loop-design.md)):
+- **A wrong inferred pref is a systematic bias with no floor** (unlike the numeric multiplier loop, which self-corrects). The editable UI is the only floor, so inferred prefs MUST be legible — short, specific, each citing the `outfit_history` rows behind it via `evidence_ids`.
+- **`upsert_node` inserts the fresh set BEFORE deleting the prior ids** — PostgREST has no transaction, so ordering is the only atomicity lever. A failed run leaves the old set present, never empty; the graph only reaches `upsert` if the Claude call + parse succeeded.
+- **The model cites evidence by 1-based index, not UUID** (UUIDs are token-heavy and mis-transcribed); `validate_node` maps indices → real ids and drops statements below the evidence floor or colliding with a rejected tombstone.
+- A failed weekly run **costs nothing** — that's why this is the low-risk place for LangGraph reps, and why nodes can just raise.
 
 ## Architecture: other things that take >1 file to see
 
