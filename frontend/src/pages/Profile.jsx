@@ -322,6 +322,10 @@ export default function Profile() {
               </span>
             )}
           </div>
+          <p className="profile__hint muted">
+            Distilled from your feedback each week, once ~10 outfits are rated. Soft
+            nudges, not rules.
+          </p>
           {inferredPrefs.length === 0 ? (
             <p className="profile__empty muted">
               {profile?.preferences_reviewed_at
