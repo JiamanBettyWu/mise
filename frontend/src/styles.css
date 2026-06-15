@@ -794,8 +794,9 @@ textarea {
 }
 
 .profile__pref-badge {
-  font-size: 0.75rem;
-  padding: 3px 10px;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: rgba(20, 20, 40, 0.45);
   pointer-events: none;
 }
 
