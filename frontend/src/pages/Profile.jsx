@@ -54,7 +54,7 @@ function PrefTile({ pref, editing, editText, setEditText, editRef, onStartEdit, 
     <div className="profile__pref-tile">
       <span className="profile__pref-text">{pref.text}</span>
       {inferred && (
-        <span className="chip chip--on-attr profile__pref-badge">
+        <span className="profile__pref-badge">
           inferred{n > 0 ? ` · from ${n} outfit${n === 1 ? '' : 's'}` : ''}
         </span>
       )}
