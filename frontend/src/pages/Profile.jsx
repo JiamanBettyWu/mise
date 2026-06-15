@@ -201,10 +201,8 @@ export default function Profile() {
   // ---- Delete --------------------------------------------------------------
 
   async function deletePref(pref) {
-    // A user pref is hand-written and gone for good — confirm. An inferred
-    // pref is machine-made; dismissing it tombstones (status=rejected) so
-    // #62's weekly job won't resurrect it. Either way it leaves the list.
-    if (pref.source === 'user' && !confirm(`Remove "${pref.text}"?`)) return;
+    const action = pref.source === 'inferred' ? 'Dismiss' : 'Remove';
+    if (!confirm(`${action} "${pref.text}"?`)) return;
     setPrefsError('');
     try {
       await api.deletePreference(pref.id);
