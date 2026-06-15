@@ -814,6 +814,18 @@ textarea {
   font-size: 0.9rem;
 }
 
+@media (max-width: 599px) {
+  .profile__pref-tile {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .profile__pref-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 .profile__add-row {
   display: flex;
   gap: 0.6rem;
