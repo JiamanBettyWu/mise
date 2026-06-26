@@ -22,11 +22,12 @@ from typing import TypedDict
 
 from db.supabase import client as supabase
 from langgraph.graph import END, StateGraph
-from schemas import (ClothingItem, Gap, PackingCategory, PurchaseResult,
+from schemas import (ClothingItem, Gap, PackingCategory,
                      PurchaseSuggestion, TripPlanRequest, TripPlanResponse,
                      TripWeather)
 from services.claude import client, parse_json
 from services.weather import get_weather_for_destination
+from services.search import search_products
 
 MODEL = "claude-sonnet-4-6"
 
@@ -277,17 +278,9 @@ def search_purchases_node(state: PackingState) -> dict:
         suggestions.append(
             PurchaseSuggestion(
                 gap=gap,
-                results=[
-                    PurchaseResult(
-                        title=f"{gap.item} (example)",
-                        url="https://example.com",
-                        image_url="https://placehold.co/300x400",
-                        price="$—",
-                        retailer="Example",
-                    )
-                ],
+                results=search_products(gap.item, 4)
+                    )   
             )
-        )
     return {"purchase_suggestions": suggestions}
 
 
