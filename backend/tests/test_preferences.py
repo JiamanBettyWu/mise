@@ -8,13 +8,16 @@ only thing standing between "dismissed" and "resurrected next Monday".
 """
 
 from routers.profile import apply_promotion, delete_disposition
+from schemas import Profile, ProfileUpdate
 from services.claude import _inferred_preferences_block, _preferences_block
 
 # --- _preferences_block (user-authored → hard constraints) ---
 
 
 def test_block_renders_one_bullet_per_preference():
-    block = _preferences_block(["No sporty footwear with elevated outfits", "Prefer monochrome"])
+    block = _preferences_block(
+        ["No sporty footwear with elevated outfits", "Prefer monochrome"]
+    )
     assert block == (
         "User preferences:\n"
         "- No sporty footwear with elevated outfits\n"
@@ -41,11 +44,25 @@ def test_inferred_block_empty_list_renders_nothing():
     assert _inferred_preferences_block([]) == ""
 
 
+# --- profile shopping_department (#81 backend-only setting) ---
+
+
+def test_profile_defaults_to_womens_shopping_department():
+    assert Profile().shopping_department == "womens"
+
+
+def test_profile_update_can_carry_shopping_department_without_ui():
+    patch = ProfileUpdate(shopping_department="unisex")
+    assert patch.model_dump(exclude_unset=True) == {"shopping_department": "unisex"}
+
+
 # --- apply_promotion (#62 contract: editing an inferred pref makes it yours) ---
 
 
 def test_text_edit_promotes_inferred_to_user():
-    patch = apply_promotion("inferred", {"text": "Avoid linen, actually only in summer"})
+    patch = apply_promotion(
+        "inferred", {"text": "Avoid linen, actually only in summer"}
+    )
     assert patch["source"] == "user"
 
 

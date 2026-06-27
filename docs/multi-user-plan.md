@@ -97,7 +97,9 @@ We're deferring multi-user until the app is good enough that friends will
 actually want to use it. The "friend-ready" milestone is:
 
 - [x] **[#9](https://github.com/JiamanBettyWu/wardrobe-ai/issues/9)** — trip-planner crash on >5-day-out trips fixed in [PR #38](https://github.com/JiamanBettyWu/wardrobe-ai/pull/38)
-- [ ] **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — real purchase search (stub data lies to users)
+- [x] **[#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10)** — real purchase search shipped in [PR #80](https://github.com/JiamanBettyWu/wardrobe-ai/pull/80)
+- [x] **[#81](https://github.com/JiamanBettyWu/wardrobe-ai/issues/81)** — purchase search now uses profile-aware planned queries in [PR #83](https://github.com/JiamanBettyWu/wardrobe-ai/pull/83)
+- [ ] **[#82](https://github.com/JiamanBettyWu/wardrobe-ai/issues/82)** — expose shopping department in Profile UI
 - [ ] **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) easy wins** — parallel weather/catalog, trim payload, progressive UI indicators. Skip streaming for v1.
 - [ ] **UI pass** on the 3 screens that matter (catalog, daily outfit, trip planner). Coherent, not pretty.
 - [ ] **Multi-item tagging** ([#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)) — quality-of-life win that should ship before friends arrive.

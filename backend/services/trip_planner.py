@@ -17,19 +17,39 @@ Useful existing utilities to reuse inside your graph:
 """
 
 import json
+import logging
 from datetime import date
 from typing import TypedDict
 
 from db.supabase import client as supabase
 from langgraph.graph import END, StateGraph
-from schemas import (ClothingItem, Gap, PackingCategory,
-                     PurchaseSuggestion, TripPlanRequest, TripPlanResponse,
-                     TripWeather)
+from schemas import (
+    ClothingItem,
+    Gap,
+    PackingCategory,
+    PurchaseQuery,
+    PurchaseSuggestion,
+    ShoppingDepartment,
+    TripPlanRequest,
+    TripPlanResponse,
+    TripWeather,
+)
 from services.claude import client, parse_json
 from services.weather import get_weather_for_destination
 from services.search import search_products
 
 MODEL = "claude-sonnet-4-6"
+log = logging.getLogger("wardrobe.trip_planner")
+
+DEFAULT_SHOPPING_DEPARTMENT: ShoppingDepartment = "womens"
+SHOPPING_DEPARTMENTS = {"womens", "mens", "unisex", "no_preference"}
+DEPARTMENT_QUERY_TERMS = {
+    "womens": "women's",
+    "mens": "men's",
+    "unisex": "unisex",
+    "no_preference": "",
+}
+DEPARTMENTED_CATEGORIES = {"tops", "bottoms", "dresses", "outerwear", "shoes"}
 
 
 class PackingState(TypedDict, total=False):
@@ -48,7 +68,11 @@ class PackingState(TypedDict, total=False):
     packing_list: list[PackingCategory]
     essentials: list[str]
     gaps: list[Gap]
+    purchase_queries: list[PurchaseQuery]
     purchase_suggestions: list[PurchaseSuggestion]
+    shopping_department: ShoppingDepartment
+    user_preferences: list[str]
+    inferred_preferences: list[str]
     reasoning: str
 
 
@@ -271,16 +295,259 @@ def check_gaps(state: PackingState) -> str:
     return "has_gaps" if state.get("gaps") else "no_gaps"
 
 
-def search_purchases_node(state: PackingState) -> dict:
+PURCHASE_QUERY_SYSTEM_PROMPT = """You plan concise Google Shopping queries for missing travel wardrobe items.
 
+Given a trip context, shopping department, missing packing gaps, and optional preferences,
+write one search query per gap.
+
+Rules:
+- Include shopping department for apparel and footwear by default.
+- Omit shopping department for naturally unisex items when it is not useful.
+- If shopping_department is no_preference, omit department terms.
+- Use user-authored preferences only when directly relevant to the item being purchased.
+- Use learned preferences only as soft style hints.
+- User-authored preferences outrank learned preferences on conflict.
+- It is valid to use no preferences.
+- Do not force outfit-composition preferences into the query unless they clearly affect this item.
+- Prefer concrete shopping terms over abstract aesthetic language.
+- Keep each query under 12 words.
+
+Return ONLY a JSON object of the shape:
+
+{
+  "queries": [
+    {
+      "gap_index": 0,
+      "query": "women's lightweight neutral rain jacket city travel",
+      "rationale": "Used the department and rain/city context; no outfit-composition prefs applied.",
+      "used_preferences": ["Prefers neutral basics"]
+    }
+  ]
+}
+
+No commentary, no markdown fences. The JSON must be parseable.
+"""
+
+
+def plan_purchase_queries_node(state: PackingState) -> dict:
+    gaps = state.get("gaps", [])
+    if not gaps:
+        return {"purchase_queries": []}
+
+    shopping_department, user_preferences, inferred_preferences = (
+        _get_purchase_context()
+    )
+
+    try:
+        planned = plan_purchase_queries(
+            state,
+            shopping_department=shopping_department,
+            user_preferences=user_preferences,
+            inferred_preferences=inferred_preferences,
+        )
+    except Exception:
+        log.warning(
+            "purchase query planning failed; using fallback queries", exc_info=True
+        )
+        planned = []
+
+    return {
+        "shopping_department": shopping_department,
+        "user_preferences": user_preferences,
+        "inferred_preferences": inferred_preferences,
+        "purchase_queries": _complete_purchase_queries(
+            planned,
+            gaps,
+            shopping_department,
+        ),
+    }
+
+
+def plan_purchase_queries(
+    state: PackingState,
+    shopping_department: ShoppingDepartment,
+    user_preferences: list[str],
+    inferred_preferences: list[str],
+) -> list[PurchaseQuery]:
+    user_blocks = _build_purchase_query_prompt(
+        state,
+        shopping_department=shopping_department,
+        user_preferences=user_preferences,
+        inferred_preferences=inferred_preferences,
+    )
+
+    resp = client().messages.create(
+        model=MODEL,
+        max_tokens=768,
+        system=[
+            {
+                "type": "text",
+                "text": PURCHASE_QUERY_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
+    )
+    parsed = parse_json(resp)
+
+    queries = []
+    for raw in parsed.get("queries", []):
+        if not isinstance(raw, dict):
+            continue
+        query = _clean_purchase_query(str(raw.get("query", "")))
+        if not query:
+            continue
+        try:
+            queries.append(PurchaseQuery(**{**raw, "query": query}))
+        except Exception:
+            log.info("dropping malformed purchase query: %r", raw)
+    return queries
+
+
+def _get_purchase_context() -> tuple[ShoppingDepartment, list[str], list[str]]:
+    shopping_department = DEFAULT_SHOPPING_DEPARTMENT
+    try:
+        res = supabase().table("profile").select("*").limit(1).execute()
+        if res.data:
+            shopping_department = _normalize_shopping_department(
+                res.data[0].get("shopping_department")
+            )
+    except Exception:
+        log.warning("could not read profile shopping_department", exc_info=True)
+
+    try:
+        res = (
+            supabase()
+            .table("preferences")
+            .select("text, source")
+            .eq("status", "active")
+            .order("created_at")
+            .execute()
+        )
+        user, inferred = [], []
+        for row in res.data or []:
+            (inferred if row.get("source") == "inferred" else user).append(row["text"])
+        return shopping_department, user, inferred
+    except Exception:
+        log.warning("could not read preferences for purchase planning", exc_info=True)
+        return shopping_department, [], []
+
+
+def _build_purchase_query_prompt(
+    state: PackingState,
+    shopping_department: ShoppingDepartment,
+    user_preferences: list[str],
+    inferred_preferences: list[str],
+) -> list[str]:
+    duration = (state["end_date"] - state["start_date"]).days + 1
+    gaps_json = json.dumps(
+        [
+            {
+                "gap_index": i,
+                "item": gap.item,
+                "category": gap.category,
+                "rationale": gap.rationale,
+            }
+            for i, gap in enumerate(state.get("gaps", []))
+        ],
+    )
+
+    user_blocks = [
+        f"Destination: {state['destination']}",
+        f"Dates: {state['start_date']} to {state['end_date']} ({duration} days)",
+        f"Weather: {state['weather'].summary}",
+        f"shopping_department: {shopping_department}",
+        "Missing gaps (JSON):",
+        gaps_json,
+    ]
+
+    additional_notes = state.get("additional_notes", "")
+    if additional_notes.strip():
+        user_blocks.append(f"User trip notes: {additional_notes.strip()}")
+
+    if user_preferences:
+        user_blocks.append(
+            "User-authored preferences (hard constraints only when applicable):\n"
+            + "\n".join(f"- {p}" for p in user_preferences)
+        )
+    if inferred_preferences:
+        user_blocks.append(
+            "Learned preferences (soft hints; ignore when irrelevant):\n"
+            + "\n".join(f"- {p}" for p in inferred_preferences)
+        )
+
+    return user_blocks
+
+
+def _complete_purchase_queries(
+    planned: list[PurchaseQuery],
+    gaps: list[Gap],
+    shopping_department: ShoppingDepartment,
+) -> list[PurchaseQuery]:
+    by_index = {}
+    for purchase_query in planned:
+        if (
+            purchase_query.gap_index >= len(gaps)
+            or purchase_query.gap_index in by_index
+        ):
+            continue
+        query = _clean_purchase_query(purchase_query.query)
+        if query:
+            by_index[purchase_query.gap_index] = purchase_query.model_copy(
+                update={"query": query}
+            )
+
+    return [
+        by_index.get(
+            i,
+            PurchaseQuery(
+                gap_index=i,
+                query=fallback_purchase_query(gap, shopping_department),
+                rationale="Fallback query used because the planner did not return a usable query.",
+            ),
+        )
+        for i, gap in enumerate(gaps)
+    ]
+
+
+def fallback_purchase_query(
+    gap: Gap,
+    shopping_department: ShoppingDepartment | str = DEFAULT_SHOPPING_DEPARTMENT,
+) -> str:
+    department = _normalize_shopping_department(shopping_department)
+    department_term = DEPARTMENT_QUERY_TERMS[department]
+    if not department_term or gap.category not in DEPARTMENTED_CATEGORIES:
+        return _clean_purchase_query(gap.item)
+    return _clean_purchase_query(f"{department_term} {gap.item}")
+
+
+def _normalize_shopping_department(value: object) -> ShoppingDepartment:
+    if value in SHOPPING_DEPARTMENTS:
+        return value  # type: ignore[return-value]
+    return DEFAULT_SHOPPING_DEPARTMENT
+
+
+def _clean_purchase_query(query: str) -> str:
+    return " ".join(query.strip().split()[:12])
+
+
+def search_purchases_node(state: PackingState) -> dict:
     suggestions = []
-    for gap in state["gaps"]:
+    queries_by_index = {q.gap_index: q for q in state.get("purchase_queries", [])}
+    shopping_department = state.get("shopping_department", DEFAULT_SHOPPING_DEPARTMENT)
+
+    for i, gap in enumerate(state["gaps"]):
+        fallback = PurchaseQuery(
+            gap_index=i,
+            query=fallback_purchase_query(gap, shopping_department),
+        )
+        query = queries_by_index.get(i, fallback).query
         suggestions.append(
             PurchaseSuggestion(
                 gap=gap,
-                results=search_products(gap.item, 4)
-                    )   
+                results=search_products(query, 4),
             )
+        )
     return {"purchase_suggestions": suggestions}
 
 
@@ -293,6 +560,7 @@ def build_graph():
     g.add_node("generate_output", generate_output_node)
     g.add_node("get_catalog", get_catalog_node)
     g.add_node("reason_and_select", reason_and_select_node)
+    g.add_node("plan_purchase_queries", plan_purchase_queries_node)
     g.add_node("search_purchases", search_purchases_node)
 
     g.set_entry_point("get_weather")
@@ -304,10 +572,11 @@ def build_graph():
         "reason_and_select",
         check_gaps,
         {
-            "has_gaps": "search_purchases",
+            "has_gaps": "plan_purchase_queries",
             "no_gaps": "generate_output",
         },
     )
+    g.add_edge("plan_purchase_queries", "search_purchases")
     g.add_edge("search_purchases", "generate_output")
 
     g.add_edge("generate_output", END)
