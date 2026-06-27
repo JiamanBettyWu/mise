@@ -33,6 +33,7 @@ body {
 
 button {
   cursor: pointer;
+  font-family: inherit; /* controls don't inherit body's font by default */
   padding: 0.5rem 1.1rem;
   border-radius: 999px;
   border: 1px solid rgba(20, 20, 40, 0.15);
@@ -79,20 +80,42 @@ input[type="password"], input[type="text"], input[type="search"], input:not([typ
   border-radius: 12px;
   border: 1px solid rgba(20, 20, 40, 0.12);
   font-size: 0.95rem;
+  /* Form controls don't inherit font-family from body — they default to the OS
+     system font. Without this, controls stay system-font while body text is
+     DM Sans (--font-body). */
+  font-family: inherit;
   width: 100%;
-  background: rgba(255, 255, 255, 0.55);
+  /* background-color, not the `background` shorthand: the shorthand resets
+     background-image, which would wipe the custom select chevron below. */
+  background-color: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #1a1a2e;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: rgba(20, 20, 40, 0.4);
-  background: rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 255, 255, 0.85);
   box-shadow: 0 0 0 3px rgba(20, 20, 40, 0.08);
 }
 input::placeholder, textarea::placeholder { color: rgba(20, 20, 40, 0.4); }
+
+/* Replace the native OS dropdown arrow (which hugs the right edge and ignores
+   padding-right) with a custom chevron we can position — same reason native
+   checkboxes were dropped for glass chips (DESIGN.md 2026-06-05). Scoped to
+   `select` so text inputs don't get a chevron; padding-right reserves its lane. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='rgba(20,20,40,0.55)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 0.7rem;
+  padding-right: 2.2rem;
+}
+/* Dev-only font picker keeps the native arrow (compact pill, never ships). */
+.font-picker__select { appearance: auto; -webkit-appearance: auto; }
 
 a { color: inherit; }
 
@@ -760,6 +783,21 @@ textarea {
 .profile__location-row .combobox {
   flex: 1;
   min-width: 0;
+}
+
+/* Second field within a section (e.g. Shopping department under Basics). */
+.profile__subfield { margin-top: 1.5rem; }
+
+.profile__dept-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+/* Override the global select width:100% — a 4-option control should be compact,
+   not stretch the column (DESIGN.md: "narrow input"). */
+.profile__dept-select {
+  width: auto;
+  min-width: 180px;
 }
 
 .profile__pref-list {
