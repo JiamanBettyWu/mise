@@ -76,18 +76,23 @@ export default function Profile() {
   const [locationCoords, setLocationCoords] = useState(null);
   const [locationSaving, setLocationSaving] = useState(false);
 
+  // Shopping department (#82) auto-saves on change — see saveDepartment.
+  const [deptSaving, setDeptSaving] = useState(false);
+
   const [prefs, setPrefs] = useState([]);
   const [newText, setNewText] = useState('');
   const [adding, setAdding] = useState(false);
 
   // Flash counters: bumping remounts the <Flash> (key) and restarts its fade.
   const [locationFlash, setLocationFlash] = useState(0);
+  const [deptFlash, setDeptFlash] = useState(0);
   const [prefsFlash, setPrefsFlash] = useState({ n: 0, msg: '' });
 
   // Failed requests must be visible — a dead backend otherwise reads as
   // "my preferences vanished" (or never listed at all).
   const [loadError, setLoadError] = useState('');
   const [locationError, setLocationError] = useState('');
+  const [deptError, setDeptError] = useState('');
   const [prefsError, setPrefsError] = useState('');
 
   // editingId → current draft text
@@ -140,6 +145,32 @@ export default function Profile() {
       setLocationError(`Save failed: ${err?.message ?? 'unknown error'}`);
     } finally {
       setLocationSaving(false);
+    }
+  }
+
+  // ---- Shopping department (#82) -------------------------------------------
+
+  // Auto-saves on change (a 4-option select doesn't warrant a Save button).
+  // Optimistic with rollback: flip the control immediately, then revert + show
+  // an error if the PUT fails, so the control never silently disagrees with the
+  // backend. "No preference" is the string 'no_preference', never null — a null
+  // shopping_department is dropped by PUT /profile and would leave the value
+  // unchanged. (See DESIGN.md 2026-06-26 for the auto-save rule.)
+  async function saveDepartment(next) {
+    const prev = profile?.shopping_department ?? 'womens';
+    if (next === prev) return;
+    setProfile((p) => ({ ...p, shopping_department: next })); // optimistic
+    setDeptSaving(true);
+    setDeptError('');
+    try {
+      const updated = await api.updateProfile({ shopping_department: next });
+      setProfile(updated);
+      setDeptFlash((n) => n + 1);
+    } catch (err) {
+      setProfile((p) => ({ ...p, shopping_department: prev })); // roll back
+      setDeptError(`Save failed: ${err?.message ?? 'unknown error'}`);
+    } finally {
+      setDeptSaving(false);
     }
   }
 
@@ -277,6 +308,32 @@ export default function Profile() {
             {locationFlash > 0 && <Flash key={locationFlash}>Saved</Flash>}
           </div>
           {locationError && <div className="error">{locationError}</div>}
+
+          <div className="profile__subfield">
+            <label className="profile__label" htmlFor="shopping-dept">
+              Shopping department
+            </label>
+            <p className="profile__hint muted">
+              Which retail section the trip planner searches when it suggests
+              items to buy. About shopping results, not identity.
+            </p>
+            <div className="profile__dept-row">
+              <select
+                id="shopping-dept"
+                className="profile__dept-select"
+                value={profile?.shopping_department ?? 'womens'}
+                onChange={(e) => saveDepartment(e.target.value)}
+                disabled={deptSaving}
+              >
+                <option value="womens">Women’s</option>
+                <option value="mens">Men’s</option>
+                <option value="unisex">Unisex</option>
+                <option value="no_preference">No preference</option>
+              </select>
+              {deptFlash > 0 && <Flash key={deptFlash}>Saved</Flash>}
+            </div>
+            {deptError && <div className="error">{deptError}</div>}
+          </div>
         </section>
 
         {/* ---- Your aesthetic ---- */}
