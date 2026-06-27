@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 Formality = Literal["casual", "smart-casual", "formal"]
 Season = Literal["spring", "summer", "fall", "winter", "all-season"]
+ShoppingDepartment = Literal["womens", "mens", "unisex", "no_preference"]
 
 TripCategory = Literal[
     "tops",
@@ -90,6 +91,7 @@ class ProfileUpdate(BaseModel):
     home_location_text: Optional[str] = None
     home_lat: Optional[float] = None
     home_lon: Optional[float] = None
+    shopping_department: Optional[ShoppingDepartment] = None
 
 
 class Profile(BaseModel):
@@ -97,6 +99,7 @@ class Profile(BaseModel):
     home_location_text: Optional[str] = None
     home_lat: Optional[float] = None
     home_lon: Optional[float] = None
+    shopping_department: ShoppingDepartment = "womens"
     updated_at: Optional[datetime] = None
     # Heartbeat for the weekly inference job (#62): last successful run, surfaced
     # in the profile UI as relative time. Read-only — not in ProfileUpdate, so
@@ -146,14 +149,24 @@ class PurchaseResult(BaseModel):
     price: Optional[str] = None
     retailer: Optional[str] = None
 
+
 class Gap(BaseModel):
     item: str
     rationale: str
     category: TripCategory
 
+
+class PurchaseQuery(BaseModel):
+    gap_index: int = Field(..., ge=0)
+    query: str = Field(..., min_length=1, max_length=200)
+    rationale: str = ""
+    used_preferences: list[str] = []
+
+
 class PurchaseSuggestion(BaseModel):
     gap: Gap
     results: list[PurchaseResult] = []
+
 
 class TripPlanResponse(BaseModel):
     destination: str
@@ -166,4 +179,3 @@ class TripPlanResponse(BaseModel):
     purchase_suggestions: list[PurchaseSuggestion] = []
     reasoning: str = ""
     essentials: list[str] = []
-

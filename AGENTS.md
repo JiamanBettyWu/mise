@@ -10,6 +10,7 @@ uv sync                                          # install deps
 uv run uvicorn main:app --reload --port 8000     # dev server
 uv run pytest                                    # offline test suite in tests/ (free, no network)
 RUN_E2E=1 uv run pytest                          # + the full trip-planner pipeline (hits live APIs)
+uv run black .                                   # format backend Python
 uv run python -m py_compile <file>               # quick syntax check
 ```
 
@@ -46,14 +47,16 @@ A straight-line Python function: pull weather → load catalog → extremes gate
 A LangGraph `StateGraph` over a `PackingState` TypedDict:
 
 ```
-get_weather → get_catalog → reason_and_select ──(has_gaps)──→ search_purchases ─┐
-                                              ──(no_gaps )──────────────────────┴→ generate_output → END
+get_weather → infer_weather_if_needed → get_catalog → reason_and_select ──(has_gaps)──→ plan_purchase_queries → search_purchases ─┐
+                                                                    ──(no_gaps )──────────────────────────────────────────────────┴→ generate_output → END
 ```
 
 - The graph is **compiled once at module load** (`_APP = build_graph()`) and reused across requests — see comment in `trip_planner.py`.
 - `check_gaps` is a router function (returns a string label, doesn't mutate state); `add_conditional_edges` dispatches on it.
 - Nodes return **partial state dicts** (`return {"weather": ...}`); they never mutate `state` in place. LangGraph merges the dict into the journal.
-- `search_purchases_node` is currently a **stub** producing placeholder `PurchaseResult`s. Real search backend is tracked in [issue #10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10).
+- `infer_weather_if_needed_node` only calls Claude for partial/missing forecast coverage; full forecasts pass through unchanged.
+- `plan_purchase_queries_node` makes one lightweight Claude call per trip to turn gaps into concise Google Shopping queries, using `profile.shopping_department` plus applicable preferences. If planning fails, it falls back to deterministic `{department} + {gap.item}` queries.
+- `search_purchases_node` is best-effort: SerpAPI failures or empty results keep the gap visible with `results=[]`, so the packing plan still renders.
 
 **3. Weekly preference inference** — [`services/preference_inference.py`](backend/services/preference_inference.py)
 A LangGraph `StateGraph` over an `InferenceState` TypedDict, run from a weekly GitHub Actions cron ([`jobs/infer_preferences.py`](jobs/infer_preferences.py), [`.github/workflows/infer-preferences.yml`](.github/workflows/infer-preferences.yml)):

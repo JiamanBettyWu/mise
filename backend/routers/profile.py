@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from auth import require_password
 from db.supabase import client as supabase
-from schemas import Preference, PreferenceCreate, PreferenceUpdate, Profile, ProfileUpdate
+from schemas import (
+    Preference,
+    PreferenceCreate,
+    PreferenceUpdate,
+    Profile,
+    ProfileUpdate,
+)
 
 router = APIRouter(prefix="/profile", dependencies=[Depends(require_password)])
 
@@ -52,18 +58,14 @@ def get_profile():
 @router.put("", response_model=Profile)
 def upsert_profile(body: ProfileUpdate):
     existing = supabase().table("profile").select("id").limit(1).execute()
-    payload = body.model_dump()
+    payload = body.model_dump(exclude_unset=True)
+    if payload.get("shopping_department") is None:
+        payload.pop("shopping_department", None)
     payload["updated_at"] = _now()
 
     if existing.data:
         row_id = existing.data[0]["id"]
-        res = (
-            supabase()
-            .table("profile")
-            .update(payload)
-            .eq("id", row_id)
-            .execute()
-        )
+        res = supabase().table("profile").update(payload).eq("id", row_id).execute()
     else:
         res = supabase().table("profile").insert(payload).execute()
 
@@ -113,13 +115,7 @@ def update_preference(pref_id: str, body: PreferenceUpdate):
     patch = apply_promotion(existing.data[0]["source"], patch)
     patch["updated_at"] = _now()
 
-    res = (
-        supabase()
-        .table("preferences")
-        .update(patch)
-        .eq("id", pref_id)
-        .execute()
-    )
+    res = supabase().table("preferences").update(patch).eq("id", pref_id).execute()
     if not res.data:
         raise HTTPException(status_code=500, detail="Preference update failed")
     return res.data[0]
@@ -127,7 +123,9 @@ def update_preference(pref_id: str, body: PreferenceUpdate):
 
 @router.delete("/preferences/{pref_id}", status_code=204)
 def delete_preference(pref_id: str):
-    existing = supabase().table("preferences").select("source").eq("id", pref_id).execute()
+    existing = (
+        supabase().table("preferences").select("source").eq("id", pref_id).execute()
+    )
     if not existing.data:
         raise HTTPException(status_code=404, detail="Preference not found")
 
