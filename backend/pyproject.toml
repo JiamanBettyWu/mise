@@ -26,6 +26,7 @@ package = false
 [dependency-groups]
 dev = [
     "black>=26.5.1",
+    "mcp[cli]>=1.28.1",
     "pytest>=9.0.3",
 ]
 
