@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "wardrobe-shopping": {
+      "command": "/Users/jiamanwu/.local/bin/uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/jiamanwu/dev/wardrobe-ai/backend",
+        "python",
+        "-m",
+        "mcp_server.shopping_server"
+      ]
+    }
+  }
+}
+
