@@ -1,3 +1,9 @@
+> ⚠️ **Historical document.** This is the original design plan for the trip
+> planner, written before it was built. The feature shipped and has since
+> evolved; this doc is kept as a record of the initial design thinking. For the
+> current trip-planner architecture (the live LangGraph shape, nodes, and
+> gotchas), see the "Trip planner" section of [AGENTS.md](../../AGENTS.md).
+
 # Trip Planning Feature Plan
 ### AI Outfit Recommender — Packing Planner Module
 
