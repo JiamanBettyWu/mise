@@ -1,3 +1,10 @@
+> ⚠️ **Historical document.** This is the original project outline from before
+> the app was built. It is kept as a record of the initial vision and no longer
+> reflects the current architecture (e.g. the daily job runs on GitHub Actions,
+> not Render Cron; calendar logic is a service, not a router). For how the
+> system actually works today, see [AGENTS.md](../../AGENTS.md) and the design
+> records under [docs/](../).
+
 # Wardrobe AI — Project Outline
 
 ## What This App Does

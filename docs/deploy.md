@@ -1,6 +1,8 @@
-# Phase 1 deploy & setup checklist
+# Deploy & first-time setup checklist
 
-This doc is what you'll work through to get the skeleton live.
+This doc walks through standing the app up from scratch. It originated as the
+Phase-1 skeleton guide; the steps below still work, but the database schema has
+grown since — see the note at the end of step 1.
 
 ## 1. Supabase — create the table and storage bucket
 
@@ -47,6 +49,13 @@ on storage.objects for select
 using ( bucket_id = 'clothes-photos' );
 ```
 
+> **The schema above is the original Phase-1 table.** The live schema has since
+> grown several columns (warmth, feedback attribution, etc.) plus the
+> `outfit_history`, `profile`, and `preferences` tables. After creating the base
+> table, run every file in [`backend/sql/`](../backend/sql/) in date order in the
+> SQL Editor — each is dated and idempotent. That directory is the source of
+> truth for the current schema.
+
 ## 2. Grab your Supabase keys
 
 Project Settings → API:
@@ -58,10 +67,10 @@ Project Settings → API:
 ## 3. Push the repo to GitHub
 
 ```bash
-cd /Users/jiamanwu/Desktop/wardrobe-ai
+cd ~/dev/wardrobe-ai
 git init
 git add .
-git commit -m "Phase 1 scaffold"
+git commit -m "initial scaffold"
 git branch -M main
 git remote add origin git@github.com:<your-username>/wardrobe-ai.git
 git push -u origin main
@@ -70,14 +79,17 @@ git push -u origin main
 ## 4. Deploy backend to Render
 
 1. Render dashboard → **New** → **Blueprint** → pick the `wardrobe-ai` repo.
-2. Render reads `render.yaml` and creates the web service + (stub) cron.
+2. Render reads `render.yaml` and creates the web service. (There is no Render
+   cron — the daily email runs on GitHub Actions; see step 8.)
 3. In the web service env vars, paste:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `ANTHROPIC_API_KEY`
    - `APP_PASSWORD` (your chosen password)
    - `ALLOWED_ORIGINS` — for now: `http://localhost:5173` (we'll add the Vercel URL after step 5)
-4. Leave Phase 3/4 vars (OWM, Gmail) blank for now — backend boots fine without them.
+4. Other vars (OWM, Gmail, `SERPAPI_API_KEY`, `FEEDBACK_SECRET`) can be filled
+   in as you enable those features — the backend boots fine without them.
+   `FEEDBACK_SECRET` must match the value in GitHub Actions (see step 8).
 5. First deploy will take ~3 min. Note the URL: `https://wardrobe-ai-backend.onrender.com` (or similar).
 6. Test: `curl https://<your-render-url>/health` → should return `{"ok": true, "supabase": true, ...}`.
 
@@ -104,5 +116,13 @@ Render will auto-redeploy.
 - Enter `APP_PASSWORD`. Should show "Connected ✅" and a JSON blob with `supabase: true`.
 - Wrong password should show "Wrong password."
 
+## 8. Daily email + weekly inference (GitHub Actions)
+
+The recurring jobs run on **GitHub Actions**, not Render Cron (Render Cron needs
+a paid plan). Add the Actions secrets and test the workflows following
+[docs/daily-email.md](daily-email.md).
+
 ## Render free-tier note
-Free web services sleep after 15 min idle and take ~30s to wake on first request. That's fine for a personal app. The cron job is unaffected.
+Free web services sleep after 15 min idle and take ~30s to wake on first
+request. That's fine for a personal app — and it doesn't affect the daily email,
+which runs on GitHub Actions, not Render.
