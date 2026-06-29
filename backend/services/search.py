@@ -6,6 +6,9 @@ import logging
 from schemas import PurchaseResult
 
 logger = logging.getLogger(__name__)
+# #88: the SerpAPI key rides in the request URL's query string, and httpx logs
+# full URLs at INFO — silence its request logger so the key never hits the logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 SERPAPI_URL = "https://serpapi.com/search"
 CACHE_TTL = 30 * 60

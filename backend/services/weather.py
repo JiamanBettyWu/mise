@@ -1,5 +1,6 @@
 """OpenWeatherMap forecast → today's high/low/conditions/precip (metric)."""
 
+import logging
 import os
 import time
 from collections import Counter
@@ -8,6 +9,10 @@ from typing import TypedDict
 from schemas import TripWeather, TripWeatherDay
 
 import httpx
+
+# #88: the OWM key rides in the request URL's query string, and httpx logs full
+# URLs at INFO — silence its request logger so the key never hits the logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 OWM_URL = "https://api.openweathermap.org/data/2.5/forecast"
 OWM_GEO_URL = "https://api.openweathermap.org/geo/1.0/direct"
