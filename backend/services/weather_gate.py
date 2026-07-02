@@ -18,6 +18,7 @@ Items with warmth NULL (bags, belts — warmth-irrelevant per #40) are never gat
 
 import logging
 
+from observability import op
 from services.categories import category_of
 
 log = logging.getLogger("wardrobe.weather_gate")
@@ -32,6 +33,7 @@ HOT_GATE_LOW_C = 25
 COLD_GATE_HIGH_C = -5
 
 
+@op  # Weave trace node (#85); no-op unless a launcher called init_weave().
 def gate_extremes(wardrobe: list[dict], weather: dict) -> list[dict]:
     """Return the wardrobe minus items absurd for today's temperatures.
 

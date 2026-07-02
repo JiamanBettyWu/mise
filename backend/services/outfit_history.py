@@ -24,6 +24,7 @@ from collections import Counter
 from datetime import date, timedelta
 
 from db.supabase import client as supabase
+from observability import op
 from services.categories import category_of
 
 HISTORY_WINDOW_DAYS = 7
@@ -56,6 +57,7 @@ CATEGORY_FLOORS = (
 )
 
 
+@op  # Weave trace node (#85); no-op unless a launcher called init_weave().
 def sample_wardrobe(
     wardrobe: list[dict],
     modes: list[dict] | None,
