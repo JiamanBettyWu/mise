@@ -473,6 +473,9 @@ textarea {
 }
 .switch__track::after {
   content: '';
+  /* The global `* { box-sizing }` reset does NOT match pseudo-elements, so
+     without this the borders add 2px and the knob rides the track's bottom. */
+  box-sizing: border-box;
   position: absolute;
   top: 2px;
   left: 2px;
