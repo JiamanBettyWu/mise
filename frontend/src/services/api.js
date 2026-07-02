@@ -35,6 +35,12 @@ export const api = {
     fd.append('file', file);
     return request('/clothes/upload', { method: 'POST', body: fd });
   },
+  // Multi-item tagging (#24): one photo, N tag suggestions sharing its URL.
+  uploadAndTagMulti: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request('/clothes/upload-multi', { method: 'POST', body: fd });
+  },
   createClothing: (item) => request('/clothes', { method: 'POST', body: item }),
   listClothing: (params = {}) => {
     const q = new URLSearchParams();

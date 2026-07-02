@@ -272,6 +272,24 @@ a { color: inherit; }
 .form__actions { display: flex; gap: 0.75rem; }
 .field { display: flex; flex-direction: column; gap: 0.25rem; }
 
+/* Multi-item review card (#24): one per detected item. Reuses the content-tile
+   glass formula (tint 0.45 / blur 20 / radius 16 — see .outfit__item) since
+   each card is a "content unit", with form-scale padding for its fields. */
+.multi-form__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 6px 16px rgba(20, 20, 40, 0.06);
+}
+
 .file-input {
   display: inline-flex;
   align-items: center;

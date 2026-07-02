@@ -39,10 +39,9 @@ WARMTH_SCALE = """\
   sweater, fleece, lined jacket), 5 = maximum (winter coat, down puffer,
   heavy wool)."""
 
-TAGGING_SYSTEM_PROMPT = f"""You are a clothing-tagging assistant for a personal wardrobe app.
-
-Given a photo of a single clothing item, return a JSON object with these fields:
-
+# Shared between the single-item and multi-item tagging prompts (#24) so the
+# per-item field spec can't drift between them.
+TAGGING_FIELD_SPEC = f"""\
 - name: short descriptive name, 3-7 words, e.g. "Navy wool blazer" or
   "Cream cable-knit cardigan". No leading articles. No more than 7 words.
 - type: one of: jacket, coat, vest, shirt, t-shirt, sweater, blouse, dress,
@@ -57,10 +56,43 @@ Given a photo of a single clothing item, return a JSON object with these fields:
 - description: 1-5 sentences describing notable details — silhouette, fit,
   pattern, hardware, neckline, distinctive features. Skip generic filler.
 - brand: only set if a logo or label is clearly visible AND legible. Otherwise
-  return null. Do not guess.
+  return null. Do not guess."""
+
+TAGGING_SYSTEM_PROMPT = f"""You are a clothing-tagging assistant for a personal wardrobe app.
+
+Given a photo of a single clothing item, return a JSON object with these fields:
+
+{TAGGING_FIELD_SPEC}
 
 Return ONLY the JSON object, no commentary, no markdown fences. The JSON must
 be parseable. If multiple items appear in the photo, tag the most prominent one.
+"""
+
+# Multi-item tagging (#24): hard cap on items per photo. Baked into the prompt
+# as a literal "9" and enforced defensively after parsing.
+MAX_MULTI_ITEMS = 9
+
+TAGGING_MULTI_SYSTEM_PROMPT = f"""You are a clothing-tagging assistant for a personal wardrobe app.
+
+Given a photo containing one or more clothing/accessory items (e.g. jewelry on
+a tray, several hair clips, a pile of scarves), enumerate every distinct item
+and return a JSON object of the shape:
+
+{{"items": [<one tag object per item>, ...]}}
+
+Each tag object has these fields:
+
+{TAGGING_FIELD_SPEC}
+
+Rules:
+- One tag object per distinct physical item. Do not merge similar items; two
+  near-identical hair clips are two entries.
+- Keep each description to 1-2 sentences.
+- Tag at most 9 items. If the photo has more, tag the 9 most prominent.
+- If the photo contains no clothing or accessory items, return {{"items": []}}.
+
+Return ONLY the JSON object, no commentary, no markdown fences. The JSON must
+be parseable.
 """
 
 
@@ -106,6 +138,54 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
     )
 
     return parse_json(resp)
+
+
+@op  # Weave trace node (#85); the Anthropic call inside auto-nests here.
+def tag_clothing_photo_multi(image_bytes: bytes, mime_type: str) -> list[dict]:
+    """Send photo to Claude vision; return one parsed tag dict per item found.
+
+    Multi-item variant of tag_clothing_photo (#24). Returns [] when Claude
+    finds no clothing/accessory items, and at most MAX_MULTI_ITEMS entries.
+    """
+    image_bytes, mime_type = ensure_under_limit(image_bytes, mime_type)
+    image_b64 = base64.standard_b64encode(image_bytes).decode("ascii")
+
+    resp = client().messages.create(
+        model=MODEL,
+        # Up to 9 items per photo; the single-item 512 budget would truncate
+        # mid-JSON and fail the whole upload.
+        max_tokens=4096,
+        system=[
+            {
+                "type": "text",
+                "text": TAGGING_MULTI_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": image_b64,
+                        },
+                    },
+                    {"type": "text", "text": "Tag every item in this photo."},
+                ],
+            }
+        ],
+    )
+
+    data = parse_json(resp)
+    # Tolerate a bare array even though the prompt asks for {"items": [...]}.
+    items = data if isinstance(data, list) else data.get("items", [])
+    if not isinstance(items, list):
+        raise ValueError(f"Expected a list of tag objects, got {type(items).__name__}")
+    return items[:MAX_MULTI_ITEMS]
 
 
 MODE_CLASSIFIER_PROMPT = """You select which outfit "modes" a day's plans call
@@ -401,8 +481,12 @@ def _select_candidates(
                 repairable = repairable or cand
                 continue
             if j:
-                log.info("selected candidate %d/%d for [%s]",
-                         j + 1, len(entry["candidates"]), label)
+                log.info(
+                    "selected candidate %d/%d for [%s]",
+                    j + 1,
+                    len(entry["candidates"]),
+                    label,
+                )
             chosen = cand
             break
         if chosen is None:
@@ -641,6 +725,13 @@ def _extract_json(text: str) -> str:
     fenced = _JSON_FENCE_RE.search(text)
     if fenced:
         return fenced.group(1).strip()
+    if text.lstrip().startswith("["):
+        # A response that *starts* with '[' is a bare top-level array (#24);
+        # the brace-span heuristic below would mangle it into "{...}, {...}".
+        # Only this unambiguous case — prose narration never starts with '['.
+        start, end = text.find("["), text.rfind("]")
+        if start < end:
+            return text[start : end + 1]
     start, end = text.find("{"), text.rfind("}")
     if 0 <= start < end:
         return text[start : end + 1]
