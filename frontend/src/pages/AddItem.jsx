@@ -11,14 +11,13 @@ export default function AddItem() {
       <div className="page-header">
         <h1>Add item</h1>
         <div className="page-header__actions">
-          <label>
-            <input
-              type="checkbox"
-              checked={multi}
-              onChange={(e) => setMulti(e.target.checked)}
-            />
-            Multiple items in this photo (best for accessories)
-          </label>
+          <button
+            className={`chip${multi ? ' chip--on-mode' : ''}`}
+            aria-pressed={multi}
+            onClick={() => setMulti(!multi)}
+          >
+            Multi-item photo
+          </button>
         </div>
       </div>
       {multi ? (

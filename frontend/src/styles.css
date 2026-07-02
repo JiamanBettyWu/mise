@@ -440,6 +440,20 @@ textarea {
   color: rgba(20, 20, 40, 0.9);
 }
 
+/* Page-header mode toggle (#24): a standing input mode, not a commitment —
+   soft fill (the attribution/laundry weight), distinct from --on-verdict's
+   strong ink. */
+.chip--on-mode {
+  background: rgba(20, 20, 40, 0.14);
+  border-color: rgba(20, 20, 40, 0.45);
+  color: rgba(20, 20, 40, 0.85);
+}
+.chip--on-mode:hover {
+  background: rgba(20, 20, 40, 0.2);
+  border-color: rgba(20, 20, 40, 0.55);
+  color: rgba(20, 20, 40, 0.9);
+}
+
 .outfit__header h3 {
   font-family: var(--font-heading);
   font-size: 1.4rem;

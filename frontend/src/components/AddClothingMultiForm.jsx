@@ -81,6 +81,10 @@ export default function AddClothingMultiForm({ onDone }) {
           />
           <span>{stage === 'tagging' ? 'AI is tagging…' : 'Choose a photo'}</span>
         </label>
+        <div className="muted">
+          Every item in the photo gets its own entry — best for accessories.
+          All entries share the one photo.
+        </div>
         {notice && <div className="muted">{notice}</div>}
         {error && <div className="error">{error}</div>}
       </div>
