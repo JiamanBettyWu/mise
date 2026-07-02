@@ -12,10 +12,12 @@ export default function AddItem() {
         <h1>Add item</h1>
         <div className="page-header__actions">
           <button
-            className={`chip${multi ? ' chip--on-mode' : ''}`}
-            aria-pressed={multi}
+            className="switch"
+            role="switch"
+            aria-checked={multi}
             onClick={() => setMulti(!multi)}
           >
+            <span className="switch__track" aria-hidden="true" />
             Multi-item photo
           </button>
         </div>
