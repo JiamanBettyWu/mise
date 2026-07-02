@@ -14,13 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02:** shipped **multi-item tagging B-lite (#24, PR #94)** — one
-photo → N review cards over a glass `.switch` toggle; its manual verification
-checklist (real accessory photo, empty-state, delete-one-of-a-group) is still
-open in the PR body, and the bbox experiment moved to **#96**. Weave tracing
+**As of 2026-07-02:** shipped **single-item empty tagging parity (PR #98)** on
+top of **multi-item tagging B-lite (#24, PR #94)** — both modes can now surface
+"no items detected" without forcing a bogus tag object; #24's real-photo manual
+checklist is still open, and the bbox experiment moved to **#96**. Weave tracing
 (#85 Phase 1) covers both pipelines; next is **#85 Phase 2** (`weave.Evaluation`
 over 👍/👎 history). **⚠️ Manual follow-up still open — rotate the SerpAPI +
-OpenWeatherMap keys** (they appeared in logs before #89). Full detail in
+OpenWeatherMap keys** (they appeared in logs before #89); full detail lives in
 [SESSIONS.md](SESSIONS.md).
 
 ---
