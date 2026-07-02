@@ -28,6 +28,10 @@ dev = [
     "black>=26.5.1",
     "mcp[cli]>=1.28.1",
     "pytest>=9.0.3",
+    # Weave observability (#85) — trace-only, never shipped to Render. It is
+    # deliberately NOT in requirements.txt (Render's prod dep list) nor in
+    # [project.dependencies], keeping it off the request/cron hot path.
+    "weave>=0.53",
 ]
 
 [tool.black]

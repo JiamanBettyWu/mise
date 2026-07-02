@@ -7,6 +7,7 @@ from functools import lru_cache
 
 from anthropic import Anthropic
 
+from observability import op
 from services.image import ensure_under_limit
 from services.validation import drop_extras, validate_outfit
 
@@ -246,6 +247,7 @@ No commentary, no markdown fences. The JSON must be parseable.
 """
 
 
+@op  # Weave trace node (#85); the Anthropic call inside auto-nests here.
 def recommend_outfits(
     weather: dict,
     wardrobe: list[dict],

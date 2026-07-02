@@ -4,6 +4,7 @@ import logging
 from datetime import date
 
 from db.supabase import client as supabase
+from observability import op
 from services.claude import recommend_outfits
 from services.outfit_history import (
     blocked_combos,
@@ -61,6 +62,7 @@ WARDROBE_FIELDS = (
 )
 
 
+@op  # Weave trace root (#85); the whole decision tree hangs off this node.
 def recommend(
     travel_mode: bool = False,
     notes: str = "",
@@ -68,7 +70,13 @@ def recommend(
     lat: float | None = None,
     lon: float | None = None,
     modes: list[dict] | None = None,
+    persist: bool = True,
 ) -> dict:
+    # persist=False runs the full decision path (weather → gate → sample →
+    # Claude pick) but skips the outfit_history write — the read-only mode for
+    # Weave trace runs (#85) and Phase 2 eval replays, so probing the pipeline
+    # never pollutes the 👍/👎 dataset it learns from. history_id comes back
+    # None; the output shape is otherwise identical to a persisted run.
     # Profile home location is the weather fallback; env vars are the last resort.
     if lat is None or lon is None:
         home = _get_home_coords()
@@ -120,11 +128,15 @@ def recommend(
         inferred_preferences=inferred_prefs or None,
     )
 
-    history_ids = log_outfits(
-        date.today(),
-        [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
-        weather=weather,
-        notes=notes,
+    history_ids = (
+        log_outfits(
+            date.today(),
+            [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
+            weather=weather,
+            notes=notes,
+        )
+        if persist
+        else [None] * len(outfits)
     )
 
     # Hydrate with full item objects so the frontend can show photos without re-querying.

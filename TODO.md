@@ -14,11 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-06-28:** shipped the MCP learning track (#79) and an httpx
-API-key-leak fix (#88). **⚠️ Manual follow-up still open — rotate the SerpAPI +
-OpenWeatherMap keys** (they appeared in logs before #89; #89 is merged, so it's
-safe to regenerate each and update `.env` + Render). Full detail in
-[SESSIONS.md](SESSIONS.md).
+**As of 2026-07-01:** shipped **Weave tracing — Phase 1 of #85** (traces render
+live; `@op` on the recommender via an `observability.py` shim, off the Render/cron
+hot path; `recommend(persist=False)` read-only mode; manual launcher
+`jobs/trace_daily.py`). Next is **#85 Phase 2** (`weave.Evaluation` over 👍/👎
+history). **⚠️ Manual follow-up still open — rotate the SerpAPI + OpenWeatherMap
+keys** (they appeared in logs before #89; safe to regenerate + update `.env` +
+Render now). Full detail in [SESSIONS.md](SESSIONS.md).
 
 ---
 
