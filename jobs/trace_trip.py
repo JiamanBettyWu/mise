@@ -53,6 +53,7 @@ def plan_trip(req: TripPlanRequest) -> TripPlanResponse:
     (and its nodes) nests underneath this op."""
     return trip_planner.run(req)
 
+
 # A sample trip a few days out. The dates straddle the OWM 5-day forecast window
 # on purpose, so the trace also exercises infer_weather_if_needed's climate call.
 SAMPLE_TRIP = TripPlanRequest(

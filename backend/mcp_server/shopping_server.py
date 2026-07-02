@@ -5,12 +5,14 @@ Run from backend/:  uv run python -m mcp_server.shopping_server
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
 from typing import Annotated
+
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from services.search import search_products as _search  # alias avoids name clash
-from schemas import PurchaseResult
 from pydantic import Field
+
+from schemas import PurchaseResult
+from services.search import search_products as _search  # alias avoids name clash
 
 mcp = FastMCP("wardrobe-shopping")  # ← (1) the server name a client sees
 
