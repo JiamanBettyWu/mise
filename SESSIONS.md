@@ -11,6 +11,10 @@ non-obvious gotchas see [LEARNINGS.md](LEARNINGS.md).
 
 ---
 
+## 2026-07-02 (backend formatter tooling)
+
+Shipped the no-logic-change backend formatter/tooling sweep ([#90](https://github.com/JiamanBettyWu/wardrobe-ai/issues/90), [PR #99](https://github.com/JiamanBettyWu/wardrobe-ai/pull/99)): added `isort` to the backend dev group, configured it with Black compatibility plus deterministic first-party imports, and added CI checks for `black --check` and `isort --check`. Ran `isort` and Black across `backend/` and `jobs/`; backend diffs were import ordering/grouping only, while Black wrapped two job-script lines. Validation: formatter checks, `uv lock --check`, and full backend suite (`158 passed, 1 skipped`).
+
 ## 2026-07-02 (single-item empty tagging)
 
 Shipped the single-item no-detection parity fix ([PR #98](https://github.com/JiamanBettyWu/wardrobe-ai/pull/98)): single-photo tagging now asks Claude for the same `{"items": [...]}` wrapper as multi-item tagging, so a photo with no wardrobe item can validly return `{"items": []}` instead of being forced into the full tag schema. Backend: `tag_clothing_photo` normalizes through the shared tag-list parser (while still tolerating the old direct-object shape), `/clothes/upload` returns `[]` and deletes the just-uploaded photo when no item is found, and upload tests cover both the empty cleanup path and the normal suggestion path. Frontend: `AddClothingForm` handles the empty array with the same "No items detected — try another photo." notice already used in multi-item mode. Validation: full backend suite (`158 passed, 1 skipped`) and `npm run build`.
@@ -126,6 +130,7 @@ Two redesign follow-ups shipped back-to-back.
 A compressed index of what shipped, grouped by session (newest first). Full
 narrative for each is in the dated entries above.
 
+- **2026-07-02:** [#90](https://github.com/JiamanBettyWu/wardrobe-ai/issues/90) (backend Black/isort tooling sweep → [PR #99](https://github.com/JiamanBettyWu/wardrobe-ai/pull/99)).
 - **2026-06-28:** [#79](https://github.com/JiamanBettyWu/wardrobe-ai/issues/79) (MCP shopping server + stdio client demo → [PR #87](https://github.com/JiamanBettyWu/wardrobe-ai/pull/87)), [#88](https://github.com/JiamanBettyWu/wardrobe-ai/issues/88) (httpx API-key-leak fix → [PR #89](https://github.com/JiamanBettyWu/wardrobe-ai/pull/89)).
 - **2026-06-26:** [#82](https://github.com/JiamanBettyWu/wardrobe-ai/issues/82) (expose shopping department in the Profile UI → [PR #84](https://github.com/JiamanBettyWu/wardrobe-ai/pull/84)), [#81](https://github.com/JiamanBettyWu/wardrobe-ai/issues/81) (profile-aware purchase query planner → [PR #83](https://github.com/JiamanBettyWu/wardrobe-ai/pull/83)), [#10](https://github.com/JiamanBettyWu/wardrobe-ai/issues/10) (replace purchase stub with real SerpAPI Google Shopping search → [PR #80](https://github.com/JiamanBettyWu/wardrobe-ai/pull/80)).
 - **2026-06-15:** Mobile pref-tile layout fix ([PR #75](https://github.com/JiamanBettyWu/wardrobe-ai/pull/75)), inferred badge restyle ([PR #76](https://github.com/JiamanBettyWu/wardrobe-ai/pull/76)), confirm-before-dismiss for inferred prefs ([PR #77](https://github.com/JiamanBettyWu/wardrobe-ai/pull/77)).

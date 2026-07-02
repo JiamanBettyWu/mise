@@ -14,14 +14,14 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02:** shipped **single-item empty tagging parity (PR #98)** on
-top of **multi-item tagging B-lite (#24, PR #94)** — both modes can now surface
-"no items detected" without forcing a bogus tag object; #24's real-photo manual
-checklist is still open, and the bbox experiment moved to **#96**. Weave tracing
-(#85 Phase 1) covers both pipelines; next is **#85 Phase 2** (`weave.Evaluation`
-over 👍/👎 history). **⚠️ Manual follow-up still open — rotate the SerpAPI +
-OpenWeatherMap keys** (they appeared in logs before #89); full detail lives in
-[SESSIONS.md](SESSIONS.md).
+**As of 2026-07-02:** shipped the backend Black/isort tooling sweep
+([PR #99](https://github.com/JiamanBettyWu/wardrobe-ai/pull/99)) on top of
+**single-item empty tagging parity (PR #98)** and **multi-item tagging B-lite
+(#24, PR #94)**. Weave tracing (#85 Phase 1) covers both pipelines; next is
+**#85 Phase 2** (`weave.Evaluation` over 👍/👎 history), while #24's real-photo
+manual checklist remains open and the bbox experiment moved to **#96**.
+**⚠️ Manual follow-up still open — rotate the SerpAPI + OpenWeatherMap keys**
+(they appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -30,9 +30,7 @@ OpenWeatherMap keys** (they appeared in logs before #89); full detail lives in
 1. **Rotate the SerpAPI + OpenWeatherMap keys** (do this first — see Current
    state). Then optionally [#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)
    (MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
-   LangGraph node — the part most transferable to the work MCP project) and
-   [#90](https://github.com/JiamanBettyWu/wardrobe-ai/issues/90) (black +
-   configured isort sweep across the backend).
+   LangGraph node — the part most transferable to the work MCP project).
 2. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
