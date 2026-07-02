@@ -6,16 +6,26 @@ import ClothingFields from './ClothingFields.jsx';
 export default function AddClothingForm({ onSaved }) {
   const [stage, setStage] = useState('pick'); // pick | tagging | review | saving
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [draft, setDraft] = useState(null);
 
   async function handleFile(e) {
     const picked = e.target.files?.[0];
     if (!picked) return;
     setError('');
+    setNotice('');
     setStage('tagging');
     try {
       const file = await compressImage(picked);
-      const tags = await api.uploadAndTag(file);
+      let tags = await api.uploadAndTag(file);
+      if (Array.isArray(tags)) {
+        if (!tags.length) {
+          setNotice('No items detected — try another photo.');
+          setStage('pick');
+          return;
+        }
+        tags = tags[0];
+      }
       setDraft({
         ...tags,
         brand: tags.brand || '',
@@ -58,6 +68,7 @@ export default function AddClothingForm({ onSaved }) {
           />
           <span>{stage === 'tagging' ? 'AI is tagging…' : 'Choose a photo'}</span>
         </label>
+        {notice && <div className="muted">{notice}</div>}
         {error && <div className="error">{error}</div>}
       </div>
     );
