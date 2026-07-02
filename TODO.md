@@ -14,14 +14,14 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02:** extended **Weave tracing (#85, Phase 1)** to the
-**trip-planner LangGraph** — it auto-traces via Weave's LangChain integration
-with *zero* changes to `trip_planner.py`; tracing lives only in the new manual
-launcher `jobs/trace_trip.py` (root renamed to `plan_trip` via a named `@op`).
-Next is still **#85 Phase 2** (`weave.Evaluation` over 👍/👎 history).
-**⚠️ Manual follow-up still open — rotate the SerpAPI + OpenWeatherMap keys**
-(they appeared in logs before #89; safe to regenerate + update `.env` + Render
-now). Full detail in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-02:** shipped **multi-item tagging B-lite (#24, PR #94)** — one
+photo → N review cards over a glass `.switch` toggle; its manual verification
+checklist (real accessory photo, empty-state, delete-one-of-a-group) is still
+open in the PR body, and the bbox experiment moved to **#96**. Weave tracing
+(#85 Phase 1) covers both pipelines; next is **#85 Phase 2** (`weave.Evaluation`
+over 👍/👎 history). **⚠️ Manual follow-up still open — rotate the SerpAPI +
+OpenWeatherMap keys** (they appeared in logs before #89). Full detail in
+[SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -62,8 +62,11 @@ now). Full detail in [SESSIONS.md](SESSIONS.md).
    planner for Oaxaca).
 8. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the
    planner (parallelize weather + catalog, trim payload).
-9. **[#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)** — multi-item
-   tagging (B-lite) + bbox feasibility experiment.
+9. **Verify #24 live + run [#96](https://github.com/JiamanBettyWu/wardrobe-ai/issues/96)**
+   — upload a real multi-accessory photo through the new toggle (PR #94's
+   checklist), then the 30-minute bbox experiment that gates B-full.
+   [#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95) (Travel-mode
+   checkboxes → `.switch`) is a quick one alongside.
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
 (catalog by categories), [#5](https://github.com/JiamanBettyWu/wardrobe-ai/issues/5)
