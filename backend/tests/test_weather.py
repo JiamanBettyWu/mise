@@ -30,7 +30,9 @@ def _fixed_forecast(monkeypatch):
         "_fetch_forecast",
         lambda lat, lon: {
             "city": {"timezone": 0},
-            "list": [_entry(d, 20 + i, "Clouds", 0.1) for i, d in enumerate(FORECAST_DAYS)],
+            "list": [
+                _entry(d, 20 + i, "Clouds", 0.1) for i, d in enumerate(FORECAST_DAYS)
+            ],
         },
     )
 

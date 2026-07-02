@@ -279,7 +279,13 @@ def recent_feedback_outfits(today: date | None = None) -> list[dict]:
     ids = sorted({iid for row in rows for iid in (row.get("item_ids") or [])})
     names: dict[str, str] = {}
     if ids:
-        res = supabase().table("clothing_items").select("id, name").in_("id", ids).execute()
+        res = (
+            supabase()
+            .table("clothing_items")
+            .select("id, name")
+            .in_("id", ids)
+            .execute()
+        )
         names = {r["id"]: r["name"] for r in (res.data or [])}
     return _select_feedback_entries(rows, names)
 
@@ -393,7 +399,11 @@ def _feedback_multipliers(rows: list[dict]) -> dict[str, float]:
             if reason in ITEM_EXONERATING_REASONS:
                 continue
             if reason == "specific_items":
-                named = [iid for iid in (row.get("feedback_item_ids") or []) if iid in item_ids]
+                named = [
+                    iid
+                    for iid in (row.get("feedback_item_ids") or [])
+                    if iid in item_ids
+                ]
                 item_ids = named or item_ids
         credit = 1.0 / len(item_ids)
         bucket = ups if verdict == 1 else downs
@@ -403,7 +413,9 @@ def _feedback_multipliers(rows: list[dict]) -> dict[str, float]:
     span = FEEDBACK_CEILING - FEEDBACK_FLOOR
     return {
         iid: FEEDBACK_FLOOR
-        + span * (ups.get(iid, 0.0) + 1.0) / (ups.get(iid, 0.0) + downs.get(iid, 0.0) + 2.0)
+        + span
+        * (ups.get(iid, 0.0) + 1.0)
+        / (ups.get(iid, 0.0) + downs.get(iid, 0.0) + 2.0)
         for iid in set(ups) | set(downs)
     }
 

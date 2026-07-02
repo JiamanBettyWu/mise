@@ -31,9 +31,7 @@ def entry(label, *candidates):
 
 def test_normalize_passes_candidates_shape_through():
     entries = _normalize_entries([entry("Elevated", cand("tee", "jeans"))])
-    assert entries == [
-        {"label": "Elevated", "candidates": [cand("tee", "jeans")]}
-    ]
+    assert entries == [{"label": "Elevated", "candidates": [cand("tee", "jeans")]}]
 
 
 def test_normalize_wraps_flat_pre63_shape():
@@ -41,7 +39,10 @@ def test_normalize_wraps_flat_pre63_shape():
         [{"label": "Elevated", "item_ids": ["tee"], "reasoning": "old shape"}]
     )
     assert entries == [
-        {"label": "Elevated", "candidates": [{"item_ids": ["tee"], "reasoning": "old shape"}]}
+        {
+            "label": "Elevated",
+            "candidates": [{"item_ids": ["tee"], "reasoning": "old shape"}],
+        }
     ]
 
 
@@ -62,7 +63,11 @@ def test_first_clean_candidate_wins():
         types_by_id=TYPES,
     )
     assert out == [
-        {"label": "Elevated", "item_ids": ["blouse", "skirt", "flats"], "reasoning": "fine"}
+        {
+            "label": "Elevated",
+            "item_ids": ["blouse", "skirt", "flats"],
+            "reasoning": "fine",
+        }
     ]
 
 
@@ -71,7 +76,13 @@ def test_blocked_combo_rejected_next_candidate_selected():
     # combination → candidate 2 is served. Order-insensitive (set match).
     blocked = {frozenset(["skirt", "sandals", "tee"])}
     out = _select_candidates(
-        [entry("Elevated", cand("tee", "sandals", "skirt"), cand("blouse", "skirt", "flats"))],
+        [
+            entry(
+                "Elevated",
+                cand("tee", "sandals", "skirt"),
+                cand("blouse", "skirt", "flats"),
+            )
+        ],
         blocked_combos=blocked,
         types_by_id=TYPES,
     )
@@ -118,7 +129,13 @@ def test_recent_repeat_rejected_next_candidate_selected():
     # #17: yesterday's exact set is deduped; a fresh candidate is served.
     recent = {frozenset(["tee", "jeans", "flats"])}
     out = _select_candidates(
-        [entry("Smart casual", cand("flats", "tee", "jeans"), cand("blouse", "skirt", "flats"))],
+        [
+            entry(
+                "Smart casual",
+                cand("flats", "tee", "jeans"),
+                cand("blouse", "skirt", "flats"),
+            )
+        ],
         blocked_combos=set(),
         types_by_id=TYPES,
         recent_combos=recent,
@@ -129,9 +146,18 @@ def test_recent_repeat_rejected_next_candidate_selected():
 def test_all_repeats_serves_repeat_not_skip():
     # Unlike 👎-blocked combos, a repeat is annoying but wearable — when
     # every candidate is a repeat, serve one instead of skipping the mode.
-    recent = {frozenset(["tee", "jeans", "flats"]), frozenset(["blouse", "skirt", "flats"])}
+    recent = {
+        frozenset(["tee", "jeans", "flats"]),
+        frozenset(["blouse", "skirt", "flats"]),
+    }
     out = _select_candidates(
-        [entry("Smart casual", cand("tee", "jeans", "flats"), cand("blouse", "skirt", "flats"))],
+        [
+            entry(
+                "Smart casual",
+                cand("tee", "jeans", "flats"),
+                cand("blouse", "skirt", "flats"),
+            )
+        ],
         blocked_combos=set(),
         types_by_id=TYPES,
         recent_combos=recent,
@@ -143,7 +169,13 @@ def test_blocked_combo_never_served_even_when_only_alternative_is_repeat():
     blocked = {frozenset(["blouse", "skirt", "flats"])}
     recent = {frozenset(["tee", "jeans", "flats"])}
     out = _select_candidates(
-        [entry("Smart casual", cand("blouse", "skirt", "flats"), cand("tee", "jeans", "flats"))],
+        [
+            entry(
+                "Smart casual",
+                cand("blouse", "skirt", "flats"),
+                cand("tee", "jeans", "flats"),
+            )
+        ],
         blocked_combos=blocked,
         types_by_id=TYPES,
         recent_combos=recent,
@@ -167,7 +199,9 @@ def test_repairable_fresh_candidate_preferred_over_repeat():
 
 
 def test_model_skip_entry_passes_through():
-    skip = cand(reasoning="No Elevated recommendation available today — nothing dressy.")
+    skip = cand(
+        reasoning="No Elevated recommendation available today — nothing dressy."
+    )
     out = _select_candidates(
         [entry("Elevated", skip)], blocked_combos=set(), types_by_id=TYPES
     )

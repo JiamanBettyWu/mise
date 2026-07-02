@@ -61,7 +61,11 @@ def test_select_caps_each_polarity_independently():
     assert len(likes) == 2
     # Rows arrive newest-first, so the cap keeps the most recent ones.
     assert [e["date"] for e in dislikes] == [
-        "2026-06-10", "2026-06-09", "2026-06-08", "2026-06-07", "2026-06-06",
+        "2026-06-10",
+        "2026-06-09",
+        "2026-06-08",
+        "2026-06-07",
+        "2026-06-06",
     ]
 
 
@@ -144,8 +148,12 @@ def entry(verdict, mode="Elevated", date="2026-06-07", names=("Linen blazer",)):
 def test_block_renders_both_sections_dislikes_first():
     block = _feedback_block(
         [
-            entry(1, mode="Smart casual", date="2026-06-08",
-                  names=["Silk blouse", "Pleated trousers"]),
+            entry(
+                1,
+                mode="Smart casual",
+                date="2026-06-08",
+                names=["Silk blouse", "Pleated trousers"],
+            ),
             entry(-1, names=["Linen blazer", "Sport sandals"]),
         ]
     )
@@ -169,17 +177,26 @@ def test_block_omits_absent_polarity_sections():
 def test_block_renders_reason_tags_and_note():
     block = _feedback_block(
         [
-            {**entry(-1, names=["Linen blazer", "Sport sandals"]),
-             "reason": "combination", "note": "each fine alone, awful together"},
-            {**entry(-1, mode="Athleisure", date="2026-06-06", names=["Silk blouse"]),
-             "reason": "occasion"},
+            {
+                **entry(-1, names=["Linen blazer", "Sport sandals"]),
+                "reason": "combination",
+                "note": "each fine alone, awful together",
+            },
+            {
+                **entry(
+                    -1, mode="Athleisure", date="2026-06-06", names=["Silk blouse"]
+                ),
+                "reason": "occasion",
+            },
         ]
     )
     assert (
         "- Elevated, 2026-06-07: Linen blazer + Sport sandals "
         '(the combination, not the items) — user note: "each fine alone, awful together"'
     ) in block
-    assert "- Athleisure, 2026-06-06: Silk blouse (wrong for this occasion/mode)" in block
+    assert (
+        "- Athleisure, 2026-06-06: Silk blouse (wrong for this occasion/mode)" in block
+    )
 
 
 def test_block_empty_entries_render_nothing():

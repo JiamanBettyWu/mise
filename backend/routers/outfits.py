@@ -33,7 +33,9 @@ class FeedbackRequest(BaseModel):
 
 
 class AttributionRequest(BaseModel):
-    reason: Literal["specific_items", "combination", "weather", "occasion"] | None = None
+    reason: Literal["specific_items", "combination", "weather", "occasion"] | None = (
+        None
+    )
     item_ids: list[str] = []
     note: str = ""
 

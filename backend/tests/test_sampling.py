@@ -36,7 +36,11 @@ def no_feedback(monkeypatch):
 def test_aggregate_scores_decay_math():
     rows = [
         {"recommended_on": "2026-06-02", "mode": "Smart casual", "item_ids": ["a"]},
-        {"recommended_on": "2026-06-01", "mode": "Smart casual", "item_ids": ["a", "b"]},
+        {
+            "recommended_on": "2026-06-01",
+            "mode": "Smart casual",
+            "item_ids": ["a", "b"],
+        },
         {"recommended_on": "2026-05-28", "mode": "Smart casual", "item_ids": ["b"]},
     ]
     scores = _aggregate_scores(rows, TODAY)

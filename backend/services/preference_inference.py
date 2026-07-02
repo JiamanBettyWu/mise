@@ -135,7 +135,9 @@ def fetch_node(state: InferenceState) -> dict:
     return {
         "verdicts": _shape_verdicts(rows, names),
         "existing_user": [
-            p["text"] for p in prefs if p["source"] == "user" and p["status"] == "active"
+            p["text"]
+            for p in prefs
+            if p["source"] == "user" and p["status"] == "active"
         ],
         "existing_rejected": [
             p["text"]
@@ -509,13 +511,11 @@ def _record_reviewed() -> None:
     now = datetime.now(timezone.utc).isoformat()
     existing = supabase().table("profile").select("id").limit(1).execute()
     if existing.data:
-        supabase().table("profile").update(
-            {"preferences_reviewed_at": now}
-        ).eq("id", existing.data[0]["id"]).execute()
-    else:
-        supabase().table("profile").insert(
-            {"preferences_reviewed_at": now}
+        supabase().table("profile").update({"preferences_reviewed_at": now}).eq(
+            "id", existing.data[0]["id"]
         ).execute()
+    else:
+        supabase().table("profile").insert({"preferences_reviewed_at": now}).execute()
 
 
 def run() -> dict:

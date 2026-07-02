@@ -59,7 +59,11 @@ def gate_extremes(wardrobe: list[dict], weather: dict) -> list[dict]:
 
     if len(gated) < len(wardrobe):
         kept = {id(item) for item in gated}
-        dropped = [item.get("name") or item.get("id") for item in wardrobe if id(item) not in kept]
+        dropped = [
+            item.get("name") or item.get("id")
+            for item in wardrobe
+            if id(item) not in kept
+        ]
         log.info(
             "extremes gate dropped %d item(s) (high %s°C / low %s°C): %s",
             len(dropped),

@@ -8,7 +8,7 @@ from auth import require_password
 log = logging.getLogger("wardrobe.clothes")
 from db.supabase import client as supabase
 from schemas import ClothingItem, ClothingItemCreate, ClothingItemUpdate, TagSuggestion
-from services.claude import tag_clothing_photo
+from services.claude import tag_clothing_photo, tag_clothing_photo_multi
 from services.image import ensure_under_limit
 from services.storage import delete_photo, upload_photo
 
@@ -29,7 +29,9 @@ async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
     POST /clothes to commit.
     """
     if file.content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=415, detail=f"Unsupported type {file.content_type}")
+        raise HTTPException(
+            status_code=415, detail=f"Unsupported type {file.content_type}"
+        )
     image_bytes = await file.read()
     if len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large (max 10MB)")
@@ -48,6 +50,42 @@ async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
         raise HTTPException(status_code=502, detail="Tagging failed")
 
     return TagSuggestion(photo_url=public_url, **tags)
+
+
+@router.post("/upload-multi", response_model=list[TagSuggestion])
+async def upload_and_tag_multi(file: UploadFile = File(...)) -> list[TagSuggestion]:
+    """Upload one photo of multiple items; return one tag suggestion per item.
+
+    B-lite multi-item flow (#24): the photo is stored once and every suggestion
+    shares its URL. Frontend renders one review card per suggestion; each
+    commits independently via POST /clothes. An empty list means Claude found
+    no clothing/accessory items — the photo is removed from storage.
+    """
+    if file.content_type not in ALLOWED_MIME:
+        raise HTTPException(
+            status_code=415, detail=f"Unsupported type {file.content_type}"
+        )
+    image_bytes = await file.read()
+    if len(image_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+
+    image_bytes, mime_type = ensure_under_limit(image_bytes, file.content_type)
+
+    _, public_url = upload_photo(image_bytes, file.filename or "photo", mime_type)
+
+    try:
+        tag_list = tag_clothing_photo_multi(image_bytes, mime_type)
+    except Exception:
+        log.error("Multi-tagging failed:\n%s", traceback.format_exc())
+        delete_photo(public_url)
+        raise HTTPException(status_code=502, detail="Tagging failed")
+
+    if not tag_list:
+        # No items detected: don't leave an orphaned photo in storage.
+        delete_photo(public_url)
+        return []
+
+    return [TagSuggestion(photo_url=public_url, **tags) for tags in tag_list]
 
 
 @router.post("", response_model=ClothingItem)
@@ -83,10 +121,24 @@ def update_item(item_id: str, patch: ClothingItemUpdate) -> ClothingItem:
 @router.delete("/{item_id}", status_code=204)
 def delete_item(item_id: str) -> None:
     row = (
-        supabase().table("clothing_items").select("photo_url").eq("id", item_id).execute()
+        supabase()
+        .table("clothing_items")
+        .select("photo_url")
+        .eq("id", item_id)
+        .execute()
     )
     if not row.data:
         raise HTTPException(status_code=404, detail="Item not found")
     photo_url = row.data[0]["photo_url"]
     supabase().table("clothing_items").delete().eq("id", item_id).execute()
-    delete_photo(photo_url)
+    # Multi-item uploads (#24) share one storage object across N rows; only
+    # delete the photo when this was the last row referencing it.
+    remaining = (
+        supabase()
+        .table("clothing_items")
+        .select("id", count="exact")
+        .eq("photo_url", photo_url)
+        .execute()
+    )
+    if not remaining.count:
+        delete_photo(photo_url)

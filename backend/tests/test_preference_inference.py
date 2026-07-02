@@ -76,9 +76,10 @@ def test_shape_preserves_input_order():
 
 
 def test_weather_phrase_renders_temps_and_conditions():
-    assert _weather_phrase(
-        {"temp_high_c": 24, "temp_low_c": 14, "conditions": "clear"}
-    ) == "24/14°C, clear"
+    assert (
+        _weather_phrase({"temp_high_c": 24, "temp_low_c": 14, "conditions": "clear"})
+        == "24/14°C, clear"
+    )
 
 
 def test_weather_phrase_handles_missing_and_malformed():
@@ -102,7 +103,9 @@ def test_verdict_line_has_index_thumb_items_reason_weather_note():
 
 
 def test_verdict_line_thumb_up_and_no_items_placeholder():
-    [v] = _shape_verdicts([_row(feedback=1, item_ids=["gone"], feedback_note=None)], NAMES)
+    [v] = _shape_verdicts(
+        [_row(feedback=1, item_ids=["gone"], feedback_note=None)], NAMES
+    )
     line = _verdict_line(1, v)
     assert "👍 liked" in line
     assert "(items no longer in catalog)" in line

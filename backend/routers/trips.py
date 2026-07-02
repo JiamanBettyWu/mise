@@ -20,7 +20,9 @@ router = APIRouter(
 @router.post("/plan", response_model=TripPlanResponse)
 def plan(req: TripPlanRequest) -> TripPlanResponse:
     if req.end_date < req.start_date:
-        raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
+        raise HTTPException(
+            status_code=400, detail="end_date must be on or after start_date"
+        )
     try:
         return trip_planner.run(req)
     except DestinationNotFound as e:
