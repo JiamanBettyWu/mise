@@ -1,12 +1,12 @@
 import logging
 import traceback
 
-from services.weather import DestinationNotFound
 from fastapi import APIRouter, Depends, HTTPException
 
 from auth import require_password
 from schemas import TripPlanRequest, TripPlanResponse
 from services import trip_planner
+from services.weather import DestinationNotFound
 
 log = logging.getLogger("wardrobe.trips")
 
