@@ -93,9 +93,7 @@ def calendar_modes(
     return chosen, notes, explanation[:MAX_NOTE_CHARS]
 
 
-def todays_events(
-    ics_url: str, tz: tzinfo, now: datetime | None = None
-) -> list[dict]:
+def todays_events(ics_url: str, tz: tzinfo, now: datetime | None = None) -> list[dict]:
     """Fetch the ICS feed and return today's events as [{"title", "time"}]."""
     resp = httpx.get(ics_url, follow_redirects=True, timeout=30)
     resp.raise_for_status()

@@ -37,7 +37,9 @@ VERDICT_LABELS = {1: "👍 Thumbs up", -1: "👎 Thumbs down"}
 
 
 class AttributionBody(BaseModel):
-    reason: Literal["specific_items", "combination", "weather", "occasion"] | None = None
+    reason: Literal["specific_items", "combination", "weather", "occasion"] | None = (
+        None
+    )
     item_ids: list[str] = []
     note: str = ""
 
@@ -117,7 +119,9 @@ def record_feedback_attribution(token: str, body: AttributionBody):
     except TokenError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if verdict != -1:
-        raise HTTPException(status_code=400, detail="attribution follows a 👎 link only")
+        raise HTTPException(
+            status_code=400, detail="attribution follows a 👎 link only"
+        )
     try:
         record_attribution(history_id, body.reason, body.item_ids, body.note)
     except AttributionError as e:
@@ -217,7 +221,9 @@ def _attribution_form(token: str, item_ids: list[str]) -> str:
 """
 
 
-def _page(title: str, detail: str, status_code: int = 200, extra_html: str = "") -> HTMLResponse:
+def _page(
+    title: str, detail: str, status_code: int = 200, extra_html: str = ""
+) -> HTMLResponse:
     return HTMLResponse(
         f"""<!doctype html>
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1">

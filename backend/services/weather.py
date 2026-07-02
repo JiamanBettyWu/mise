@@ -29,8 +29,10 @@ class TodayWeather(TypedDict):
     precip_chance: float  # 0..1
     wind_kmh: float
 
+
 class DestinationNotFound(ValueError):
     """OpenWeatherMap couldn't geocode this destination string."""
+
 
 _cache: dict[tuple[float, float], tuple[float, TodayWeather]] = {}
 
@@ -123,7 +125,6 @@ def _fetch_forecast(lat: float, lon: float) -> dict:
     if cached and now - cached[0] < _FORECAST_TTL:
         return cached[1]
 
-
     api_key = os.environ["OPENWEATHERMAP_API_KEY"]
     resp = httpx.get(
         OWM_URL,
@@ -138,24 +139,24 @@ def _fetch_forecast(lat: float, lon: float) -> dict:
 
 def _date_range(start_date: date, end_date: date) -> list[date]:
     return [
-        start_date + timedelta(days=i)
-        for i in range((end_date - start_date).days + 1)
+        start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)
     ]
 
 
 def _summarize_conditions(daily: list[TripWeatherDay]) -> str:
     max_temp = max(d.high_c for d in daily)
     min_temp = min(d.low_c for d in daily)
-    most_common_conditions = Counter(d.conditions for d in daily).most_common(1)[
-        0
-    ][0]
+    most_common_conditions = Counter(d.conditions for d in daily).most_common(1)[0][0]
     max_precip = max(d.precip_chance for d in daily)
 
-    if max_precip > 0.5:    percip_summary = f"High chance of precipitation: {max_precip*100:.0f}%"
-    elif max_precip > 0.2:  percip_summary = f"Moderate chance: {max_precip*100:.0f}%"
-    elif max_precip > 0.05: percip_summary = f"Low chance: {max_precip*100:.0f}%"
-    else:                   percip_summary = "No precipitation expected."
-
+    if max_precip > 0.5:
+        percip_summary = f"High chance of precipitation: {max_precip*100:.0f}%"
+    elif max_precip > 0.2:
+        percip_summary = f"Moderate chance: {max_precip*100:.0f}%"
+    elif max_precip > 0.05:
+        percip_summary = f"Low chance: {max_precip*100:.0f}%"
+    else:
+        percip_summary = "No precipitation expected."
 
     return (
         f"Trip weather: high {max_temp}°C, low {min_temp}°C, "
@@ -189,10 +190,7 @@ def get_weather_for_destination(
 
     requested_dates = _date_range(start_date, end_date)
     covered_dates = [d for d in requested_dates if d in by_date]
-    daily = [
-        _rollup_day(by_date[d], d)
-        for d in covered_dates
-    ]
+    daily = [_rollup_day(by_date[d], d) for d in covered_dates]
 
     if not daily:
         return TripWeather(

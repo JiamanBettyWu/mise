@@ -57,6 +57,7 @@ def _get_active_preferences() -> tuple[list[str], list[str]]:
         log.warning("could not read preferences", exc_info=True)
         return [], []
 
+
 WARDROBE_FIELDS = (
     "id, name, type, color, formality, season, fabric, warmth, brand, description"
 )

@@ -39,6 +39,7 @@ def ensure_under_limit(image_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
 def _exif_transpose(img: Image.Image) -> Image.Image:
     try:
         from PIL import ImageOps
+
         return ImageOps.exif_transpose(img)
     except Exception:
         return img

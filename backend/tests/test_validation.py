@@ -67,7 +67,13 @@ def test_repair_loop_skipped_for_valid_outfits(monkeypatch):
         raise AssertionError("repair called on valid outfits")
 
     monkeypatch.setattr(claude, "_repair_outfits", _must_not_call)
-    clean = [{"label": "Smart casual", "item_ids": ["tee", "jeans", "flats"], "reasoning": "x"}]
+    clean = [
+        {
+            "label": "Smart casual",
+            "item_ids": ["tee", "jeans", "flats"],
+            "reasoning": "x",
+        }
+    ]
     out = claude._enforce_structure(clean, WARDROBE, WEATHER, modes=None, notes="")
     assert out == clean
 
@@ -78,12 +84,20 @@ def test_repair_loop_targets_only_failed_outfit(monkeypatch):
     def _good_repair(failed, wardrobe, weather, modes, notes):
         calls.append(len(failed))
         return [
-            {"label": "Smart casual", "item_ids": ["tee", "jeans", "flats"], "reasoning": "fixed"}
+            {
+                "label": "Smart casual",
+                "item_ids": ["tee", "jeans", "flats"],
+                "reasoning": "fixed",
+            }
         ]
 
     monkeypatch.setattr(claude, "_repair_outfits", _good_repair)
     bad = [
-        {"label": "Smart casual", "item_ids": ["tee", "jeans", "skirt", "flats"], "reasoning": "x"},
+        {
+            "label": "Smart casual",
+            "item_ids": ["tee", "jeans", "skirt", "flats"],
+            "reasoning": "x",
+        },
         {"label": "Athleisure", "item_ids": ["tee", "sneakers"], "reasoning": "y"},
     ]
     out = claude._enforce_structure(bad, WARDROBE, WEATHER, modes=None, notes="")
@@ -101,9 +115,16 @@ def test_repair_loop_caps_attempts_then_falls_back(monkeypatch):
 
     monkeypatch.setattr(claude, "_repair_outfits", _useless_repair)
     stubborn = [
-        {"label": "Elevated", "item_ids": ["skirt", "jeans", "flats", "sneakers"], "reasoning": "x"}
+        {
+            "label": "Elevated",
+            "item_ids": ["skirt", "jeans", "flats", "sneakers"],
+            "reasoning": "x",
+        }
     ]
     out = claude._enforce_structure(stubborn, WARDROBE, WEATHER, modes=None, notes="")
     assert calls == [1, 1], calls  # exactly MAX_REPAIR_ATTEMPTS calls
-    assert out[0]["item_ids"] == ["skirt", "flats"], out  # extras dropped, first picks kept
+    assert out[0]["item_ids"] == [
+        "skirt",
+        "flats",
+    ], out  # extras dropped, first picks kept
     assert validate_outfit(out[0]["item_ids"], TYPES) == []

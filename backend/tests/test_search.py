@@ -45,16 +45,16 @@ def test_maps_and_truncates(monkeypatch):
     first = out[0]
     assert isinstance(first, PurchaseResult)
     assert first.title == "Item 0"
-    assert first.url == "https://shop.example/0"       # product_link -> url
+    assert first.url == "https://shop.example/0"  # product_link -> url
     assert first.image_url == "https://img.example/0.jpg"
     assert first.price == "$0.00"
-    assert first.retailer == "ShopCo"                  # source -> retailer
+    assert first.retailer == "ShopCo"  # source -> retailer
 
 
 def test_skips_malformed_results(monkeypatch):
     results = [
         {"product_link": "https://shop.example/x", "source": "S"},  # no title
-        {"title": "No link"},                                       # no product_link
+        {"title": "No link"},  # no product_link
         {"title": "Good", "product_link": "https://shop.example/g"},
     ]
     monkeypatch.setattr(search, "_fetch_search_results", lambda query: results)

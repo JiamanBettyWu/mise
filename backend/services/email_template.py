@@ -64,8 +64,7 @@ def _render_outfit(index: int, outfit: dict) -> str:
           <div style="font-size:12px;margin-top:4px;line-height:1.3;">
             {escape(item['name'])}
           </div>
-        </td>"""
-        for item in outfit["items"]
+        </td>""" for item in outfit["items"]
     )
     return f"""\
 <div style="border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:12px;">
