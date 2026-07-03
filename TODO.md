@@ -14,52 +14,55 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-03 (latest session):** #95 (Travel-mode + In-laundry checkboxes
-→ `.switch`, PR #112) and #102 (nightly orphaned-photo sweep job, PR #113) both
-shipped and merged. Before that, the trip-planner speed wave shipped as three
-PRs — #107 closed (SerpAPI shaped timeout + parallel gap searches, PR #108),
-plus #2's START fan-out (PR #109) and Haiku query planning + trimmed catalog
-payload (PR #110). [#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)
-stays open for progressive indicators + streaming (and a `max_tokens` check).
-Full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-03 (latest session):** #114 shipped (PR #116) — the `llm_usage`
+metering table + `create_tracked()` funnel now record tokens/model for every
+production Anthropic call (migration already run in Supabase). Next in that
+thread: file + build the follow-up `GET /profile/stats` endpoint + dashboard UI
+that reads the table. Earlier the same day: #95 (checkboxes → `.switch`,
+PR #112) and #102 (orphaned-photo sweep job, PR #113). Full detail lives in
+[SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) remainder** —
+1. **Usage stats dashboard (follow-up to #114)** — file the issue and build
+   `GET /profile/stats` + the Profile dashboard UI reading `llm_usage`; cost
+   derived at read time from a price map (include the cache-token columns —
+   they exist precisely because `input_tokens` excludes cached tokens).
+2. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) remainder** —
    progressive UI indicators (pairs well with the #105 request store), a
    `max_tokens` check on real `recommend_packing_plan` responses (currently
    2048), and streaming only if the planner still feels slow after the shipped
    wave (fan-out + Haiku + trim + #107's parallel searches).
-2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
+3. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
    MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project.
-3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+4. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+5. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-5. **Check the first real-event morning for #64's events path** — the empty-day
+6. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+7. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+8. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+9. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
