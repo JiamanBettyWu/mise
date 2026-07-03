@@ -134,11 +134,14 @@ export default function AddClothingMultiForm({ onDone }) {
           )}
         </div>
       ))}
-      <div className="form__actions">
-        <button className={allDone ? '' : 'ghost'} onClick={() => onDone?.()}>
-          Done
-        </button>
-      </div>
+      {/* Only rendered once every card is saved or discarded: mid-review it
+          would silently drop unsaved suggestions (and orphan their uploaded
+          crops). Bailing early is still possible via the nav. */}
+      {allDone && (
+        <div className="form__actions">
+          <button onClick={() => onDone?.()}>Done</button>
+        </div>
+      )}
     </div>
   );
 }
