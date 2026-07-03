@@ -14,25 +14,24 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-03:** Trip generation now survives navigating away mid-request
-(#105 → PR #106, shared `createRequestStore()` factory); next session is
-[#107](https://github.com/JiamanBettyWu/wardrobe-ai/issues/107) (SerpAPI
-timeout bump + parallel gap searches) and
-[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) (trip-planner
-speed — see the re-ranked analysis comment there). **⚠️ Manual follow-up still
-open — rotate the SerpAPI + OpenWeatherMap keys** (they appeared in logs
-before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-03 (later session):** the trip-planner speed wave shipped as
+three PRs — #107 closed (SerpAPI shaped timeout + parallel gap searches,
+PR #108), plus #2's START fan-out (PR #109) and Haiku query planning +
+trimmed catalog payload (PR #110).
+[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) stays open for
+progressive indicators + streaming (and a `max_tokens` check). **⚠️ Manual
+follow-up still open — rotate the SerpAPI + OpenWeatherMap keys** (they
+appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **[#107](https://github.com/JiamanBettyWu/wardrobe-ai/issues/107) +
-   [#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — the planned
-   next session: SerpAPI shaped timeout + parallel per-gap searches (#107,
-   includes a LEARNINGS entry), then trip-planner speed per the re-ranked
-   comment on #2 (START fan-out first — best LangGraph rep — then Haiku for
-   query planning + payload trim; streaming last).
+1. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) remainder** —
+   progressive UI indicators (pairs well with the #105 request store), a
+   `max_tokens` check on real `recommend_packing_plan` responses (currently
+   2048), and streaming only if the planner still feels slow after the shipped
+   wave (fan-out + Haiku + trim + #107's parallel searches).
 2. **Rotate the SerpAPI + OpenWeatherMap keys** (see Current state). Then
    optionally [#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)
    (MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a

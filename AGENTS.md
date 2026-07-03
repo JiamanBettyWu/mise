@@ -47,16 +47,18 @@ A straight-line Python function: pull weather → load catalog → extremes gate
 A LangGraph `StateGraph` over a `PackingState` TypedDict:
 
 ```
-get_weather → infer_weather_if_needed → get_catalog → reason_and_select ──(has_gaps)──→ plan_purchase_queries → search_purchases ─┐
-                                                                    ──(no_gaps )──────────────────────────────────────────────────┴→ generate_output → END
+START ─┬→ get_weather → infer_weather_if_needed ─┐
+       └→ get_catalog ───────────────────────────┴→ reason_and_select ──(has_gaps)──→ plan_purchase_queries → search_purchases ─┐
+                                                                       ──(no_gaps )──────────────────────────────────────────────┴→ generate_output → END
 ```
 
 - The graph is **compiled once at module load** (`_APP = build_graph()`) and reused across requests — see comment in `trip_planner.py`.
 - `check_gaps` is a router function (returns a string label, doesn't mutate state); `add_conditional_edges` dispatches on it.
 - Nodes return **partial state dicts** (`return {"weather": ...}`); they never mutate `state` in place. LangGraph merges the dict into the journal.
 - `infer_weather_if_needed_node` only calls Claude for partial/missing forecast coverage; full forecasts pass through unchanged.
-- `plan_purchase_queries_node` makes one lightweight Claude call per trip to turn gaps into concise Google Shopping queries, using `profile.shopping_department` plus applicable preferences. If planning fails, it falls back to deterministic `{department} + {gap.item}` queries.
-- `search_purchases_node` is best-effort: SerpAPI failures or empty results keep the gap visible with `results=[]`, so the packing plan still renders.
+- The weather and catalog branches **fan out from START** and have unequal lengths, so the join uses the list form `add_edge(["infer_weather_if_needed", "get_catalog"], "reason_and_select")` — naive per-edge joins would fire `reason_and_select` a superstep early (#2).
+- `plan_purchase_queries_node` makes one lightweight **Haiku** call per trip to turn gaps into concise Google Shopping queries, using `profile.shopping_department` plus applicable preferences. If planning fails, it falls back to deterministic `{department} + {gap.item}` queries. (The main `reason_and_select` call deliberately stays on Sonnet.)
+- `search_purchases_node` is best-effort and **concurrent** (per-gap searches run in a thread pool, #107): any per-query failure or empty result keeps that gap visible with `results=[]`, so the packing plan still renders.
 
 **3. Weekly preference inference** — [`services/preference_inference.py`](backend/services/preference_inference.py)
 A LangGraph `StateGraph` over an `InferenceState` TypedDict, run from a weekly GitHub Actions cron ([`jobs/infer_preferences.py`](jobs/infer_preferences.py), [`.github/workflows/infer-preferences.yml`](.github/workflows/infer-preferences.yml)):
