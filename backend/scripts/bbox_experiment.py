@@ -62,8 +62,11 @@ Fields per item:
   sandals, bag, scarf, hat, belt, accessory, other.
 - bbox: the item's bounding box as [x1, y1, x2, y2] in PIXEL coordinates of
   the provided image, where (0, 0) is the top-left corner, (x1, y1) is the
-  box's top-left and (x2, y2) its bottom-right. The box should tightly
-  enclose the entire visible item.
+  box's top-left and (x2, y2) its bottom-right. The box MUST fully contain
+  every part of the item — sleeves, straps, hems, drapes. Err on the side
+  of a LARGER box: a box that includes a little background is fine; a box
+  that cuts off part of the item is a failure. Double-check each edge
+  against the item's extremities before answering.
 
 Rules:
 - One entry per distinct physical item; tag at most 9 (the most prominent).
