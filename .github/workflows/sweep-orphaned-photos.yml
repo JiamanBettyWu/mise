@@ -1,0 +1,32 @@
+name: Sweep orphaned photos
+
+on:
+  # Nightly, off-peak from the daily-outfit (08:20 UTC) and preference-inference
+  # (Monday 01:20 UTC) crons so they don't compete for Actions minutes. The
+  # :40 minute dodges :00, the platform's most congested slot.
+  schedule:
+    - cron: "40 5 * * *"
+  # Allow manual trigger from the Actions tab for testing.
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Run orphaned-photo sweep
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python jobs/sweep_orphaned_photos.py
