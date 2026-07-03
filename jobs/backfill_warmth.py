@@ -68,14 +68,20 @@ def main() -> int:
         print(f"  {warmth}  {names[iid]}")
     skipped = len(rows) - len(assignments)
     if skipped:
-        print(f"[note] {skipped} item(s) left null (no-warmth items or missing from reply)")
+        print(
+            f"[note] {skipped} item(s) left null (no-warmth items or missing from reply)"
+        )
 
     if dry_run:
-        print(f"[dry-run] would set warmth on {len(assignments)} items; nothing written")
+        print(
+            f"[dry-run] would set warmth on {len(assignments)} items; nothing written"
+        )
         return 0
 
     for iid, warmth in assignments.items():
-        supabase().table("clothing_items").update({"warmth": warmth}).eq("id", iid).execute()
+        supabase().table("clothing_items").update({"warmth": warmth}).eq(
+            "id", iid
+        ).execute()
     print(f"[done] warmth set on {len(assignments)} items")
     return 0
 

@@ -1,8 +1,8 @@
 """Phase 3 demo: consume the wardrobe-shopping MCP server over stdio (#79)."""
 
 import asyncio
-
 from pathlib import Path
+
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 

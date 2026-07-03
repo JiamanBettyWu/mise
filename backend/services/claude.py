@@ -60,12 +60,19 @@ TAGGING_FIELD_SPEC = f"""\
 
 TAGGING_SYSTEM_PROMPT = f"""You are a clothing-tagging assistant for a personal wardrobe app.
 
-Given a photo of a single clothing item, return a JSON object with these fields:
+Given a photo that may contain one clothing/accessory item, return a JSON object
+of the shape:
+
+{{"items": [<one tag object>]}}
+
+The tag object has these fields:
 
 {TAGGING_FIELD_SPEC}
 
 Return ONLY the JSON object, no commentary, no markdown fences. The JSON must
-be parseable. If multiple items appear in the photo, tag the most prominent one.
+be parseable. If multiple items appear in the photo, tag only the most
+prominent one. If the photo contains no clothing or accessory items, return
+{{"items": []}}.
 """
 
 # Multi-item tagging (#24): hard cap on items per photo. Baked into the prompt
@@ -101,10 +108,11 @@ def client() -> Anthropic:
     return Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
-def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
-    """Send photo to Claude vision; return parsed tag dict.
+def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict | None:
+    """Send photo to Claude vision; return parsed tag dict or None.
 
     Uses prompt caching on the system prompt so repeat tagging is cheaper.
+    None means Claude found no clothing/accessory item in the photo.
     """
     image_bytes, mime_type = ensure_under_limit(image_bytes, mime_type)
     image_b64 = base64.standard_b64encode(image_bytes).decode("ascii")
@@ -137,7 +145,8 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict:
         ],
     )
 
-    return parse_json(resp)
+    items = _tag_items_from_response(parse_json(resp))
+    return items[0] if items else None
 
 
 @op  # Weave trace node (#85); the Anthropic call inside auto-nests here.
@@ -180,12 +189,27 @@ def tag_clothing_photo_multi(image_bytes: bytes, mime_type: str) -> list[dict]:
         ],
     )
 
-    data = parse_json(resp)
+    items = _tag_items_from_response(parse_json(resp))
+    return items[:MAX_MULTI_ITEMS]
+
+
+def _tag_items_from_response(data) -> list[dict]:
+    """Normalize single/multi tagging JSON into a list of tag objects."""
+
     # Tolerate a bare array even though the prompt asks for {"items": [...]}.
-    items = data if isinstance(data, list) else data.get("items", [])
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict) and "items" in data:
+        items = data["items"]
+    elif isinstance(data, dict):
+        # Backward compatibility for older single-item responses that emitted
+        # the tag object directly.
+        items = [data]
+    else:
+        raise ValueError(f"Expected a JSON object or array, got {type(data).__name__}")
     if not isinstance(items, list):
         raise ValueError(f"Expected a list of tag objects, got {type(items).__name__}")
-    return items[:MAX_MULTI_ITEMS]
+    return items
 
 
 MODE_CLASSIFIER_PROMPT = """You select which outfit "modes" a day's plans call

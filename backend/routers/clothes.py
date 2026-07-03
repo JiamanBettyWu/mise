@@ -21,8 +21,10 @@ router = APIRouter(
 ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic"}
 
 
-@router.post("/upload", response_model=TagSuggestion)
-async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
+@router.post("/upload", response_model=TagSuggestion | list[TagSuggestion])
+async def upload_and_tag(
+    file: UploadFile = File(...),
+) -> TagSuggestion | list[TagSuggestion]:
     """Upload photo to storage and return Claude's suggested tags.
 
     Two-step flow: this returns suggestions; frontend reviews/edits, then calls
@@ -48,6 +50,10 @@ async def upload_and_tag(file: UploadFile = File(...)) -> TagSuggestion:
         log.error("Tagging failed:\n%s", traceback.format_exc())
         delete_photo(public_url)
         raise HTTPException(status_code=502, detail="Tagging failed")
+
+    if not tags:
+        delete_photo(public_url)
+        return []
 
     return TagSuggestion(photo_url=public_url, **tags)
 

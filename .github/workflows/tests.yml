@@ -26,6 +26,14 @@ jobs:
         working-directory: backend
         run: uv sync
 
+      - name: Check backend formatting
+        working-directory: backend
+        run: uv run black --check . ../jobs
+
+      - name: Check backend import sorting
+        working-directory: backend
+        run: uv run isort --check . ../jobs
+
       # Offline suite only — no secrets, no network, free. The RUN_E2E=1
       # live-pipeline test self-skips when the flag is absent.
       - name: Run offline test suite

@@ -1,8 +1,8 @@
-"""Tests for tag_clothing_photo_multi's response handling (#24).
+"""Tests for tagging response handling (#24 plus single empty-state parity).
 
 The Anthropic client and image normalization are faked out; these cover the
 parse/shape layer only — wrapper object vs bare array, empty result, the
-MAX_MULTI_ITEMS cap, and malformed shapes.
+MAX_MULTI_ITEMS cap, single-item no-detection, and malformed shapes.
 """
 
 import json
@@ -52,6 +52,23 @@ def fake_claude(monkeypatch):
 
 def _tags(n):
     return [{"name": f"Item {i}", "type": "accessory"} for i in range(n)]
+
+
+def test_single_wrapped_item_returns_first_tag(fake_claude):
+    fake_claude(json.dumps({"items": _tags(1)}))
+    out = claude.tag_clothing_photo(b"img", "image/jpeg")
+    assert out["name"] == "Item 0"
+
+
+def test_single_empty_items_returns_none(fake_claude):
+    fake_claude('{"items": []}')
+    assert claude.tag_clothing_photo(b"img", "image/jpeg") is None
+
+
+def test_single_legacy_object_tolerated(fake_claude):
+    fake_claude(json.dumps({"name": "Legacy tag", "type": "accessory"}))
+    out = claude.tag_clothing_photo(b"img", "image/jpeg")
+    assert out["name"] == "Legacy tag"
 
 
 def test_wrapped_items_object(fake_claude):

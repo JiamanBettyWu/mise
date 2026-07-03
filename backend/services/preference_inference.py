@@ -45,8 +45,9 @@ import re
 from datetime import datetime, timezone
 from typing import TypedDict
 
-from db.supabase import client as supabase
 from langgraph.graph import END, StateGraph
+
+from db.supabase import client as supabase
 from services.claude import client, parse_json
 
 log = logging.getLogger("wardrobe.preference_inference")

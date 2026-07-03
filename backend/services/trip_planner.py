@@ -21,8 +21,9 @@ import logging
 from datetime import date
 from typing import TypedDict
 
-from db.supabase import client as supabase
 from langgraph.graph import END, StateGraph
+
+from db.supabase import client as supabase
 from schemas import (
     ClothingItem,
     Gap,
@@ -35,8 +36,8 @@ from schemas import (
     TripWeather,
 )
 from services.claude import client, parse_json
-from services.weather import get_weather_for_destination
 from services.search import search_products
+from services.weather import get_weather_for_destination
 
 MODEL = "claude-sonnet-4-6"
 log = logging.getLogger("wardrobe.trip_planner")

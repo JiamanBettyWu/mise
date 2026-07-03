@@ -6,9 +6,10 @@ import time
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from typing import TypedDict
-from schemas import TripWeather, TripWeatherDay
 
 import httpx
+
+from schemas import TripWeather, TripWeatherDay
 
 # #88: the OWM key rides in the request URL's query string, and httpx logs full
 # URLs at INFO — silence its request logger so the key never hits the logs.

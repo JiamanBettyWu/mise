@@ -26,6 +26,7 @@ package = false
 [dependency-groups]
 dev = [
     "black>=26.5.1",
+    "isort>=8.0.1",
     "mcp[cli]>=1.28.1",
     "pytest>=9.0.3",
     # Weave observability (#85) — trace-only, never shipped to Render. It is
@@ -36,6 +37,19 @@ dev = [
 
 [tool.black]
 target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+honor_noqa = true
+known_first_party = [
+    "auth",
+    "daily_outfit",
+    "db",
+    "observability",
+    "routers",
+    "schemas",
+    "services",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

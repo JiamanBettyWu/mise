@@ -1,9 +1,11 @@
 """SerpAPI Google purchase"""
 
-import time
-import httpx
-import os
 import logging
+import os
+import time
+
+import httpx
+
 from schemas import PurchaseResult
 
 logger = logging.getLogger(__name__)
