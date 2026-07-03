@@ -14,14 +14,14 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-03 (later session):** the trip-planner speed wave shipped as
-three PRs — #107 closed (SerpAPI shaped timeout + parallel gap searches,
-PR #108), plus #2's START fan-out (PR #109) and Haiku query planning +
-trimmed catalog payload (PR #110).
-[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) stays open for
-progressive indicators + streaming (and a `max_tokens` check). The SerpAPI +
-OpenWeatherMap key rotation (open since #88) is **done** as of 2026-07-03;
-full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-03 (latest session):** #95 (Travel-mode + In-laundry checkboxes
+→ `.switch`, PR #112) and #102 (nightly orphaned-photo sweep job, PR #113) both
+shipped and merged. Before that, the trip-planner speed wave shipped as three
+PRs — #107 closed (SerpAPI shaped timeout + parallel gap searches, PR #108),
+plus #2's START fan-out (PR #109) and Haiku query planning + trimmed catalog
+payload (PR #110). [#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)
+stays open for progressive indicators + streaming (and a `max_tokens` check).
+Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -62,11 +62,6 @@ full detail lives in [SESSIONS.md](SESSIONS.md).
 8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
-9. **[#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95)** —
-   Travel-mode checkboxes → `.switch` (quick one).
-   **[#102](https://github.com/JiamanBettyWu/wardrobe-ai/issues/102)** —
-   sweep job for storage objects orphaned by abandoned upload reviews
-   (tech-debt, not urgent).
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
 (catalog by categories), [#5](https://github.com/JiamanBettyWu/wardrobe-ai/issues/5)
