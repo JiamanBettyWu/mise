@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../services/api.js';
-import { getCurrentPosition } from '../services/geo.js';
+import {
+  clearError as clearGenError,
+  consumeResult,
+  getSnapshot,
+  startGeneration,
+  subscribe,
+} from '../services/todayGeneration.js';
 
 const STORAGE_KEY = 'today_state';
 
@@ -31,10 +37,19 @@ export default function TodayOutfit() {
   const [travelMode, setTravelMode] = useState(persisted?.form?.travelMode ?? false);
   const [notes, setNotes] = useState(persisted?.form?.notes ?? '');
   const [data, setData] = useState(persisted?.data ?? null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [usingMyLocation, setUsingMyLocation] = useState(false);
-  const coordsRef = useRef(null);
+
+  // Generation lives in a module-scope store so it survives navigating away
+  // mid-request; we subscribe here and adopt the result when it lands.
+  const gen = useSyncExternalStore(subscribe, getSnapshot);
+  const { loading, usingMyLocation } = gen;
+
+  useEffect(() => {
+    if (gen.result) {
+      setData(gen.result);
+      consumeResult();
+    }
+  }, [gen.result]);
 
   useEffect(() => {
     const isEmpty = !notes && !data && !travelMode;
@@ -58,7 +73,7 @@ export default function TodayOutfit() {
     setNotes('');
     setData(null);
     setError('');
-    setUsingMyLocation(false);
+    clearGenError();
   }
 
   // Web twin of the email 👍/👎 (#41): same outfit_history row, authed POST
@@ -116,26 +131,9 @@ export default function TodayOutfit() {
     }));
   }, []);
 
-  const generate = useCallback(async () => {
-    setLoading(true);
+  const generate = useCallback(() => {
     setError('');
-    try {
-      const coords = coordsRef.current || (await getCurrentPosition());
-      coordsRef.current = coords;
-      setUsingMyLocation(!!coords);
-      const result = await api.recommend({
-        travel_mode: travelMode,
-        notes,
-        n: 3,
-        lat: coords?.lat ?? null,
-        lon: coords?.lon ?? null,
-      });
-      setData(result);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
+    startGeneration({ travelMode, notes });
   }, [travelMode, notes]);
 
   return (
@@ -183,14 +181,14 @@ export default function TodayOutfit() {
           )}
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {(gen.error || error) && <p className="error">{gen.error || error}</p>}
       </div>
 
       {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
 
       {loading && <p className="muted">Picking outfits…</p>}
 
-      {!data && !loading && !error && (
+      {!data && !loading && !error && !gen.error && (
         <p className="muted" style={{ marginTop: '1rem' }}>
           Click <strong>Generate</strong> to get suggestions for today. For your
           regular daily picks, check your morning email.
