@@ -9,9 +9,13 @@ not, the negative result gets documented and B-full is deferred.
 Deliberately uses services.claude.MODEL — the question is whether the model
 we actually tag with can localize items, not whether some other model can.
 The photo goes through ensure_under_limit first (same as the real upload
-path), the prompt states that image's exact pixel dimensions, and the boxes
-are drawn on those same bytes, so coordinates are never scaled across
-representations.
+path), then is shrunk to fit the vision API's internal resize limits
+(~1.15 megapixels / 1568px long edge). That second step is load-bearing:
+the API silently downscales anything larger before the model sees it, so
+the model reports coordinates in the resized frame — drawing those on the
+original shifts every box toward the top-left by the resize factor. By
+resizing ourselves first, the bytes the model sees are pixel-identical to
+the bytes we annotate.
 
 Run from repo root against ~10 real photos (accessories on a tray, clothes
 laid flat, a mixed pile):
@@ -81,6 +85,12 @@ COLORS = [
     "#000075",
 ]
 
+# Anthropic vision API internal resize limits: images beyond either bound are
+# downscaled server-side before the model sees them, which desyncs the model's
+# coordinate space from ours. Stay under both so no hidden resize happens.
+VISION_MAX_EDGE = 1568
+VISION_MAX_PIXELS = 1_150_000
+
 MIME_BY_SUFFIX = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -88,6 +98,25 @@ MIME_BY_SUFFIX = {
     ".webp": "image/webp",
     ".heic": "image/heic",
 }
+
+
+def fit_to_vision_limits(image_bytes: bytes, mime: str) -> tuple[bytes, str]:
+    """Shrink the image below the API's resize thresholds (no-op if already under)."""
+    img = Image.open(io.BytesIO(image_bytes))
+    w, h = img.size
+    scale = min(
+        1.0,
+        VISION_MAX_EDGE / max(w, h),
+        (VISION_MAX_PIXELS / (w * h)) ** 0.5,
+    )
+    if scale >= 1.0:
+        return image_bytes, mime
+    img = img.convert("RGB").resize(
+        (int(w * scale), int(h * scale)), Image.Resampling.LANCZOS
+    )
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    return buf.getvalue(), "image/jpeg"
 
 
 def ask_for_boxes(
@@ -157,7 +186,10 @@ def run(paths: list[Path], out_dir: Path) -> None:
         # the bytes we're about to send (a mismatch is a vision-API 400).
         img = Image.open(io.BytesIO(image_bytes))
         mime = Image.MIME.get(img.format, mime)
-        width, height = img.size
+        # Pre-shrink below the API's internal resize limits so the model's
+        # coordinate frame is pixel-identical to the bytes we annotate.
+        image_bytes, mime = fit_to_vision_limits(image_bytes, mime)
+        width, height = Image.open(io.BytesIO(image_bytes)).size
         items = ask_for_boxes(image_bytes, mime, width, height)
         if not items:
             print("    no items returned")
