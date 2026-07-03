@@ -41,13 +41,51 @@ def test_graph_shape():
         "generate_output",
     } <= nodes
     edges = {(e.source, e.target) for e in g.edges}
+    # #2: weather and catalog fan out from START in parallel...
+    assert ("__start__", "get_weather") in edges
+    assert ("__start__", "get_catalog") in edges
     assert ("get_weather", "infer_weather_if_needed") in edges
-    assert ("infer_weather_if_needed", "get_catalog") in edges
+    # ...and both branches join before reason_and_select.
+    assert ("infer_weather_if_needed", "reason_and_select") in edges
     assert ("get_catalog", "reason_and_select") in edges
     assert ("plan_purchase_queries", "search_purchases") in edges
     assert ("search_purchases", "generate_output") in edges
     fork_targets = {t for s, t in edges if s == "reason_and_select"}
     assert {"plan_purchase_queries", "generate_output"} <= fork_targets
+
+
+def test_fanout_joins_before_reason_and_select(monkeypatch):
+    # #2: the weather branch (2 steps) and catalog branch (1 step) fan out from
+    # START and must BOTH complete before reason_and_select fires. With naive
+    # per-edge joins the shorter catalog branch would trigger it a superstep
+    # early, before infer_weather_if_needed had merged its state.
+    seen = {}
+
+    monkeypatch.setattr(
+        "services.trip_planner.get_weather_node",
+        lambda s: {"weather": TripWeather(summary="Sunny.", coverage="full_forecast")},
+    )
+    monkeypatch.setattr(
+        "services.trip_planner.get_catalog_node", lambda s: {"catalog": []}
+    )
+
+    def _fake_reason(state):
+        seen["weather"] = state.get("weather")
+        seen["catalog"] = state.get("catalog")
+        return {"candidate_items": [], "gaps": [], "reasoning": "", "essentials": []}
+
+    monkeypatch.setattr("services.trip_planner.reason_and_select_node", _fake_reason)
+
+    build_graph().invoke(
+        {
+            "destination": "Paris, France",
+            "start_date": date(2026, 7, 10),
+            "end_date": date(2026, 7, 12),
+            "additional_notes": "",
+        }
+    )
+    assert seen["weather"] is not None, "weather branch must finish before reasoning"
+    assert seen["catalog"] is not None, "catalog branch must finish before reasoning"
 
 
 def test_check_gaps_router():

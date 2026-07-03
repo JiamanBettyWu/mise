@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import TypedDict
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END, START, StateGraph
 
 from db.supabase import client as supabase
 from schemas import (
@@ -583,10 +583,16 @@ def build_graph():
     g.add_node("plan_purchase_queries", plan_purchase_queries_node)
     g.add_node("search_purchases", search_purchases_node)
 
-    g.set_entry_point("get_weather")
+    # #2: weather and catalog are independent — fan out from START so the
+    # catalog fetch doesn't wait behind the weather branch (which includes a
+    # 1-3s Claude climate-inference call for most real trips).
+    g.add_edge(START, "get_weather")
+    g.add_edge(START, "get_catalog")
     g.add_edge("get_weather", "infer_weather_if_needed")
-    g.add_edge("infer_weather_if_needed", "get_catalog")
-    g.add_edge("get_catalog", "reason_and_select")
+    # The branches are different lengths, so join with the list form: it defers
+    # reason_and_select until BOTH parents have run. Two separate add_edge
+    # calls would trigger it as soon as the shorter catalog branch finished.
+    g.add_edge(["infer_weather_if_needed", "get_catalog"], "reason_and_select")
 
     g.add_conditional_edges(
         "reason_and_select",
