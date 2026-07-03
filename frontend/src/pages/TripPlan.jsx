@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import TripPlanResult from '../components/TripPlanResult.jsx';
-import { api } from '../services/api.js';
+import {
+  clearError as clearPlanError,
+  consumeResult,
+  getSnapshot,
+  startPlanning,
+  subscribe,
+} from '../services/tripGeneration.js';
 
 const STORAGE_KEY = 'trip_state';
 
@@ -42,8 +48,20 @@ export default function TripPlan() {
   const [endDate, setEndDate] = useState(persisted?.form?.endDate ?? todayPlus(5));
   const [notes, setNotes] = useState(persisted?.form?.notes ?? '');
   const [plan, setPlan] = useState(persisted?.plan ?? null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); // local validation errors only
+
+  // Planning lives in a module-scope store so it survives navigating away
+  // mid-request; we subscribe here and adopt the result when it lands (the
+  // persistence effect below then writes it into localStorage).
+  const gen = useSyncExternalStore(subscribe, getSnapshot);
+  const { loading } = gen;
+
+  useEffect(() => {
+    if (gen.result) {
+      setPlan(gen.result);
+      consumeResult();
+    }
+  }, [gen.result]);
 
   useEffect(() => {
     const isEmpty = !destination && !notes && !plan;
@@ -68,9 +86,10 @@ export default function TripPlan() {
     setNotes('');
     setPlan(null);
     setError('');
+    clearPlanError();
   }
 
-  async function generate(e) {
+  function generate(e) {
     e?.preventDefault();
     if (!destination.trim()) {
       setError('Destination is required.');
@@ -80,23 +99,15 @@ export default function TripPlan() {
       setError('End date must be on or after start date.');
       return;
     }
-    setLoading(true);
     setError('');
-    try {
-      const result = await api.planTrip({
-        destination: destination.trim(),
-        start_date: startDate,
-        end_date: endDate,
-        additional_notes: notes.trim(),
-        lat: selected?.lat ?? null,
-        lon: selected?.lon ?? null,
-      });
-      setPlan(result);
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setLoading(false);
-    }
+    startPlanning({
+      destination: destination.trim(),
+      start_date: startDate,
+      end_date: endDate,
+      additional_notes: notes.trim(),
+      lat: selected?.lat ?? null,
+      lon: selected?.lon ?? null,
+    });
   }
 
   return (
@@ -150,7 +161,7 @@ export default function TripPlan() {
           </button>
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {(gen.error || error) && <p className="error">{gen.error || error}</p>}
         </form>
       </div>
 
