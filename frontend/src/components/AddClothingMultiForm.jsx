@@ -6,11 +6,12 @@ import ClothingFields from './ClothingFields.jsx';
 // Multi-item review flow (#24): one photo, N independent review cards.
 // Unlike AddClothingForm's single linear state machine, each card carries its
 // own status — card 3 can fail to save while card 4 succeeds.
+// Since #100 each card's photo_url is its own cropped thumbnail (falling back
+// to the full photo when the crop failed), so cards show their own image.
 export default function AddClothingMultiForm({ onDone }) {
   const [stage, setStage] = useState('pick'); // pick | tagging | review
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
   // Each card: { key, draft, status: 'review' | 'saving' | 'saved', error }
   const [cards, setCards] = useState([]);
 
@@ -28,7 +29,6 @@ export default function AddClothingMultiForm({ onDone }) {
         setStage('pick');
         return;
       }
-      setPhotoUrl(suggestions[0].photo_url);
       setCards(
         suggestions.map((tags, i) => ({
           key: i,
@@ -82,8 +82,8 @@ export default function AddClothingMultiForm({ onDone }) {
           <span>{stage === 'tagging' ? 'AI is tagging…' : 'Choose a photo'}</span>
         </label>
         <div className="muted">
-          Every item in the photo gets its own entry — best for accessories.
-          All entries share the one photo.
+          Every item in the photo gets its own entry and its own cropped
+          thumbnail — best for accessories.
         </div>
         {notice && <div className="muted">{notice}</div>}
         {error && <div className="error">{error}</div>}
@@ -95,10 +95,9 @@ export default function AddClothingMultiForm({ onDone }) {
 
   return (
     <div className="form multi-form">
-      <img src={photoUrl} alt="" className="form__preview" />
       <div className="muted">
-        {cards.length} item{cards.length === 1 ? '' : 's'} found — all will share
-        this photo in your catalog.
+        {cards.length} item{cards.length === 1 ? '' : 's'} found — each with its
+        own thumbnail cropped from the photo.
       </div>
       {cards.map((card) => (
         <div key={card.key} className="multi-form__card">
@@ -106,6 +105,11 @@ export default function AddClothingMultiForm({ onDone }) {
             <div className="muted">✓ Saved — {card.draft.name}</div>
           ) : (
             <>
+              <img
+                src={card.draft.photo_url}
+                alt=""
+                className="multi-form__thumb"
+              />
               <ClothingFields
                 value={card.draft}
                 onChange={(draft) => patchCard(card.key, { draft })}
@@ -130,11 +134,14 @@ export default function AddClothingMultiForm({ onDone }) {
           )}
         </div>
       ))}
-      <div className="form__actions">
-        <button className={allDone ? '' : 'ghost'} onClick={() => onDone?.()}>
-          Done
-        </button>
-      </div>
+      {/* Only rendered once every card is saved or discarded: mid-review it
+          would silently drop unsaved suggestions (and orphan their uploaded
+          crops). Bailing early is still possible via the nav. */}
+      {allDone && (
+        <div className="form__actions">
+          <button onClick={() => onDone?.()}>Done</button>
+        </div>
+      )}
     </div>
   );
 }

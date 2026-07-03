@@ -7,13 +7,23 @@ from db.supabase import client
 BUCKET = "clothes-photos"
 
 
-def upload_photo(image_bytes: bytes, filename: str, mime_type: str) -> tuple[str, str]:
-    """Upload an image to Supabase Storage. Returns (storage_path, public_url)."""
-    # Prefer the mime type for the extension so the file path matches the
-    # actual bytes — e.g. when HEIC was transcoded to JPEG upstream, we want
-    # ".jpg", not the original ".heic" the user uploaded.
-    ext = _ext_from_mime(mime_type) or PurePosixPath(filename).suffix.lower()
-    storage_path = f"{uuid.uuid4()}{ext}"
+def upload_photo(
+    image_bytes: bytes,
+    filename: str,
+    mime_type: str,
+    storage_path: str | None = None,
+) -> tuple[str, str]:
+    """Upload an image to Supabase Storage. Returns (storage_path, public_url).
+
+    `storage_path` overrides the generated name — used by per-item crops
+    (#100) to land as siblings of their shared original ({stem}_item{i}.jpg).
+    """
+    if storage_path is None:
+        # Prefer the mime type for the extension so the file path matches the
+        # actual bytes — e.g. when HEIC was transcoded to JPEG upstream, we
+        # want ".jpg", not the original ".heic" the user uploaded.
+        ext = _ext_from_mime(mime_type) or PurePosixPath(filename).suffix.lower()
+        storage_path = f"{uuid.uuid4()}{ext}"
 
     client().storage.from_(BUCKET).upload(
         path=storage_path,

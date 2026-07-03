@@ -8,7 +8,7 @@ from functools import lru_cache
 from anthropic import Anthropic
 
 from observability import op
-from services.image import ensure_under_limit
+from services.image import ensure_under_limit, fit_to_vision_limits, image_size
 from services.validation import drop_extras, validate_outfit
 
 log = logging.getLogger("wardrobe.claude")
@@ -90,6 +90,13 @@ and return a JSON object of the shape:
 Each tag object has these fields:
 
 {TAGGING_FIELD_SPEC}
+- bbox: the item's bounding box as [x1, y1, x2, y2] in PIXEL coordinates of
+  the provided image, where (0, 0) is the top-left corner, (x1, y1) is the
+  box's top-left and (x2, y2) its bottom-right. The box MUST fully contain
+  every part of the item — sleeves, straps, hems, drapes. Err on the side
+  of a LARGER box: a box that includes a little background is fine; a box
+  that cuts off part of the item is a failure. Double-check each edge
+  against the item's extremities before answering.
 
 Rules:
 - One tag object per distinct physical item. Do not merge similar items; two
@@ -155,8 +162,16 @@ def tag_clothing_photo_multi(image_bytes: bytes, mime_type: str) -> list[dict]:
 
     Multi-item variant of tag_clothing_photo (#24). Returns [] when Claude
     finds no clothing/accessory items, and at most MAX_MULTI_ITEMS entries.
+
+    Each tag may carry a `bbox` in pixel coordinates (#100). Those coordinates
+    are only valid against bytes that went through fit_to_vision_limits —
+    otherwise the API's silent server-side downscale desyncs the model's
+    coordinate frame from ours (#96). Both normalizations are idempotent, so
+    the router pre-fitting the same bytes sees an identical frame.
     """
     image_bytes, mime_type = ensure_under_limit(image_bytes, mime_type)
+    image_bytes, mime_type = fit_to_vision_limits(image_bytes, mime_type)
+    width, height = image_size(image_bytes)
     image_b64 = base64.standard_b64encode(image_bytes).decode("ascii")
 
     resp = client().messages.create(
@@ -183,7 +198,15 @@ def tag_clothing_photo_multi(image_bytes: bytes, mime_type: str) -> list[dict]:
                             "data": image_b64,
                         },
                     },
-                    {"type": "text", "text": "Tag every item in this photo."},
+                    {
+                        "type": "text",
+                        # Stating the dimensions anchors the bbox coordinate
+                        # frame — proven necessary in the #96 experiment.
+                        "text": (
+                            f"This image is {width}x{height} pixels. "
+                            "Tag every item in this photo."
+                        ),
+                    },
                 ],
             }
         ],

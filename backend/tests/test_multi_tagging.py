@@ -45,6 +45,8 @@ def fake_claude(monkeypatch):
         fake = _FakeClient(text)
         monkeypatch.setattr(claude, "client", lambda: fake)
         monkeypatch.setattr(claude, "ensure_under_limit", lambda b, m: (b, m))
+        monkeypatch.setattr(claude, "fit_to_vision_limits", lambda b, m: (b, m))
+        monkeypatch.setattr(claude, "image_size", lambda b: (640, 480))
         return fake
 
     return _install
@@ -98,6 +100,26 @@ def test_non_list_items_raises(fake_claude):
     fake_claude('{"items": "nothing here"}')
     with pytest.raises(ValueError, match="Expected a list"):
         claude.tag_clothing_photo_multi(b"img", "image/jpeg")
+
+
+def test_multi_bbox_passes_through(fake_claude):
+    # #100: the router pops `bbox` for cropping; tagging must not strip it.
+    tags = [{"name": "Belt", "type": "belt", "bbox": [10, 20, 110, 220]}]
+    fake_claude(json.dumps({"items": tags}))
+    out = claude.tag_clothing_photo_multi(b"img", "image/jpeg")
+    assert out[0]["bbox"] == [10, 20, 110, 220]
+
+
+def test_multi_prompt_states_image_dimensions(fake_claude):
+    # #96: stating WxH anchors the bbox coordinate frame.
+    fake = fake_claude('{"items": []}')
+    claude.tag_clothing_photo_multi(b"img", "image/jpeg")
+    text_blocks = [
+        b["text"]
+        for b in fake.last_kwargs["messages"][0]["content"]
+        if b.get("type") == "text"
+    ]
+    assert any("640x480 pixels" in t for t in text_blocks)
 
 
 def test_multi_call_gets_bigger_token_budget(fake_claude):
