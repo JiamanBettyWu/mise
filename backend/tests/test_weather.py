@@ -115,14 +115,9 @@ def test_inference_node_enriches_missing_forecast(monkeypatch):
 
 
 def test_climate_parser_tolerates_missing_key(monkeypatch):
-    class FakeMessages:
-        def create(self, **kwargs):
-            return object()
-
-    class FakeClient:
-        messages = FakeMessages()
-
-    monkeypatch.setattr(trip_planner, "client", lambda: FakeClient())
+    monkeypatch.setattr(
+        trip_planner, "create_tracked", lambda call_type, **kwargs: object()
+    )
     monkeypatch.setattr(trip_planner, "parse_json", lambda resp: {})
     missing = _weather_for(date(2026, 6, 10), date(2026, 6, 12))
     fallback = trip_planner.infer_climate_summary(
