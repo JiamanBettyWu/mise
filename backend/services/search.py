@@ -34,7 +34,11 @@ def _fetch_search_results(query: str) -> list[dict]:
         resp = httpx.get(
             SERPAPI_URL,
             params={"engine": "google_shopping", "api_key": api_key, "q": query},
-            timeout=10,
+            # #107: shaped timeout — fail fast when SerpAPI is unreachable, but
+            # wait out live google_shopping searches, which routinely take 20-30s
+            # server-side. A shorter read timeout abandons a search that still
+            # completes, bills, and caches on SerpAPI's end.
+            timeout=httpx.Timeout(35, connect=5),
         )
 
         resp.raise_for_status()

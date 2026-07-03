@@ -119,6 +119,42 @@ def test_search_purchases_node_keeps_gaps_without_results(monkeypatch):
     assert sugg[0].results == []
 
 
+def test_search_purchases_node_isolates_per_query_failures(monkeypatch):
+    # #107: gap searches run concurrently; one raising search must not sink
+    # the siblings — the failed gap surfaces with results=[].
+    other_gap = Gap(item="sun hat", rationale="strong sun", category="accessories")
+    fake = PurchaseResult(title="Sun Hat", url="https://shop.example/sun-hat")
+
+    def _fake_search(query, num=4):
+        if "rain" in query:
+            raise RuntimeError("boom")
+        return [fake]
+
+    monkeypatch.setattr("services.trip_planner.search_products", _fake_search)
+
+    out = search_purchases_node({"gaps": [A_GAP, other_gap]})
+    sugg = out["purchase_suggestions"]
+    assert len(sugg) == 2
+    assert sugg[0].gap == A_GAP and sugg[0].results == []
+    assert sugg[1].gap == other_gap and sugg[1].results == [fake]
+
+
+def test_search_purchases_node_preserves_gap_order(monkeypatch):
+    # Concurrent execution must not reorder suggestions relative to gaps.
+    gaps = [
+        Gap(item=f"item {i}", rationale="r", category="accessories") for i in range(5)
+    ]
+    monkeypatch.setattr(
+        "services.trip_planner.search_products",
+        lambda query, num=4: [PurchaseResult(title=query, url="https://x.example/")],
+    )
+    out = search_purchases_node({"gaps": gaps})
+    assert [s.gap.item for s in out["purchase_suggestions"]] == [g.item for g in gaps]
+    assert [s.results[0].title for s in out["purchase_suggestions"]] == [
+        g.item for g in gaps
+    ]
+
+
 def test_fallback_purchase_query_uses_department_for_apparel():
     assert fallback_purchase_query(A_GAP, "womens") == "women's rain jacket"
     assert fallback_purchase_query(A_GAP, "mens") == "men's rain jacket"
