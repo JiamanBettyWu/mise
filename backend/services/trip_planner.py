@@ -37,7 +37,7 @@ from schemas import (
     TripPlanResponse,
     TripWeather,
 )
-from services.claude import client, parse_json
+from services.claude import create_tracked, parse_json
 from services.search import search_products
 from services.weather import get_weather_for_destination
 
@@ -152,7 +152,8 @@ def infer_climate_summary(state: PackingState) -> str:
     if additional_notes.strip():
         user_blocks.append(f"User notes: {additional_notes.strip()}")
 
-    resp = client().messages.create(
+    resp = create_tracked(
+        "trip_climate_infer",
         model=MODEL,
         max_tokens=256,
         system=[
@@ -308,7 +309,8 @@ def recommend_packing_plan(
     user_blocks: list[str],
 ):
 
-    resp = client().messages.create(
+    resp = create_tracked(
+        "trip_plan",
         model=MODEL,
         max_tokens=2048,
         system=[
@@ -409,7 +411,8 @@ def plan_purchase_queries(
         inferred_preferences=inferred_preferences,
     )
 
-    resp = client().messages.create(
+    resp = create_tracked(
+        "purchase_query_plan",
         model=QUERY_PLANNING_MODEL,
         max_tokens=768,
         system=[

@@ -7,6 +7,7 @@ from functools import lru_cache
 
 from anthropic import Anthropic
 
+from db.supabase import client as supabase
 from observability import op
 from services.image import ensure_under_limit, fit_to_vision_limits, image_size
 from services.validation import drop_extras, validate_outfit
@@ -115,6 +116,41 @@ def client() -> Anthropic:
     return Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
+def create_tracked(call_type: str, **kwargs):
+    """messages.create + one llm_usage row (#114).
+
+    The single funnel for every Anthropic call in the app. Recording is
+    best-effort — a failed insert must never break a recommendation, same
+    posture as search_purchases_node. Tokens + model only, never dollars:
+    cost is derived at read time from a price map so history stays truthful
+    when prices change.
+    """
+    resp = client().messages.create(**kwargs)
+    _record_usage(call_type, kwargs.get("model", ""), resp)
+    return resp
+
+
+def _record_usage(call_type: str, model: str, resp) -> None:
+    usage = getattr(resp, "usage", None)
+    if usage is None:  # test fakes and hypothetical exotic responses
+        return
+    try:
+        supabase().table("llm_usage").insert(
+            {
+                "call_type": call_type,
+                "model": model,
+                "input_tokens": usage.input_tokens,
+                "output_tokens": usage.output_tokens,
+                # input_tokens EXCLUDES cached tokens; without these two
+                # columns, derived cost is wrong for every cached call.
+                "cache_creation_input_tokens": usage.cache_creation_input_tokens or 0,
+                "cache_read_input_tokens": usage.cache_read_input_tokens or 0,
+            }
+        ).execute()
+    except Exception:
+        log.warning("llm_usage recording failed for %s", call_type, exc_info=True)
+
+
 def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict | None:
     """Send photo to Claude vision; return parsed tag dict or None.
 
@@ -124,7 +160,8 @@ def tag_clothing_photo(image_bytes: bytes, mime_type: str) -> dict | None:
     image_bytes, mime_type = ensure_under_limit(image_bytes, mime_type)
     image_b64 = base64.standard_b64encode(image_bytes).decode("ascii")
 
-    resp = client().messages.create(
+    resp = create_tracked(
+        "tag_photo",
         model=MODEL,
         max_tokens=512,
         system=[
@@ -174,7 +211,8 @@ def tag_clothing_photo_multi(image_bytes: bytes, mime_type: str) -> list[dict]:
     width, height = image_size(image_bytes)
     image_b64 = base64.standard_b64encode(image_bytes).decode("ascii")
 
-    resp = client().messages.create(
+    resp = create_tracked(
+        "tag_photo_multi",
         model=MODEL,
         # Up to 9 items per photo; the single-item 512 budget would truncate
         # mid-JSON and fail the whole upload.
@@ -279,7 +317,8 @@ def classify_modes(
             f'Note: "{floor}" is always included as the default mode — present '
             "any other modes in the explanation as additions to it.",
         ]
-    resp = client().messages.create(
+    resp = create_tracked(
+        "mode_classify",
         model=MODE_CLASSIFIER_MODEL,
         max_tokens=512,
         system=MODE_CLASSIFIER_PROMPT,
@@ -424,7 +463,8 @@ def recommend_outfits(
     user_blocks.append("Wardrobe inventory (JSON):")
     user_blocks.append(json.dumps(wardrobe, ensure_ascii=False))
 
-    resp = client().messages.create(
+    resp = create_tracked(
+        "daily_outfit",
         model=MODEL,
         # 3 candidates per entry ≈ 3× the old payload; headroom keeps
         # parse_json's stop_reason=max_tokens diagnostics a rarity.
@@ -729,7 +769,8 @@ def _repair_outfits(
     blocks.append(json.dumps(wardrobe, ensure_ascii=False))
 
     try:
-        resp = client().messages.create(
+        resp = create_tracked(
+            "repair",
             model=MODEL,
             max_tokens=1024,
             system=[

@@ -48,7 +48,7 @@ from typing import TypedDict
 from langgraph.graph import END, StateGraph
 
 from db.supabase import client as supabase
-from services.claude import client, parse_json
+from services.claude import create_tracked, parse_json
 
 log = logging.getLogger("wardrobe.preference_inference")
 
@@ -448,7 +448,8 @@ def infer_preferences(
 
     Index→id mapping and all filtering happen later in validate_node; this just
     surfaces what the model proposed. Raises on API/parse error by design."""
-    resp = client().messages.create(
+    resp = create_tracked(
+        "pref_inference",
         model=MODEL,
         max_tokens=2048,
         system=[
