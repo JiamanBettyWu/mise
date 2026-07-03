@@ -19,9 +19,9 @@ three PRs — #107 closed (SerpAPI shaped timeout + parallel gap searches,
 PR #108), plus #2's START fan-out (PR #109) and Haiku query planning +
 trimmed catalog payload (PR #110).
 [#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) stays open for
-progressive indicators + streaming (and a `max_tokens` check). **⚠️ Manual
-follow-up still open — rotate the SerpAPI + OpenWeatherMap keys** (they
-appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
+progressive indicators + streaming (and a `max_tokens` check). The SerpAPI +
+OpenWeatherMap key rotation (open since #88) is **done** as of 2026-07-03;
+full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -32,10 +32,9 @@ appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
    `max_tokens` check on real `recommend_packing_plan` responses (currently
    2048), and streaming only if the planner still feels slow after the shipped
    wave (fan-out + Haiku + trim + #107's parallel searches).
-2. **Rotate the SerpAPI + OpenWeatherMap keys** (see Current state). Then
-   optionally [#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)
-   (MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
-   LangGraph node — the part most transferable to the work MCP project).
+2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
+   MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
+   LangGraph node — the part most transferable to the work MCP project.
 3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
