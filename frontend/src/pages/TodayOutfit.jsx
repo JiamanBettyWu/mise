@@ -141,14 +141,15 @@ export default function TodayOutfit() {
       <div className="page-header">
         <h1>Today's outfit</h1>
         <div className="page-header__actions">
-          <label>
-            <input
-              type="checkbox"
-              checked={travelMode}
-              onChange={(e) => setTravelMode(e.target.checked)}
-            />
+          <button
+            className="switch"
+            role="switch"
+            aria-checked={travelMode}
+            onClick={() => setTravelMode(!travelMode)}
+          >
+            <span className="switch__track" aria-hidden="true" />
             Travel mode
-          </label>
+          </button>
         </div>
       </div>
 
