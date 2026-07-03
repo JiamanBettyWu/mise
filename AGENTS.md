@@ -104,6 +104,11 @@ Things that bite if you don't know them (full rationale in D8 of [docs/feedback-
 
 ## Project conventions
 
+- **Session start:** read TODO.md's "Current state" pointer first — it carries
+  open manual follow-ups (e.g. pending key rotations) and what just shipped.
+  Read the latest SESSIONS.md entry too when the task builds on recent work or
+  the session is open-ended ("what's next"); for a scoped issue, the issue body
+  is the source of truth and usually suffices.
 - **Frontend design system is documented in [DESIGN.md](DESIGN.md).** Read it before any UI change. Update the principles, vocabulary, or decisions log in the same commit as the visual change — not in a follow-up.
 - **Two complementary files, kept lean:** [`TODO.md`](TODO.md) is the concise *forward-looking* "what's next" (current-state pointer + the "Next time I sit down" list + scratch/larger plans). [`SESSIONS.md`](SESSIONS.md) is the *backward-looking* journal — one dated entry per working session plus the closed-PR ledger. **GitHub Issues and the Projects board are the source of truth** for tracked work; these two files are just pointers.
 - **After each merged PR:** (1) **append** a new dated entry at the top of `SESSIONS.md` (narrative of what shipped + PR link) and add the issue to its closed-PR ledger; (2) **refresh** `TODO.md` — update the "Current state" pointer and the "Next time I sit down" list, and remove any line that referenced the now-shipped work as still pending. **Keep the long narrative in SESSIONS.md, not TODO.md** — TODO.md stays short. The "Current state" pointer is **~3 sentences max** (latest session + any open manual follow-up, then link to SESSIONS.md); anything longer belongs in SESSIONS.md.
