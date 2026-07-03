@@ -42,6 +42,11 @@ from services.search import search_products
 from services.weather import get_weather_for_destination
 
 MODEL = "claude-sonnet-4-6"
+# #2: query planning is formatting (≤12-word shopping queries), not
+# multi-constraint reasoning — Haiku is plenty, and the deterministic
+# fallback in _complete_purchase_queries bounds the downside. The main
+# reason_and_select call stays on Sonnet deliberately.
+QUERY_PLANNING_MODEL = "claude-haiku-4-5-20251001"
 log = logging.getLogger("wardrobe.trip_planner")
 
 DEFAULT_SHOPPING_DEPARTMENT: ShoppingDepartment = "womens"
@@ -251,6 +256,24 @@ No commentary, no markdown fences. The JSON must be parseable.
 """
 
 
+# #2: only the fields the model needs for styling decisions ride the prompt —
+# `warmth` stays in (the prompt reasons over weather; it's the cold/heat
+# signal from #40). Dropped: photo_url, available, in_travel_bag, notes,
+# created_at.
+PACKING_PROMPT_ITEM_FIELDS = {
+    "id",
+    "name",
+    "type",
+    "color",
+    "formality",
+    "season",
+    "fabric",
+    "warmth",
+    "description",
+    "brand",
+}
+
+
 def _build_packing_prompt(
     state,
 ):
@@ -267,7 +290,14 @@ def _build_packing_prompt(
     user_blocks.append("Wardrobe inventory (JSON):")
 
     catalog_json = json.dumps(
-        [item.model_dump(mode="json") for item in state["catalog"]]
+        [
+            {
+                k: v
+                for k, v in item.model_dump(mode="json").items()
+                if k in PACKING_PROMPT_ITEM_FIELDS
+            }
+            for item in state["catalog"]
+        ]
     )
     user_blocks.append(catalog_json)
 
@@ -380,7 +410,7 @@ def plan_purchase_queries(
     )
 
     resp = client().messages.create(
-        model=MODEL,
+        model=QUERY_PLANNING_MODEL,
         max_tokens=768,
         system=[
             {
