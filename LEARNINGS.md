@@ -8,6 +8,9 @@ Future-me uses this to remember what was actually hard, for blog posts and inter
 
 ## 2026
 
+### 2026-07 — A timed-out SerpAPI call isn't a failed call
+Our 10s read timeout on `google_shopping` searches produced "SerpAPI search failed" errors, but the search *completed* server-side anyway — it billed a credit and got cached (~1h); we just hung up before the answer arrived. Diagnosed via `search_metadata.total_time_taken = 25.93` on a later cached response, which shows the original's true duration. Fix: shaped timeout — `httpx.Timeout(35, connect=5)` — fail fast on unreachable, be patient once it's processing.
+
 ### 2026-06 — Legacy GitHub Pages builds silently break on dormant repos
 The `username.github.io` repo I hadn't touched since 2021 stopped triggering Pages builds on push. POSTing a build manually returned `queued`, but the job never actually ran. Fix: switch the Pages source from "legacy" (the old Jekyll pipeline) to "GitHub Actions" and add a workflow with `actions/deploy-pages@v4`. The Actions-based pipeline is the modern default anyway.
 

@@ -18,6 +18,7 @@ Useful existing utilities to reuse inside your graph:
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import TypedDict
 
@@ -29,6 +30,7 @@ from schemas import (
     Gap,
     PackingCategory,
     PurchaseQuery,
+    PurchaseResult,
     PurchaseSuggestion,
     ShoppingDepartment,
     TripPlanRequest,
@@ -533,23 +535,40 @@ def _clean_purchase_query(query: str) -> str:
 
 
 def search_purchases_node(state: PackingState) -> dict:
-    suggestions = []
     queries_by_index = {q.gap_index: q for q in state.get("purchase_queries", [])}
     shopping_department = state.get("shopping_department", DEFAULT_SHOPPING_DEPARTMENT)
 
-    for i, gap in enumerate(state["gaps"]):
+    gaps = state["gaps"]
+    if not gaps:
+        return {"purchase_suggestions": []}
+
+    queries = []
+    for i, gap in enumerate(gaps):
         fallback = PurchaseQuery(
             gap_index=i,
             query=fallback_purchase_query(gap, shopping_department),
         )
-        query = queries_by_index.get(i, fallback).query
-        suggestions.append(
-            PurchaseSuggestion(
-                gap=gap,
-                results=search_products(query, 4),
-            )
-        )
-    return {"purchase_suggestions": suggestions}
+        queries.append(queries_by_index.get(i, fallback).query)
+
+    def _search_one(query: str) -> list[PurchaseResult]:
+        # Best-effort per gap: any failure keeps the gap visible with
+        # results=[] instead of sinking the sibling searches.
+        try:
+            return search_products(query, 4)
+        except Exception:
+            log.warning("purchase search failed for %r", query, exc_info=True)
+            return []
+
+    # #107: the queries are independent and purely network-bound, so run them
+    # concurrently — the node costs the slowest search, not the sum.
+    with ThreadPoolExecutor(max_workers=min(8, len(gaps))) as pool:
+        results = list(pool.map(_search_one, queries))
+
+    return {
+        "purchase_suggestions": [
+            PurchaseSuggestion(gap=gap, results=res) for gap, res in zip(gaps, results)
+        ]
+    }
 
 
 def build_graph():
