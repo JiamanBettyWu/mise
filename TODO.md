@@ -14,55 +14,57 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02 (late):** Today generation now survives navigating away
-mid-request (#103 → PR #104, module-scope store + `useSyncExternalStore`);
-Trip has the same bug, filed as
-[#105](https://github.com/JiamanBettyWu/wardrobe-ai/issues/105) (extract a
-shared `createRequestStore()` factory). **⚠️ Manual follow-up still open —
-rotate the SerpAPI + OpenWeatherMap keys** (they appeared in logs before
-#89); full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-03:** Trip generation now survives navigating away mid-request
+(#105 → PR #106, shared `createRequestStore()` factory); next session is
+[#107](https://github.com/JiamanBettyWu/wardrobe-ai/issues/107) (SerpAPI
+timeout bump + parallel gap searches) and
+[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) (trip-planner
+speed — see the re-ranked analysis comment there). **⚠️ Manual follow-up still
+open — rotate the SerpAPI + OpenWeatherMap keys** (they appeared in logs
+before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **Rotate the SerpAPI + OpenWeatherMap keys** (do this first — see Current
-   state). Then optionally [#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)
+1. **[#107](https://github.com/JiamanBettyWu/wardrobe-ai/issues/107) +
+   [#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — the planned
+   next session: SerpAPI shaped timeout + parallel per-gap searches (#107,
+   includes a LEARNINGS entry), then trip-planner speed per the re-ranked
+   comment on #2 (START fan-out first — best LangGraph rep — then Haiku for
+   query planning + payload trim; streaming last).
+2. **Rotate the SerpAPI + OpenWeatherMap keys** (see Current state). Then
+   optionally [#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)
    (MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project).
-2. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-3. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-4. **Check the first real-event morning for #64's events path** — the empty-day
+5. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-5. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-6. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-7. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
-8. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the
-   planner (parallelize weather + catalog, trim payload).
-9. **[#105](https://github.com/JiamanBettyWu/wardrobe-ai/issues/105)** — Trip
-   nav-away fix via a shared `createRequestStore()` factory (the Today twin,
-   #103, shipped — this generalizes it).
-10. **[#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95)** —
+9. **[#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95)** —
    Travel-mode checkboxes → `.switch` (quick one).
    **[#102](https://github.com/JiamanBettyWu/wardrobe-ai/issues/102)** —
    sweep job for storage objects orphaned by abandoned upload reviews
