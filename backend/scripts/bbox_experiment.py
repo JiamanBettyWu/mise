@@ -45,7 +45,7 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 from PIL import Image, ImageDraw  # noqa: E402
 
 from services.claude import MODEL, client, parse_json  # noqa: E402
-from services.image import ensure_under_limit  # noqa: E402
+from services.image import ensure_under_limit, fit_to_vision_limits  # noqa: E402
 
 BBOX_SYSTEM_PROMPT = """You are a clothing-tagging assistant for a personal wardrobe app.
 
@@ -88,12 +88,6 @@ COLORS = [
     "#000075",
 ]
 
-# Anthropic vision API internal resize limits: images beyond either bound are
-# downscaled server-side before the model sees them, which desyncs the model's
-# coordinate space from ours. Stay under both so no hidden resize happens.
-VISION_MAX_EDGE = 1568
-VISION_MAX_PIXELS = 1_150_000
-
 MIME_BY_SUFFIX = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -101,25 +95,6 @@ MIME_BY_SUFFIX = {
     ".webp": "image/webp",
     ".heic": "image/heic",
 }
-
-
-def fit_to_vision_limits(image_bytes: bytes, mime: str) -> tuple[bytes, str]:
-    """Shrink the image below the API's resize thresholds (no-op if already under)."""
-    img = Image.open(io.BytesIO(image_bytes))
-    w, h = img.size
-    scale = min(
-        1.0,
-        VISION_MAX_EDGE / max(w, h),
-        (VISION_MAX_PIXELS / (w * h)) ** 0.5,
-    )
-    if scale >= 1.0:
-        return image_bytes, mime
-    img = img.convert("RGB").resize(
-        (int(w * scale), int(h * scale)), Image.Resampling.LANCZOS
-    )
-    buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=90)
-    return buf.getvalue(), "image/jpeg"
 
 
 def ask_for_boxes(

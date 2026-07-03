@@ -9,7 +9,7 @@ log = logging.getLogger("wardrobe.clothes")
 from db.supabase import client as supabase
 from schemas import ClothingItem, ClothingItemCreate, ClothingItemUpdate, TagSuggestion
 from services.claude import tag_clothing_photo, tag_clothing_photo_multi
-from services.image import ensure_under_limit
+from services.image import crop_to_bbox, ensure_under_limit, fit_to_vision_limits
 from services.storage import delete_photo, upload_photo
 
 router = APIRouter(
@@ -62,10 +62,18 @@ async def upload_and_tag(
 async def upload_and_tag_multi(file: UploadFile = File(...)) -> list[TagSuggestion]:
     """Upload one photo of multiple items; return one tag suggestion per item.
 
-    B-lite multi-item flow (#24): the photo is stored once and every suggestion
-    shares its URL. Frontend renders one review card per suggestion; each
-    commits independently via POST /clothes. An empty list means Claude found
-    no clothing/accessory items — the photo is removed from storage.
+    B-full multi-item flow (#24 → #100): each item gets its own thumbnail,
+    cropped from the model's bbox with padding; a missing/bad box falls back
+    to the full photo for that item only (B-lite behavior — never fail the
+    upload over a bad box). The shared original is uploaded for fallbacks and
+    deleted again when every item got its own crop, so nothing orphans; when
+    fallbacks do share it, the delete-time ref-count on photo_url still
+    applies. Tagging runs before any upload, so a tagging failure or an empty
+    result stores nothing.
+
+    Cropping uses the same pre-fitted bytes the model saw (#96): past the
+    vision API's silent-downscale limits, model bbox coordinates stop matching
+    our pixels.
     """
     if file.content_type not in ALLOWED_MIME:
         raise HTTPException(
@@ -76,22 +84,48 @@ async def upload_and_tag_multi(file: UploadFile = File(...)) -> list[TagSuggesti
         raise HTTPException(status_code=413, detail="File too large (max 10MB)")
 
     image_bytes, mime_type = ensure_under_limit(image_bytes, file.content_type)
-
-    _, public_url = upload_photo(image_bytes, file.filename or "photo", mime_type)
+    image_bytes, mime_type = fit_to_vision_limits(image_bytes, mime_type)
 
     try:
         tag_list = tag_clothing_photo_multi(image_bytes, mime_type)
     except Exception:
         log.error("Multi-tagging failed:\n%s", traceback.format_exc())
-        delete_photo(public_url)
         raise HTTPException(status_code=502, detail="Tagging failed")
 
     if not tag_list:
-        # No items detected: don't leave an orphaned photo in storage.
-        delete_photo(public_url)
         return []
 
-    return [TagSuggestion(photo_url=public_url, **tags) for tags in tag_list]
+    storage_path, original_url = upload_photo(
+        image_bytes, file.filename or "photo", mime_type
+    )
+    stem = storage_path.rsplit(".", 1)[0]
+
+    suggestions = []
+    for i, tags in enumerate(tag_list):
+        bbox = tags.pop("bbox", None)
+        url = original_url
+        try:
+            crop_bytes = crop_to_bbox(image_bytes, bbox)
+            if crop_bytes is None:
+                log.warning(
+                    "item %d: unusable bbox %r; falling back to full photo", i, bbox
+                )
+            else:
+                _, url = upload_photo(
+                    crop_bytes, "", "image/jpeg", storage_path=f"{stem}_item{i}.jpg"
+                )
+        except Exception:
+            log.warning(
+                "item %d: crop failed; falling back to full photo:\n%s",
+                i,
+                traceback.format_exc(),
+            )
+        suggestions.append(TagSuggestion(photo_url=url, **tags))
+
+    if all(s.photo_url != original_url for s in suggestions):
+        delete_photo(original_url)
+
+    return suggestions
 
 
 @router.post("", response_model=ClothingItem)
