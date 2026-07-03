@@ -6,8 +6,9 @@ Claude) is opt-in via RUN_E2E=1 and uses dynamic dates inside OWM's 5-day
 forecast window, so it never goes stale the way hardcoded dates did.
 """
 
+import json
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -229,6 +230,48 @@ def test_plan_purchase_queries_node_falls_back_when_planner_fails(monkeypatch):
             rationale="Fallback query used because the planner did not return a usable query.",
         )
     ]
+
+
+def test_packing_prompt_trims_catalog_but_keeps_warmth():
+    # #2: the catalog payload drops fields irrelevant to styling (photo_url,
+    # available, in_travel_bag, notes, created_at) but must keep `warmth` —
+    # it's the cold/heat signal the weather reasoning depends on (#40).
+    from schemas import ClothingItem
+    from services.trip_planner import _build_packing_prompt
+
+    item = ClothingItem(
+        id="00000000-0000-0000-0000-000000000001",
+        name="Wool coat",
+        type="coat",
+        color="camel",
+        formality="smart-casual",
+        season="winter",
+        fabric="wool",
+        warmth=5,
+        description="Heavy winter coat",
+        brand="Acme",
+        notes="dry clean only",
+        photo_url="https://img.example/coat.jpg",
+        available=True,
+        in_travel_bag=False,
+        created_at=datetime(2026, 1, 1),
+    )
+    blocks = _build_packing_prompt(
+        {
+            "destination": "Oslo, Norway",
+            "start_date": date(2026, 12, 1),
+            "end_date": date(2026, 12, 5),
+            "additional_notes": "",
+            "weather": TripWeather(summary="Cold.", coverage="inferred_climate"),
+            "catalog": [item],
+        }
+    )
+    catalog_json = blocks[-1]
+    sent = json.loads(catalog_json)[0]
+    assert sent["id"] == item.id
+    assert sent["warmth"] == 5
+    for dropped in ("photo_url", "available", "in_travel_bag", "notes", "created_at"):
+        assert dropped not in sent
 
 
 def test_purchase_query_prompt_carries_preferences_as_applicability_context():
