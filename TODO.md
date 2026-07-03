@@ -14,14 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02:** shipped the backend Black/isort tooling sweep
-([PR #99](https://github.com/JiamanBettyWu/wardrobe-ai/pull/99)) on top of
-**single-item empty tagging parity (PR #98)** and **multi-item tagging B-lite
-(#24, PR #94)**. Weave tracing (#85 Phase 1) covers both pipelines; next is
-**#85 Phase 2** (`weave.Evaluation` over 👍/👎 history), while #24's real-photo
-manual checklist remains open and the bbox experiment moved to **#96**.
-**⚠️ Manual follow-up still open — rotate the SerpAPI + OpenWeatherMap keys**
-(they appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-02 (evening):** the bbox experiment (#96, PR #97) ran on 5 real
+photos and came back **feasible** — B-full implementation is filed as
+**[#100](https://github.com/JiamanBettyWu/wardrobe-ai/issues/100)** — and #24's
+multi-item flow is verified live on the phone (earlier today: B-lite #24/PR #94,
+empty-tagging parity PR #98, formatter sweep #90/PR #99). **⚠️ Manual follow-up
+still open — rotate the SerpAPI + OpenWeatherMap keys** (they appeared in logs
+before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -60,9 +59,11 @@ manual checklist remains open and the bbox experiment moved to **#96**.
    planner for Oaxaca).
 8. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the
    planner (parallelize weather + catalog, trim payload).
-9. **Verify #24 live + run [#96](https://github.com/JiamanBettyWu/wardrobe-ai/issues/96)**
-   — upload a real multi-accessory photo through the new toggle (PR #94's
-   checklist), then the 30-minute bbox experiment that gates B-full.
+9. **[#100](https://github.com/JiamanBettyWu/wardrobe-ai/issues/100) — B-full:
+   cropped per-item thumbnails** in the `upload-multi` flow (bbox in the
+   multi-tagging prompt, pre-resize below the vision API limits, ~10%-padded
+   crops). Mind the flagged wrinkle: per-item crop URLs break PR #94's
+   `photo_url` delete ref-counting.
    [#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95) (Travel-mode
    checkboxes → `.switch`) is a quick one alongside.
 
