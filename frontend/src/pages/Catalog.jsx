@@ -81,22 +81,24 @@ export default function Catalog() {
       <div className="page-header">
         <h1>Catalog</h1>
         <div className="page-header__actions">
-          <label>
-            <input
-              type="checkbox"
-              checked={view === 'packed'}
-              onChange={(e) => setView(e.target.checked ? 'packed' : 'all')}
-            />
+          <button
+            className="switch"
+            role="switch"
+            aria-checked={view === 'packed'}
+            onClick={() => setView(view === 'packed' ? 'all' : 'packed')}
+          >
+            <span className="switch__track" aria-hidden="true" />
             Travel mode
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={view === 'laundry'}
-              onChange={(e) => setView(e.target.checked ? 'laundry' : 'all')}
-            />
+          </button>
+          <button
+            className="switch"
+            role="switch"
+            aria-checked={view === 'laundry'}
+            onClick={() => setView(view === 'laundry' ? 'all' : 'laundry')}
+          >
+            <span className="switch__track" aria-hidden="true" />
             In laundry
-          </label>
+          </button>
           {resettableCount > 0 && (
             <button className="ghost" onClick={bulkReset} disabled={resetting}>
               {view === 'packed' ? 'Unpack all' : 'Clear laundry'}
