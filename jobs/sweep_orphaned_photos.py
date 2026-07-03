@@ -111,9 +111,7 @@ def referenced_paths() -> set[str]:
     }
 
 
-def find_orphans(
-    objects: list[dict], referenced: set[str], now: datetime
-) -> list[str]:
+def find_orphans(objects: list[dict], referenced: set[str], now: datetime) -> list[str]:
     """Pure: object names that are unreferenced AND past the age floor.
 
     Objects with no created_at are skipped rather than deleted -- we can't
