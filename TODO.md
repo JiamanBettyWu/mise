@@ -73,7 +73,10 @@ Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/
 (prepare repo for public release), [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
 (local Python → 3.11 parity; largely defanged by CI),
 [#30](https://github.com/JiamanBettyWu/wardrobe-ai/issues/30) (eval harness for
-the trip-planner LangGraph). See the
+the trip-planner LangGraph),
+[#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
+`Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
+spans, not perf). See the
 [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/issues) for status.
 
 ---
