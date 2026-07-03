@@ -14,13 +14,12 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02 (evening):** the bbox experiment (#96, PR #97) ran on 5 real
-photos and came back **feasible** — B-full implementation is filed as
-**[#100](https://github.com/JiamanBettyWu/wardrobe-ai/issues/100)** — and #24's
-multi-item flow is verified live on the phone (earlier today: B-lite #24/PR #94,
-empty-tagging parity PR #98, formatter sweep #90/PR #99). **⚠️ Manual follow-up
-still open — rotate the SerpAPI + OpenWeatherMap keys** (they appeared in logs
-before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-02 (late):** B-full cropped per-item thumbnails shipped
+(#100 → PR #101, incl. the hide-Done-until-saved fix), completing the #24 →
+#96 → #100 multi-item arc; abandoned-review storage orphans filed as
+[#102](https://github.com/JiamanBettyWu/wardrobe-ai/issues/102). **⚠️ Manual
+follow-up still open — rotate the SerpAPI + OpenWeatherMap keys** (they
+appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -59,13 +58,11 @@ before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
    planner for Oaxaca).
 8. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the
    planner (parallelize weather + catalog, trim payload).
-9. **[#100](https://github.com/JiamanBettyWu/wardrobe-ai/issues/100) — B-full:
-   cropped per-item thumbnails** in the `upload-multi` flow (bbox in the
-   multi-tagging prompt, pre-resize below the vision API limits, ~10%-padded
-   crops). Mind the flagged wrinkle: per-item crop URLs break PR #94's
-   `photo_url` delete ref-counting.
-   [#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95) (Travel-mode
-   checkboxes → `.switch`) is a quick one alongside.
+9. **[#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95)** —
+   Travel-mode checkboxes → `.switch` (quick one).
+   **[#102](https://github.com/JiamanBettyWu/wardrobe-ai/issues/102)** —
+   sweep job for storage objects orphaned by abandoned upload reviews
+   (tech-debt, not urgent).
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
 (catalog by categories), [#5](https://github.com/JiamanBettyWu/wardrobe-ai/issues/5)
