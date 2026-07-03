@@ -14,12 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-02 (late):** B-full cropped per-item thumbnails shipped
-(#100 → PR #101, incl. the hide-Done-until-saved fix), completing the #24 →
-#96 → #100 multi-item arc; abandoned-review storage orphans filed as
-[#102](https://github.com/JiamanBettyWu/wardrobe-ai/issues/102). **⚠️ Manual
-follow-up still open — rotate the SerpAPI + OpenWeatherMap keys** (they
-appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-02 (late):** Today generation now survives navigating away
+mid-request (#103 → PR #104, module-scope store + `useSyncExternalStore`);
+Trip has the same bug, filed as
+[#105](https://github.com/JiamanBettyWu/wardrobe-ai/issues/105) (extract a
+shared `createRequestStore()` factory). **⚠️ Manual follow-up still open —
+rotate the SerpAPI + OpenWeatherMap keys** (they appeared in logs before
+#89); full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -58,7 +59,10 @@ appeared in logs before #89); full detail lives in [SESSIONS.md](SESSIONS.md).
    planner for Oaxaca).
 8. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2)** — speed up the
    planner (parallelize weather + catalog, trim payload).
-9. **[#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95)** —
+9. **[#105](https://github.com/JiamanBettyWu/wardrobe-ai/issues/105)** — Trip
+   nav-away fix via a shared `createRequestStore()` factory (the Today twin,
+   #103, shipped — this generalizes it).
+10. **[#95](https://github.com/JiamanBettyWu/wardrobe-ai/issues/95)** —
    Travel-mode checkboxes → `.switch` (quick one).
    **[#102](https://github.com/JiamanBettyWu/wardrobe-ai/issues/102)** —
    sweep job for storage objects orphaned by abandoned upload reviews
