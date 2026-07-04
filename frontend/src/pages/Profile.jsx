@@ -39,6 +39,13 @@ const CALL_TYPE_LABELS = {
   repair: 'Outfit repair',
 };
 
+// Compact token count for a stat tile: 1234 → "1.2k", 2_500_000 → "2.5M".
+function fmtTokens(n) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
 // "since June 2026" label for the All-time asymmetry: token data only exists
 // from #114's deploy onward, so all-time cost undercounts earlier history.
 function monthOf(iso) {
@@ -487,16 +494,35 @@ export default function Profile() {
               </div>
 
               <div className="profile__usage">
-                <p className="profile__usage-total">
-                  {stats.usage.total_tokens.toLocaleString()} tokens ·{' '}
-                  ~${stats.usage.estimated_cost.toFixed(2)}{' '}
-                  <span className="muted">
+                <div className="profile__usage-head">
+                  <p className="profile__label">AI usage</p>
+                  <span className="muted profile__usage-note">
                     estimated
                     {statsRange === 'all' && stats.usage_since
                       ? ` · since ${monthOf(stats.usage_since)}`
                       : ''}
                   </span>
-                </p>
+                </div>
+                <div className="profile__stat-tiles">
+                  <div className="profile__stat-tile">
+                    <span className="profile__stat-value">
+                      {stats.usage.total_calls}
+                    </span>
+                    <span className="profile__stat-label">AI requests</span>
+                  </div>
+                  <div className="profile__stat-tile">
+                    <span className="profile__stat-value">
+                      {fmtTokens(stats.usage.total_tokens)}
+                    </span>
+                    <span className="profile__stat-label">tokens</span>
+                  </div>
+                  <div className="profile__stat-tile">
+                    <span className="profile__stat-value">
+                      ~${stats.usage.estimated_cost.toFixed(2)}
+                    </span>
+                    <span className="profile__stat-label">estimated cost</span>
+                  </div>
+                </div>
                 {(() => {
                   const entries = Object.entries(stats.usage.by_call_type)
                     .sort((a, b) => b[1].tokens - a[1].tokens);

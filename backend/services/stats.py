@@ -69,6 +69,7 @@ def aggregate_usage(rows: list[dict]) -> dict:
     0 and flips has_unpriced so the UI can flag the estimate as partial.
     """
     by_type: dict[str, dict] = {}
+    total_calls = 0
     total_tokens = 0
     total_cost = 0.0
     has_unpriced = False
@@ -91,11 +92,13 @@ def aggregate_usage(rows: list[dict]) -> dict:
         bucket["calls"] += 1
         bucket["tokens"] += tokens
         bucket["cost"] += cost
+        total_calls += 1
         total_tokens += tokens
         total_cost += cost
 
     return {
         "by_call_type": by_type,
+        "total_calls": total_calls,
         "total_tokens": total_tokens,
         "total_cost": round(total_cost, 4),
         "has_unpriced": has_unpriced,

@@ -139,6 +139,7 @@ def get_stats(range: Literal["7d", "30d", "90d", "all"] = "30d"):
         "range": range,
         "usage_since": usage_since,
         "usage": {
+            "total_calls": usage["total_calls"],
             "total_tokens": usage["total_tokens"],
             "estimated_cost": usage["total_cost"],
             "has_unpriced": usage["has_unpriced"],

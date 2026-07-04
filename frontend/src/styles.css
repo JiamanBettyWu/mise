@@ -1047,11 +1047,19 @@ textarea {
   gap: 0.35rem;
   margin-top: 0.5rem;
 }
-.profile__usage-total {
-  font-size: 0.9rem;
-  color: rgba(20, 20, 40, 0.85);
-  margin: 0 0 0.25rem;
+.profile__usage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
+.profile__usage-head .profile__label { margin: 0; }
+.profile__usage-note {
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+/* Breakdown bars sit below the AI-usage tiles as supporting detail. */
+.profile__usage .profile__stat-tiles { margin-bottom: 0.5rem; }
 .profile__usage-row {
   display: grid;
   grid-template-columns: 9.5rem 1fr 3.5rem;

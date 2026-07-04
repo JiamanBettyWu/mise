@@ -78,6 +78,7 @@ def test_aggregate_groups_by_call_type_and_flags_unpriced():
     agg = aggregate_usage(rows)
     assert agg["by_call_type"]["daily_outfit"]["calls"] == 2
     assert agg["by_call_type"]["daily_outfit"]["tokens"] == 300
+    assert agg["total_calls"] == 3
     assert agg["total_tokens"] == 315
     assert agg["has_unpriced"] is True  # unpriced counts tokens, not dollars
     assert agg["total_cost"] == pytest.approx(2 * (100 * 3 + 50 * 15) / 1e6)
@@ -85,6 +86,7 @@ def test_aggregate_groups_by_call_type_and_flags_unpriced():
 
 def test_aggregate_empty():
     agg = aggregate_usage([])
+    assert agg["total_calls"] == 0
     assert agg["total_tokens"] == 0
     assert agg["total_cost"] == 0
     assert agg["by_call_type"] == {}
