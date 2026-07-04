@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from auth import require_password
 from db.supabase import client as supabase
-from services.stats import aggregate_outfits, aggregate_usage, range_cutoff
 from schemas import (
     Preference,
     PreferenceCreate,
@@ -13,6 +12,7 @@ from schemas import (
     Profile,
     ProfileUpdate,
 )
+from services.stats import aggregate_outfits, aggregate_usage, range_cutoff
 
 router = APIRouter(prefix="/profile", dependencies=[Depends(require_password)])
 

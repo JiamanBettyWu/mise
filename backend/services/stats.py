@@ -16,6 +16,13 @@ from datetime import datetime, timedelta, timezone
 # $/MTok as (input, cache_write, cache_read, output). Keyed by model-id
 # prefix so dated snapshots ("claude-haiku-4-5-20251001") match the bare
 # family price. Longest prefix wins.
+#
+# If a price ever changes, do NOT overwrite an entry — that would misprice
+# every row recorded under the old rate. Instead make the value a list of
+# (effective_from_iso, price_tuple) and have _price_for pick the entry whose
+# window contains row["created_at"]. Deliberately not built yet: there has
+# been exactly one price regime, and new models usually arrive as new IDs
+# (a new key here, no conflict).
 PRICES = {
     "claude-sonnet-4-6": (3.00, 3.75, 0.30, 15.00),
     "claude-haiku-4-5": (1.00, 1.25, 0.10, 5.00),
