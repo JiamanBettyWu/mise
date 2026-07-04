@@ -126,6 +126,30 @@ def test_reason_and_select_drops_malformed_gaps(monkeypatch):
     assert [g.item for g in out["gaps"]] == ["rain jacket"]
 
 
+def test_reason_and_select_defaults_missing_top_level_keys(monkeypatch):
+    # #122: a model output missing item_ids/reasoning/essentials must not
+    # KeyError → 500 the whole trip plan; fall back to empty defaults.
+    from services import trip_planner
+
+    parsed = {"gaps": []}
+    monkeypatch.setattr(trip_planner, "recommend_packing_plan", lambda blocks: object())
+    monkeypatch.setattr(trip_planner, "parse_json", lambda resp: parsed)
+
+    out = trip_planner.reason_and_select_node(
+        {
+            "destination": "Lisbon",
+            "start_date": date(2026, 7, 10),
+            "end_date": date(2026, 7, 12),
+            "additional_notes": "",
+            "weather": TripWeather(summary="warm", coverage="full_forecast", daily=[]),
+            "catalog": [],
+        }
+    )
+    assert out["candidate_items"] == []
+    assert out["reasoning"] == ""
+    assert out["essentials"] == []
+
+
 def test_search_purchases_node_builds_suggestions(monkeypatch):
     # The node imported search_products via `from services.search import ...`,
     # which binds the name in trip_planner's namespace — so patch it there,

@@ -201,11 +201,15 @@ def reason_and_select_node(state: PackingState):
         except ValidationError:
             log.warning("dropping malformed gap from model output: %r", g)
 
+    for key in ("item_ids", "reasoning", "essentials"):
+        if key not in parsed:
+            log.warning("model output missing top-level key %r: %r", key, parsed)
+
     return {
-        "candidate_items": _hydrate_items(parsed["item_ids"], state["catalog"]),
+        "candidate_items": _hydrate_items(parsed.get("item_ids", []), state["catalog"]),
         "gaps": gaps,
-        "reasoning": parsed["reasoning"],
-        "essentials": parsed["essentials"],
+        "reasoning": parsed.get("reasoning", ""),
+        "essentials": parsed.get("essentials", []),
     }
 
 
