@@ -18,6 +18,35 @@ function timeAgo(iso) {
   return 'just now';
 }
 
+const STAT_RANGES = [
+  ['7d', '7 days'],
+  ['30d', '30 days'],
+  ['90d', '90 days'],
+  ['all', 'All time'],
+];
+
+// Human-readable labels for llm_usage call_type keys (#115). Unknown keys
+// fall back to the raw key so new call types render without a code change.
+const CALL_TYPE_LABELS = {
+  daily_outfit: 'Daily outfits',
+  tag_photo: 'Photo tagging',
+  tag_photo_multi: 'Photo tagging (multi)',
+  trip_plan: 'Trip plans',
+  trip_climate_infer: 'Trip climate',
+  purchase_query_plan: 'Shopping queries',
+  mode_classify: 'Calendar modes',
+  pref_inference: 'Preference review',
+  repair: 'Outfit repair',
+};
+
+// "since June 2026" label for the All-time asymmetry: token data only exists
+// from #114's deploy onward, so all-time cost undercounts earlier history.
+function monthOf(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
 // Lingering "✓ Saved" confirmation. Remounts on every trigger (the counter is
 // the key at the call site) so consecutive saves restart the fade animation.
 function Flash({ children }) {
@@ -95,6 +124,11 @@ export default function Profile() {
   const [deptError, setDeptError] = useState('');
   const [prefsError, setPrefsError] = useState('');
 
+  // Stats (#115)
+  const [statsRange, setStatsRange] = useState('30d');
+  const [stats, setStats] = useState(null);
+  const [statsError, setStatsError] = useState('');
+
   // editingId → current draft text
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState('');
@@ -118,6 +152,19 @@ export default function Profile() {
   useEffect(() => {
     if (editRef.current) editRef.current.focus();
   }, [editId]);
+
+  // Refetch stats whenever the range changes; guard against a slow older
+  // response landing after a newer one (rapid range clicking).
+  useEffect(() => {
+    let stale = false;
+    setStatsError('');
+    api.getStats(statsRange)
+      .then((s) => { if (!stale) setStats(s); })
+      .catch((err) => {
+        if (!stale) setStatsError(`Couldn’t load stats: ${err?.message ?? 'unknown error'}`);
+      });
+    return () => { stale = true; };
+  }, [statsRange]);
 
   function loadErrorMessage(err) {
     const msg = err?.message ?? '';
@@ -393,6 +440,100 @@ export default function Profile() {
                 <PrefTile key={pref.id} pref={pref} editing={editId === pref.id} {...tileHandlers} />
               ))}
             </div>
+          )}
+        </section>
+
+        {/* ---- Your stats (#115) ---- */}
+        <section className="profile__section">
+          <div className="profile__section-head">
+            <h2 className="profile__section-heading">Your stats</h2>
+            <div className="profile__range" role="group" aria-label="Time range">
+              {STAT_RANGES.map(([key, label]) => (
+                <button
+                  key={key}
+                  className={`chip${statsRange === key ? ' chip--on-range' : ''}`}
+                  aria-pressed={statsRange === key}
+                  onClick={() => setStatsRange(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {statsError && <div className="error">{statsError}</div>}
+
+          {stats && (
+            <>
+              <div className="profile__stat-tiles">
+                <div className="profile__stat-tile">
+                  <span className="profile__stat-value">{stats.outfits}</span>
+                  <span className="profile__stat-label">outfits recommended</span>
+                </div>
+                <div className="profile__stat-tile">
+                  <span className="profile__stat-value">
+                    {stats.feedback_count}
+                    {stats.thumbs_up_rate != null && (
+                      <span className="profile__stat-sub">
+                        {' '}· {Math.round(stats.thumbs_up_rate * 100)}% 👍
+                      </span>
+                    )}
+                  </span>
+                  <span className="profile__stat-label">verdicts given</span>
+                </div>
+                <div className="profile__stat-tile">
+                  <span className="profile__stat-value">{stats.trips}</span>
+                  <span className="profile__stat-label">trips planned</span>
+                </div>
+              </div>
+
+              <div className="profile__usage">
+                <p className="profile__usage-total">
+                  {stats.usage.total_tokens.toLocaleString()} tokens ·{' '}
+                  ~${stats.usage.estimated_cost.toFixed(2)}{' '}
+                  <span className="muted">
+                    estimated
+                    {statsRange === 'all' && stats.usage_since
+                      ? ` · since ${monthOf(stats.usage_since)}`
+                      : ''}
+                  </span>
+                </p>
+                {(() => {
+                  const entries = Object.entries(stats.usage.by_call_type)
+                    .sort((a, b) => b[1].tokens - a[1].tokens);
+                  const max = entries[0]?.[1].tokens || 1;
+                  return entries.map(([key, v]) => (
+                    <div key={key} className="profile__usage-row">
+                      <span className="profile__usage-name">
+                        {CALL_TYPE_LABELS[key] || key}
+                      </span>
+                      <div className="profile__usage-bar">
+                        <div
+                          className="profile__usage-fill"
+                          style={{ width: `${Math.max(2, (v.tokens / max) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="profile__usage-cost muted">
+                        ${v.cost.toFixed(2)}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {stats.top_items.length > 0 && (
+                <div className="profile__top-items">
+                  <p className="profile__label">Most-recommended items</p>
+                  <div className="profile__top-row">
+                    {stats.top_items.map((item) => (
+                      <div key={item.id} className="profile__top-item" title={item.name}>
+                        <img src={item.photo_url} alt={item.name} />
+                        <span className="profile__top-count">×{item.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </section>
       </div>

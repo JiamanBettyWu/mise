@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from auth import require_password
 from db.supabase import client as supabase
+from services.stats import aggregate_outfits, aggregate_usage, range_cutoff
 from schemas import (
     Preference,
     PreferenceCreate,
@@ -72,6 +74,82 @@ def upsert_profile(body: ProfileUpdate):
     if not res.data:
         raise HTTPException(status_code=500, detail="Profile write failed")
     return res.data[0]
+
+
+# ---------------------------------------------------------------------------
+# Stats (#115) — all aggregation server-side; math lives in services/stats.py
+# ---------------------------------------------------------------------------
+
+
+@router.get("/stats")
+def get_stats(range: Literal["7d", "30d", "90d", "all"] = "30d"):
+    cutoff = range_cutoff(range)
+
+    usage_q = (
+        supabase()
+        .table("llm_usage")
+        .select(
+            "call_type, model, input_tokens, output_tokens, "
+            "cache_creation_input_tokens, cache_read_input_tokens"
+        )
+    )
+    outfits_q = supabase().table("outfit_history").select("item_ids, feedback")
+    if cutoff:
+        usage_q = usage_q.gte("created_at", cutoff)
+        outfits_q = outfits_q.gte("created_at", cutoff)
+
+    usage = aggregate_usage(usage_q.execute().data or [])
+    outfits = aggregate_outfits(outfits_q.execute().data or [])
+
+    # Trips planned = trip_plan calls in llm_usage: exactly one per plan
+    # since #114, so no trip_plans table needed. Shares the since-#114 caveat.
+    trips = usage["by_call_type"].get("trip_plan", {}).get("calls", 0)
+
+    # Token data only exists from #114's deploy onward — surface the earliest
+    # row so "All time" can be labeled "since <month>" instead of lying.
+    first = (
+        supabase()
+        .table("llm_usage")
+        .select("created_at")
+        .order("created_at")
+        .limit(1)
+        .execute()
+    )
+    usage_since = first.data[0]["created_at"] if first.data else None
+
+    top_ids = [item_id for item_id, _ in outfits["top_item_counts"]]
+    top_items = []
+    if top_ids:
+        items_res = (
+            supabase()
+            .table("clothing_items")
+            .select("id, name, photo_url")
+            .in_("id", top_ids)
+            .execute()
+        )
+        by_id = {i["id"]: i for i in items_res.data or []}
+        # keep frequency order; drop ids whose item was deleted
+        top_items = [
+            {**by_id[item_id], "count": count}
+            for item_id, count in outfits["top_item_counts"]
+            if item_id in by_id
+        ]
+
+    return {
+        "range": range,
+        "usage_since": usage_since,
+        "usage": {
+            "total_tokens": usage["total_tokens"],
+            "estimated_cost": usage["total_cost"],
+            "has_unpriced": usage["has_unpriced"],
+            "by_call_type": usage["by_call_type"],
+        },
+        "outfits": outfits["outfits"],
+        "feedback_count": outfits["feedback_count"],
+        "thumbs_up_rate": outfits["thumbs_up_rate"],
+        "trips": trips,
+        "top_items": top_items,
+    }
 
 
 # ---------------------------------------------------------------------------
