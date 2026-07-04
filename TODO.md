@@ -31,11 +31,11 @@ manual follow-ups. Full detail lives in [SESSIONS.md](SESSIONS.md).
    **[#123](https://github.com/JiamanBettyWu/wardrobe-ai/issues/123)**
    (structured-outputs pilot on `trip_plan`), which supersedes it for the
    trip planner and pairs with the #30/#120 eval discipline.
-2. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) remainder** —
-   progressive UI indicators (pairs well with the #105 request store), a
-   `max_tokens` check on real `recommend_packing_plan` responses (currently
-   2048), and streaming only if the planner still feels slow after the shipped
-   wave (fan-out + Haiku + trim + #107's parallel searches).
+2. **[#124](https://github.com/JiamanBettyWu/wardrobe-ai/issues/124)** —
+   node-level SSE streaming for the trip planner: render the plan + gaps as
+   soon as `reason_and_select` finishes, purchase results fill in last.
+   Closes out #2 (max_tokens checked via Weave — ~1000 actual vs 2048 cap,
+   left as-is; fake progress indicators superseded by real ones).
 3. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
    MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project.
