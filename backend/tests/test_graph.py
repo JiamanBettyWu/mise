@@ -12,7 +12,14 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
-from schemas import Gap, PurchaseQuery, PurchaseResult, TripPlanRequest, TripWeather
+from schemas import (
+    Gap,
+    PackingPlanOutput,
+    PurchaseQuery,
+    PurchaseResult,
+    TripPlanRequest,
+    TripWeather,
+)
 from services.trip_planner import (
     PURCHASE_QUERY_SYSTEM_PROMPT,
     _build_purchase_query_prompt,
@@ -95,23 +102,19 @@ def test_check_gaps_router():
     assert check_gaps({}) == "no_gaps"  # key missing entirely
 
 
-def test_reason_and_select_drops_malformed_gaps(monkeypatch):
-    # #120: one eval trial's model output omitted `category` on a gap and the
-    # naive Gap(**g) crashed the whole plan. Malformed gaps get dropped with a
-    # warning; well-formed ones survive.
+def test_reason_and_select_reads_parsed_output(monkeypatch):
+    # #123: structured outputs guarantee the shape (no missing keys, no
+    # malformed gaps — replaces the #120/#122 defensive parsing this deleted).
+    # recommend_packing_plan returns a validated PackingPlanOutput directly.
     from services import trip_planner
 
-    parsed = {
-        "item_ids": [],
-        "gaps": [
-            {"item": "rain jacket", "rationale": "daily rain", "category": "outerwear"},
-            {"item": "evening top", "rationale": "no category here"},
-        ],
-        "essentials": [],
-        "reasoning": "r",
-    }
-    monkeypatch.setattr(trip_planner, "recommend_packing_plan", lambda blocks: object())
-    monkeypatch.setattr(trip_planner, "parse_json", lambda resp: parsed)
+    parsed = PackingPlanOutput(
+        item_ids=["abc"],
+        gaps=[Gap(item="rain jacket", rationale="daily rain", category="outerwear")],
+        essentials=["sunscreen"],
+        reasoning="r",
+    )
+    monkeypatch.setattr(trip_planner, "recommend_packing_plan", lambda blocks: parsed)
 
     out = trip_planner.reason_and_select_node(
         {
@@ -123,31 +126,10 @@ def test_reason_and_select_drops_malformed_gaps(monkeypatch):
             "catalog": [],
         }
     )
-    assert [g.item for g in out["gaps"]] == ["rain jacket"]
-
-
-def test_reason_and_select_defaults_missing_top_level_keys(monkeypatch):
-    # #122: a model output missing item_ids/reasoning/essentials must not
-    # KeyError → 500 the whole trip plan; fall back to empty defaults.
-    from services import trip_planner
-
-    parsed = {"gaps": []}
-    monkeypatch.setattr(trip_planner, "recommend_packing_plan", lambda blocks: object())
-    monkeypatch.setattr(trip_planner, "parse_json", lambda resp: parsed)
-
-    out = trip_planner.reason_and_select_node(
-        {
-            "destination": "Lisbon",
-            "start_date": date(2026, 7, 10),
-            "end_date": date(2026, 7, 12),
-            "additional_notes": "",
-            "weather": TripWeather(summary="warm", coverage="full_forecast", daily=[]),
-            "catalog": [],
-        }
-    )
-    assert out["candidate_items"] == []
-    assert out["reasoning"] == ""
-    assert out["essentials"] == []
+    assert out["candidate_items"] == []  # "abc" isn't in the empty catalog
+    assert out["gaps"] == parsed.gaps
+    assert out["reasoning"] == "r"
+    assert out["essentials"] == ["sunscreen"]
 
 
 def test_search_purchases_node_builds_suggestions(monkeypatch):

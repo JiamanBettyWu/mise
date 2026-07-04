@@ -156,6 +156,19 @@ class Gap(BaseModel):
     category: TripCategory
 
 
+class PackingPlanOutput(BaseModel):
+    """Structured-output schema for the trip_plan call (#123)."""
+
+    item_ids: list[str] = Field(description="Catalog item ids selected for the trip.")
+    gaps: list[Gap] = Field(
+        description="Items missing from the catalog this trip needs; [] if none."
+    )
+    essentials: list[str] = Field(
+        description="Packing essentials beyond the catalog, e.g. underwear, sunscreen, charger."
+    )
+    reasoning: str = Field(description="1-2 sentences explaining the overall pick.")
+
+
 class PurchaseQuery(BaseModel):
     gap_index: int = Field(..., ge=0)
     query: str = Field(..., min_length=1, max_length=200)

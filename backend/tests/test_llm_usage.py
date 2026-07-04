@@ -6,6 +6,8 @@ and a failed insert never propagates — metering must not break the product
 call it wraps.
 """
 
+from types import SimpleNamespace
+
 import pytest
 
 import services.claude as claude
@@ -20,6 +22,14 @@ class _FakeUsage:
 
 class _FakeResp:
     usage = _FakeUsage()
+
+
+def _parsed_resp(text, stop_reason="end_turn"):
+    """A fake response carrying one text block, for create_tracked_parsed."""
+    resp = _FakeResp()
+    resp.content = [SimpleNamespace(type="text", text=text)]
+    resp.stop_reason = stop_reason
+    return resp
 
 
 class _FakeAnthropicClient:
@@ -90,3 +100,35 @@ def test_create_tracked_survives_insert_failure(tracked):
     anthropic, _ = tracked(_FakeResp(), fail_insert=True)
     resp = claude.create_tracked("trip_plan", model="m1")
     assert resp is anthropic._resp  # the product call still succeeds
+
+
+def test_create_tracked_parsed_inserts_usage_row(tracked):
+    # #123: the structured-outputs variant meters the same way create_tracked
+    # does and returns the validated object, not the response.
+    anthropic, table = tracked(_parsed_resp('{"a": 1}'))
+    out = claude.create_tracked_parsed("trip_plan", dict, model="m1", max_tokens=5)
+    assert out == {"a": 1}
+    assert anthropic.last_kwargs["model"] == "m1"
+    assert anthropic.last_kwargs["max_tokens"] == 5
+    # the schema rides the request as output_config.format, like messages.parse
+    assert anthropic.last_kwargs["output_config"]["format"]["type"] == "json_schema"
+    assert table.inserted == [
+        {
+            "call_type": "trip_plan",
+            "model": "m1",
+            "input_tokens": 11,
+            "output_tokens": 22,
+            "cache_creation_input_tokens": 33,
+            "cache_read_input_tokens": 0,
+        }
+    ]
+
+
+def test_create_tracked_parsed_records_usage_when_validation_fails(tracked):
+    # The reason this isn't messages.parse(): a paid call whose output fails
+    # validation (e.g. truncated at max_tokens) must still write its llm_usage
+    # row, and the raised error must carry the stop_reason diagnostics.
+    _, table = tracked(_parsed_resp('{"a": ', stop_reason="max_tokens"))
+    with pytest.raises(ValueError, match="max_tokens"):
+        claude.create_tracked_parsed("trip_plan", dict, model="m1", max_tokens=5)
+    assert len(table.inserted) == 1  # metered despite the failure
