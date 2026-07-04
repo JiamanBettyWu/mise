@@ -1,0 +1,164 @@
+{
+  "_comment": "Frozen eval fixtures for the trip-planner eval (#30). The catalog is SYNTHETIC, not a wardrobe snapshot, so rows stay reproducible: it includes a heavy coat (cold cases can pass the warm-layer check) but deliberately NO rain jacket or swimwear (rain/beach cases force the gaps branch). Weather is injected per case — coverage 'full_forecast' skips the climate-inference Claude call; 'partial_forecast'/'inferred_climate' exercise it.",
+  "catalog": [
+    {"id": "eval-item-0001", "name": "White cotton t-shirt", "type": "t-shirt", "color": "white", "formality": "casual", "season": "all-season", "fabric": "cotton", "warmth": 1, "description": "Basic crew-neck tee", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/tee-white.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0002", "name": "Black linen blouse", "type": "blouse", "color": "black", "formality": "smart-casual", "season": "summer", "fabric": "linen", "warmth": 1, "description": "Breathable short-sleeve blouse", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/blouse-black.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0003", "name": "Grey merino sweater", "type": "sweater", "color": "grey", "formality": "smart-casual", "season": "winter", "fabric": "merino wool", "warmth": 4, "description": "Mid-weight crewneck sweater", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/sweater-grey.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0004", "name": "Navy striped long-sleeve shirt", "type": "shirt", "color": "navy", "formality": "casual", "season": "spring", "fabric": "cotton", "warmth": 2, "description": "Breton-style long sleeve", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/shirt-navy.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0005", "name": "Blue straight-leg jeans", "type": "jeans", "color": "blue", "formality": "casual", "season": "all-season", "fabric": "denim", "warmth": 3, "description": "Classic straight-leg jeans", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/jeans-blue.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0006", "name": "Black tailored trousers", "type": "trousers", "color": "black", "formality": "smart-casual", "season": "all-season", "fabric": "wool blend", "warmth": 3, "description": "Slim tailored trousers", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/trousers-black.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0007", "name": "Beige linen shorts", "type": "shorts", "color": "beige", "formality": "casual", "season": "summer", "fabric": "linen", "warmth": 1, "description": "Lightweight summer shorts", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/shorts-beige.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0008", "name": "Floral midi dress", "type": "dress", "color": "floral", "formality": "smart-casual", "season": "summer", "fabric": "viscose", "warmth": 1, "description": "Flowy midi dress", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/dress-floral.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0009", "name": "Black knit dress", "type": "dress", "color": "black", "formality": "formal", "season": "fall", "fabric": "knit", "warmth": 3, "description": "Long-sleeve knit dress", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/dress-knit.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0010", "name": "Camel wool coat", "type": "coat", "color": "camel", "formality": "smart-casual", "season": "winter", "fabric": "wool", "warmth": 5, "description": "Heavy winter overcoat", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/coat-camel.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0011", "name": "Olive utility jacket", "type": "jacket", "color": "olive", "formality": "casual", "season": "spring", "fabric": "cotton canvas", "warmth": 2, "description": "Light unlined jacket, not waterproof", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/jacket-olive.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0012", "name": "White leather sneakers", "type": "sneakers", "color": "white", "formality": "casual", "season": "all-season", "fabric": "leather", "warmth": 2, "description": "Everyday walking sneakers", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/sneakers-white.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0013", "name": "Black leather ankle boots", "type": "boots", "color": "black", "formality": "smart-casual", "season": "winter", "fabric": "leather", "warmth": 4, "description": "Lined ankle boots", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/boots-black.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0014", "name": "Tan flat sandals", "type": "sandals", "color": "tan", "formality": "casual", "season": "summer", "fabric": "leather", "warmth": 1, "description": "Open flat sandals", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/sandals-tan.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0015", "name": "Grey wool scarf", "type": "scarf", "color": "grey", "formality": "casual", "season": "winter", "fabric": "wool", "warmth": 4, "description": "Chunky knit scarf", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/scarf-grey.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"},
+    {"id": "eval-item-0016", "name": "Straw sun hat", "type": "hat", "color": "natural", "formality": "casual", "season": "summer", "fabric": "straw", "warmth": null, "description": "Wide-brim sun hat", "brand": null, "notes": null, "photo_url": "https://example.invalid/eval/hat-straw.jpg", "available": true, "in_travel_bag": false, "created_at": "2026-01-01T00:00:00"}
+  ],
+  "cases": [
+    {
+      "case_id": "hot-dry-city",
+      "destination": "Seville, Spain",
+      "start_date": "2026-07-20",
+      "end_date": "2026-07-23",
+      "additional_notes": "City walking, tapas dinners.",
+      "weather": {
+        "summary": "Hot and dry all four days, highs 36-38C, lows around 21C, full sun, no rain expected.",
+        "coverage": "full_forecast",
+        "forecast_summary": "Hot and dry, highs 36-38C.",
+        "daily": [
+          {"date": "2026-07-20", "high_c": 37.0, "low_c": 21.0, "conditions": "sunny", "precip_chance": 0.0},
+          {"date": "2026-07-21", "high_c": 38.0, "low_c": 22.0, "conditions": "sunny", "precip_chance": 0.0},
+          {"date": "2026-07-22", "high_c": 36.5, "low_c": 21.5, "conditions": "sunny", "precip_chance": 0.05},
+          {"date": "2026-07-23", "high_c": 36.0, "low_c": 21.0, "conditions": "sunny", "precip_chance": 0.0}
+        ]
+      }
+    },
+    {
+      "case_id": "cold-winter-city",
+      "destination": "Oslo, Norway",
+      "start_date": "2026-12-01",
+      "end_date": "2026-12-04",
+      "additional_notes": "Museums and outdoor christmas markets.",
+      "weather": {
+        "summary": "Cold throughout: highs around -1 to 2C, lows -6 to -3C, light snow flurries on two days.",
+        "coverage": "full_forecast",
+        "forecast_summary": "Cold, highs -1 to 2C, lows to -6C, occasional snow.",
+        "daily": [
+          {"date": "2026-12-01", "high_c": 1.0, "low_c": -4.0, "conditions": "overcast", "precip_chance": 0.2},
+          {"date": "2026-12-02", "high_c": -1.0, "low_c": -6.0, "conditions": "light snow", "precip_chance": 0.6},
+          {"date": "2026-12-03", "high_c": 2.0, "low_c": -3.0, "conditions": "partly cloudy", "precip_chance": 0.1},
+          {"date": "2026-12-04", "high_c": 0.0, "low_c": -5.0, "conditions": "light snow", "precip_chance": 0.5}
+        ]
+      }
+    },
+    {
+      "case_id": "rainy-mixed-week",
+      "destination": "London, UK",
+      "start_date": "2026-10-05",
+      "end_date": "2026-10-09",
+      "additional_notes": "Work conference plus two tourist days.",
+      "weather": {
+        "summary": "Cool and wet: highs 11-14C, lows 6-9C, rain likely on most days.",
+        "coverage": "full_forecast",
+        "forecast_summary": "Cool, rain likely most days, highs 11-14C.",
+        "daily": [
+          {"date": "2026-10-05", "high_c": 13.0, "low_c": 8.0, "conditions": "rain", "precip_chance": 0.8},
+          {"date": "2026-10-06", "high_c": 12.0, "low_c": 7.0, "conditions": "showers", "precip_chance": 0.7},
+          {"date": "2026-10-07", "high_c": 14.0, "low_c": 9.0, "conditions": "overcast", "precip_chance": 0.4},
+          {"date": "2026-10-08", "high_c": 11.0, "low_c": 6.0, "conditions": "rain", "precip_chance": 0.9},
+          {"date": "2026-10-09", "high_c": 12.0, "low_c": 7.0, "conditions": "showers", "precip_chance": 0.6}
+        ]
+      }
+    },
+    {
+      "case_id": "beach-week-gaps",
+      "destination": "Tulum, Mexico",
+      "start_date": "2026-08-10",
+      "end_date": "2026-08-15",
+      "additional_notes": "Beach mornings, cenote swimming, casual dinners.",
+      "weather": {
+        "summary": "Hot and humid, highs 32-34C, lows around 24C, brief afternoon thunderstorms possible.",
+        "coverage": "full_forecast",
+        "forecast_summary": "Hot and humid, highs 32-34C, afternoon storm chances.",
+        "daily": [
+          {"date": "2026-08-10", "high_c": 33.0, "low_c": 24.0, "conditions": "humid, sunny", "precip_chance": 0.3},
+          {"date": "2026-08-11", "high_c": 34.0, "low_c": 25.0, "conditions": "afternoon thunderstorm", "precip_chance": 0.6},
+          {"date": "2026-08-12", "high_c": 32.0, "low_c": 24.0, "conditions": "humid, sunny", "precip_chance": 0.2},
+          {"date": "2026-08-13", "high_c": 33.0, "low_c": 24.0, "conditions": "partly cloudy", "precip_chance": 0.4},
+          {"date": "2026-08-14", "high_c": 34.0, "low_c": 25.0, "conditions": "afternoon thunderstorm", "precip_chance": 0.7},
+          {"date": "2026-08-15", "high_c": 33.0, "low_c": 24.0, "conditions": "sunny", "precip_chance": 0.2}
+        ]
+      }
+    },
+    {
+      "case_id": "partial-forecast-shoulder",
+      "destination": "Kyoto, Japan",
+      "start_date": "2026-11-18",
+      "end_date": "2026-11-27",
+      "additional_notes": "Temples, gardens, lots of walking. Ten-day trip.",
+      "weather": {
+        "summary": "Mild autumn days early in the trip, highs 14-17C, lows 6-9C, mostly dry.",
+        "coverage": "partial_forecast",
+        "forecast_summary": "First 4 days: highs 14-17C, lows 6-9C, mostly dry.",
+        "daily": [
+          {"date": "2026-11-18", "high_c": 16.0, "low_c": 8.0, "conditions": "sunny", "precip_chance": 0.1},
+          {"date": "2026-11-19", "high_c": 17.0, "low_c": 9.0, "conditions": "partly cloudy", "precip_chance": 0.2},
+          {"date": "2026-11-20", "high_c": 14.0, "low_c": 6.0, "conditions": "overcast", "precip_chance": 0.3},
+          {"date": "2026-11-21", "high_c": 15.0, "low_c": 7.0, "conditions": "sunny", "precip_chance": 0.1}
+        ]
+      }
+    },
+    {
+      "case_id": "out-of-window-inferred",
+      "destination": "Reykjavik, Iceland",
+      "start_date": "2027-02-10",
+      "end_date": "2027-02-14",
+      "additional_notes": "Northern lights trip, some time outdoors at night.",
+      "weather": {
+        "summary": "",
+        "coverage": "inferred_climate",
+        "forecast_summary": null,
+        "daily": []
+      }
+    },
+    {
+      "case_id": "weekend-formal",
+      "destination": "New York, USA",
+      "start_date": "2026-09-25",
+      "end_date": "2026-09-27",
+      "additional_notes": "Friend's wedding Saturday evening, brunch Sunday.",
+      "weather": {
+        "summary": "Pleasant early fall: highs 21-23C, lows 13-15C, dry.",
+        "coverage": "full_forecast",
+        "forecast_summary": "Highs 21-23C, dry.",
+        "daily": [
+          {"date": "2026-09-25", "high_c": 22.0, "low_c": 14.0, "conditions": "sunny", "precip_chance": 0.1},
+          {"date": "2026-09-26", "high_c": 23.0, "low_c": 15.0, "conditions": "partly cloudy", "precip_chance": 0.1},
+          {"date": "2026-09-27", "high_c": 21.0, "low_c": 13.0, "conditions": "sunny", "precip_chance": 0.0}
+        ]
+      }
+    },
+    {
+      "case_id": "cold-snap-shoulder",
+      "destination": "Chicago, USA",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-31",
+      "additional_notes": "Mostly indoors but one lakefront walk planned.",
+      "weather": {
+        "summary": "Mild start then a sharp cold snap: highs drop from 15C to 4C, final-morning low of 2C with wind.",
+        "coverage": "full_forecast",
+        "forecast_summary": "Highs 15C falling to 4C; windy, cold finish.",
+        "daily": [
+          {"date": "2026-10-28", "high_c": 15.0, "low_c": 9.0, "conditions": "partly cloudy", "precip_chance": 0.1},
+          {"date": "2026-10-29", "high_c": 11.0, "low_c": 6.0, "conditions": "windy", "precip_chance": 0.2},
+          {"date": "2026-10-30", "high_c": 6.0, "low_c": 3.0, "conditions": "windy, overcast", "precip_chance": 0.3},
+          {"date": "2026-10-31", "high_c": 4.0, "low_c": 2.0, "conditions": "cold, windy", "precip_chance": 0.2}
+        ]
+      }
+    }
+  ]
+}

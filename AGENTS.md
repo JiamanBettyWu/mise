@@ -30,6 +30,7 @@ uv --project backend run python jobs/daily_outfit.py
 ### One-off scripts (run from repo root)
 ```bash
 uv --project backend run python jobs/backfill_warmth.py --dry-run   # warmth backfill (#40); drop --dry-run to write
+uv --project backend run python backend/evals/eval_trip.py          # trip-planner offline eval (#30) — manual, paid (real Sonnet calls), results in Weave
 ```
 
 ### Other useful
