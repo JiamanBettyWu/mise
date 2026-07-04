@@ -14,21 +14,23 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-03 (latest session):** #30 shipped (PR #119) — the first
-offline eval (`backend/evals/`: frozen trip scenarios + code-based scorers
-under `weave.Evaluation`), opening Phase 2 of the #85 Weave track; the eval
-immediately quantified the trip planner's run-to-run variance, filed as #120.
-No open manual follow-ups. Full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-04 (latest session):** #120 shipped (PR #121) — the first
+measure→tune→measure rep: explicit quantity rule + temp 0.2 on `trip_plan`,
+verified with `eval_trip.py --trials 3` before/after (24/24 both), plus a
+tolerant gap parse the trials run's crash motivated; follow-ups filed as #122
+(remaining bare key lookups) and #123 (structured-outputs pilot). No open
+manual follow-ups. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **[#120](https://github.com/JiamanBettyWu/wardrobe-ai/issues/120)** —
-   trip-plan output variance: `trials=3` baseline with the fresh #30 harness,
-   then explicit quantity constraint in the prompt + low temperature, re-measure.
-   First real measure→tune rep; inspect run 1's failing row first (the scorer
-   constant might be the bug).
+1. **[#122](https://github.com/JiamanBettyWu/wardrobe-ai/issues/122)** —
+   quick fix: the three remaining bare key lookups in `reason_and_select`
+   (same crash class #121 fixed for gaps); or jump straight to
+   **[#123](https://github.com/JiamanBettyWu/wardrobe-ai/issues/123)**
+   (structured-outputs pilot on `trip_plan`), which supersedes it for the
+   trip planner and pairs with the #30/#120 eval discipline.
 2. **[#2](https://github.com/JiamanBettyWu/wardrobe-ai/issues/2) remainder** —
    progressive UI indicators (pairs well with the #105 request store), a
    `max_tokens` check on real `recommend_packing_plan` responses (currently
