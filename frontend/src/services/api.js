@@ -77,6 +77,9 @@ export const api = {
   getProfile: () => request('/profile'),
   updateProfile: (data) => request('/profile', { method: 'PUT', body: data }),
 
+  // Stats (#115); range = '7d' | '30d' | '90d' | 'all'
+  getStats: (range = '30d') => request(`/profile/stats?range=${range}`),
+
   // Preferences
   listPreferences: () => request('/profile/preferences'),
   createPreference: (text) =>
