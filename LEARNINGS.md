@@ -8,6 +8,9 @@ Future-me uses this to remember what was actually hard, for blog posts and inter
 
 ## 2026
 
+### 2026-07 — trials=3 didn't reproduce the flaky scorer, but it caught a crash n=1 never showed
+Running #120's baseline at `trials=3` (24 rows): the `quantity_for_duration` failure from the n=1 runs never reappeared — but one trial crashed outright because the model emitted a gap missing `category` and `Gap(**g)` raised, which in prod would 500 the whole trip plan. Repeated sampling finds *different* tail events than the one you went looking for; harden every model-output parse (drop-and-warn beats raise) because at temp>0 any omittable field eventually gets omitted.
+
 ### 2026-07 — A timed-out SerpAPI call isn't a failed call
 Our 10s read timeout on `google_shopping` searches produced "SerpAPI search failed" errors, but the search *completed* server-side anyway — it billed a credit and got cached (~1h); we just hung up before the answer arrived. Diagnosed via `search_metadata.total_time_taken = 25.93` on a later cached response, which shows the original's true duration. Fix: shaped timeout — `httpx.Timeout(35, connect=5)` — fail fast on unreachable, be patient once it's processing.
 

@@ -18,6 +18,7 @@ product search (best-effort; failures keep gaps visible with results=[]).
 ~8 cases ≈ cents per run.
 """
 
+import argparse
 import asyncio
 import json
 import logging
@@ -156,6 +157,16 @@ def gaps_surface_as_suggestions(output: dict) -> dict:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--trials",
+        type=int,
+        default=1,
+        help="Runs per case (weave.Evaluation trials). Use 3 when measuring "
+        "a variance fix (#120) — n=1 can't distinguish a fix from a coin flip.",
+    )
+    args = parser.parse_args()
+
     if not TRACING:
         print(
             "[eval] weave init failed — aborting; an eval run whose results "
@@ -167,6 +178,7 @@ def main() -> int:
     evaluation = weave.Evaluation(
         evaluation_name="trip-planner-code-checks",
         dataset=_FIXTURES["cases"],
+        trials=args.trials,
         scorers=[
             items_in_catalog,
             outfit_completeness,
