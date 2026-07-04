@@ -7,6 +7,12 @@ from functools import lru_cache
 
 from anthropic import Anthropic
 
+# Private-path import, but it's the exact helper messages.parse() uses to make
+# a pydantic schema legal for structured outputs (additionalProperties: false
+# etc.); the offline suite imports this module, so an SDK move breaks loudly.
+from anthropic.lib._parse._transform import transform_schema
+from pydantic import TypeAdapter, ValidationError
+
 from db.supabase import client as supabase
 from observability import op
 from services.image import ensure_under_limit, fit_to_vision_limits, image_size
@@ -131,15 +137,37 @@ def create_tracked(call_type: str, **kwargs):
 
 
 def create_tracked_parsed(call_type: str, output_format: type, **kwargs):
-    """messages.parse variant of create_tracked (#123).
+    """Structured-outputs variant of create_tracked (#123). Returns the
+    validated `output_format` instance, not the raw response.
 
-    Structured outputs guarantee the response conforms to `output_format`'s
-    JSON schema, so the caller reads `resp.content[0].parsed_output` directly
-    instead of going through parse_json's fence-stripping / brace-scanning.
+    Deliberately NOT messages.parse(): parse() validates the output inside
+    the call and raises on failure (e.g. truncation at max_tokens), which
+    would skip usage recording for a fully-paid request. This decomposes it
+    into the same three steps — transform schema, create, validate — with
+    _record_usage between the call and the validation, so every request is
+    metered even when the output doesn't validate.
     """
-    resp = client().messages.parse(output_format=output_format, **kwargs)
+    adapter = TypeAdapter(output_format)
+    resp = client().messages.create(
+        output_config={
+            "format": {
+                "type": "json_schema",
+                "schema": transform_schema(adapter.json_schema()),
+            }
+        },
+        **kwargs,
+    )
     _record_usage(call_type, kwargs.get("model", ""), resp)
-    return resp
+
+    text = "".join(block.text for block in resp.content if block.type == "text")
+    try:
+        return adapter.validate_json(text)
+    except ValidationError as e:
+        stop_reason = getattr(resp, "stop_reason", None)
+        raise ValueError(
+            "structured output failed validation"
+            f" (stop_reason={stop_reason}, length={len(text)}): {e}"
+        ) from e
 
 
 def _record_usage(call_type: str, model: str, resp) -> None:

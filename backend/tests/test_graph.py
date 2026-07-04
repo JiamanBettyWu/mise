@@ -9,7 +9,6 @@ forecast window, so it never goes stale the way hardcoded dates did.
 import json
 import os
 from datetime import date, datetime, timedelta
-from types import SimpleNamespace
 
 import pytest
 
@@ -105,8 +104,8 @@ def test_check_gaps_router():
 
 def test_reason_and_select_reads_parsed_output(monkeypatch):
     # #123: structured outputs guarantee the shape (no missing keys, no
-    # malformed gaps — replaces the #120/#122 defensive parsing this deleted),
-    # so the node just reads response.content[0].parsed_output.
+    # malformed gaps — replaces the #120/#122 defensive parsing this deleted).
+    # recommend_packing_plan returns a validated PackingPlanOutput directly.
     from services import trip_planner
 
     parsed = PackingPlanOutput(
@@ -115,10 +114,7 @@ def test_reason_and_select_reads_parsed_output(monkeypatch):
         essentials=["sunscreen"],
         reasoning="r",
     )
-    fake_response = SimpleNamespace(content=[SimpleNamespace(parsed_output=parsed)])
-    monkeypatch.setattr(
-        trip_planner, "recommend_packing_plan", lambda blocks: fake_response
-    )
+    monkeypatch.setattr(trip_planner, "recommend_packing_plan", lambda blocks: parsed)
 
     out = trip_planner.reason_and_select_node(
         {

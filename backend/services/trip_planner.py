@@ -189,8 +189,7 @@ def get_catalog_node(state: PackingState):
 def reason_and_select_node(state: PackingState):
     user_prompt = _build_packing_prompt(state)  # helper that formats the inputs
 
-    response = recommend_packing_plan(user_prompt)
-    parsed: PackingPlanOutput = response.content[0].parsed_output
+    parsed: PackingPlanOutput = recommend_packing_plan(user_prompt)
 
     return {
         "candidate_items": _hydrate_items(parsed.item_ids, state["catalog"]),
@@ -293,9 +292,9 @@ def _build_packing_prompt(
 
 def recommend_packing_plan(
     user_blocks: list[str],
-):
+) -> PackingPlanOutput:
 
-    resp = create_tracked_parsed(
+    return create_tracked_parsed(
         "trip_plan",
         PackingPlanOutput,
         model=MODEL,
@@ -314,8 +313,6 @@ def recommend_packing_plan(
         ],
         messages=[{"role": "user", "content": "\n\n".join(user_blocks)}],
     )
-
-    return resp
 
 
 def check_gaps(state: PackingState) -> str:
