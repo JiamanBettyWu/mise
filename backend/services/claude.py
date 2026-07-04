@@ -130,6 +130,18 @@ def create_tracked(call_type: str, **kwargs):
     return resp
 
 
+def create_tracked_parsed(call_type: str, output_format: type, **kwargs):
+    """messages.parse variant of create_tracked (#123).
+
+    Structured outputs guarantee the response conforms to `output_format`'s
+    JSON schema, so the caller reads `resp.content[0].parsed_output` directly
+    instead of going through parse_json's fence-stripping / brace-scanning.
+    """
+    resp = client().messages.parse(output_format=output_format, **kwargs)
+    _record_usage(call_type, kwargs.get("model", ""), resp)
+    return resp
+
+
 def _record_usage(call_type: str, model: str, resp) -> None:
     usage = getattr(resp, "usage", None)
     if usage is None:  # test fakes and hypothetical exotic responses

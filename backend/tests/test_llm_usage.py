@@ -32,6 +32,10 @@ class _FakeAnthropicClient:
         self.last_kwargs = kwargs
         return self._resp
 
+    def parse(self, **kwargs):
+        self.last_kwargs = kwargs
+        return self._resp
+
 
 class _FakeTable:
     def __init__(self, fail=False):
@@ -90,3 +94,25 @@ def test_create_tracked_survives_insert_failure(tracked):
     anthropic, _ = tracked(_FakeResp(), fail_insert=True)
     resp = claude.create_tracked("trip_plan", model="m1")
     assert resp is anthropic._resp  # the product call still succeeds
+
+
+def test_create_tracked_parsed_inserts_usage_row(tracked):
+    # #123: the messages.parse variant records usage the same way create_tracked does.
+    anthropic, table = tracked(_FakeResp())
+    resp = claude.create_tracked_parsed("trip_plan", dict, model="m1", max_tokens=5)
+    assert resp is anthropic._resp
+    assert anthropic.last_kwargs == {
+        "output_format": dict,
+        "model": "m1",
+        "max_tokens": 5,
+    }
+    assert table.inserted == [
+        {
+            "call_type": "trip_plan",
+            "model": "m1",
+            "input_tokens": 11,
+            "output_tokens": 22,
+            "cache_creation_input_tokens": 33,
+            "cache_read_input_tokens": 0,
+        }
+    ]

@@ -23,13 +23,13 @@ from datetime import date
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from pydantic import ValidationError
 
 from db.supabase import client as supabase
 from schemas import (
     ClothingItem,
     Gap,
     PackingCategory,
+    PackingPlanOutput,
     PurchaseQuery,
     PurchaseResult,
     PurchaseSuggestion,
@@ -38,7 +38,7 @@ from schemas import (
     TripPlanResponse,
     TripWeather,
 )
-from services.claude import create_tracked, parse_json
+from services.claude import create_tracked, create_tracked_parsed, parse_json
 from services.search import search_products
 from services.weather import get_weather_for_destination
 
@@ -190,26 +190,13 @@ def reason_and_select_node(state: PackingState):
     user_prompt = _build_packing_prompt(state)  # helper that formats the inputs
 
     response = recommend_packing_plan(user_prompt)
-    parsed = parse_json(response)
-
-    # #120: a malformed gap (e.g. missing `category`) must not 500 the whole
-    # trip plan — drop it and keep the rest. Seen once in the trials=3 eval.
-    gaps = []
-    for g in parsed.get("gaps", []):
-        try:
-            gaps.append(Gap(**g))
-        except ValidationError:
-            log.warning("dropping malformed gap from model output: %r", g)
-
-    for key in ("item_ids", "reasoning", "essentials"):
-        if key not in parsed:
-            log.warning("model output missing top-level key %r: %r", key, parsed)
+    parsed: PackingPlanOutput = response.content[0].parsed_output
 
     return {
-        "candidate_items": _hydrate_items(parsed.get("item_ids", []), state["catalog"]),
-        "gaps": gaps,
-        "reasoning": parsed.get("reasoning", ""),
-        "essentials": parsed.get("essentials", []),
+        "candidate_items": _hydrate_items(parsed.item_ids, state["catalog"]),
+        "gaps": parsed.gaps,
+        "reasoning": parsed.reasoning,
+        "essentials": parsed.essentials,
     }
 
 
@@ -253,23 +240,6 @@ and trip length. Examples are underwear, socks, scarf, gloves, hats, sunscreen, 
 Don't repeat anything already in the selected items. Be specific where it matters (e.g. 'rain jackets' not 
 just 'outerwear') and skip the obvious (don't just say 'clothes'). Tailor it to the destination (e.g. adapter 
 for international trips, sunscreen for sunny climates). Aim for 5 ~ 10 items in total.
-
-Return ONLY a JSON object of the shape:
-
-{
-    "item_ids": ["<uuid>", "<uuid>"],
-    "gaps": [
-        {
-            "item": "Linen wide-leg pants",
-            "rationale": "for hot daytime walks",
-            "category": "bottoms"
-        }
-    ],
-    "essentials": ["Underwear × 5", "Sunscreen"],
-    "reasoning": "1-2 sentences explaining the overall pick."
-}
-
-No commentary, no markdown fences. The JSON must be parseable.
 """
 
 
@@ -325,8 +295,9 @@ def recommend_packing_plan(
     user_blocks: list[str],
 ):
 
-    resp = create_tracked(
+    resp = create_tracked_parsed(
         "trip_plan",
+        PackingPlanOutput,
         model=MODEL,
         max_tokens=2048,
         # #120: structured selection (pick ids, emit JSON) doesn't need the
