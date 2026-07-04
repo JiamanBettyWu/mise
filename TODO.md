@@ -14,23 +14,20 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-04 (latest session):** #120 shipped (PR #121) — the first
-measure→tune→measure rep: explicit quantity rule + temp 0.2 on `trip_plan`,
-verified with `eval_trip.py --trials 3` before/after (24/24 both), plus a
-tolerant gap parse the trials run's crash motivated; follow-ups filed as #122
-(remaining bare key lookups) and #123 (structured-outputs pilot). No open
-manual follow-ups. Full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-04 (latest session):** #122 shipped (PR #129) — the last
+bare-lookup spot in `reason_and_select_node` (item_ids/reasoning/essentials)
+now defaults safely instead of KeyError→500, closing out the #120 validation
+survey's follow-ups. #123 (structured-outputs pilot) is next. No open manual
+follow-ups. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **[#122](https://github.com/JiamanBettyWu/wardrobe-ai/issues/122)** —
-   quick fix: the three remaining bare key lookups in `reason_and_select`
-   (same crash class #121 fixed for gaps); or jump straight to
-   **[#123](https://github.com/JiamanBettyWu/wardrobe-ai/issues/123)**
-   (structured-outputs pilot on `trip_plan`), which supersedes it for the
-   trip planner and pairs with the #30/#120 eval discipline.
+1. **[#123](https://github.com/JiamanBettyWu/wardrobe-ai/issues/123)** —
+   structured-outputs pilot on `trip_plan` (`output_config.format` makes
+   malformed output impossible by construction); pairs with the #30/#120
+   eval discipline.
 2. **[#124](https://github.com/JiamanBettyWu/wardrobe-ai/issues/124)** —
    node-level SSE streaming for the trip planner: render the plan + gaps as
    soon as `reason_and_select` finishes, purchase results fill in last.
