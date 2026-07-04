@@ -37,6 +37,7 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 # Init weave BEFORE importing the pipeline, so the Anthropic autopatch is in
 # place before services.claude builds its client.
 import weave  # noqa: E402
+
 from observability import init_weave  # noqa: E402
 
 TRACING = init_weave()
