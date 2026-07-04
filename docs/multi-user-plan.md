@@ -1,7 +1,7 @@
 # Multi-user support: plan
 
 **Status:** deferred — revisit after the "friend-ready" milestone (see below).
-**Last updated:** 2026-07-03.
+**Last updated:** 2026-07-04.
 
 This is a planning doc, not a tracked issue. The work is big enough that it
 shouldn't sit in the issue tracker until we're actually close to doing it.
@@ -159,6 +159,11 @@ Things deliberately *not* blockers:
 
 - **Auth method**: email/password vs magic link vs Google OAuth. Magic link is
   lowest friction but requires email infra we already have for daily-email.
+  **Decided (2026-07-04): passwordless via Supabase Auth, but use the email
+  OTP 6-digit code, not the clickable link** — a link opens in Safari's
+  storage container, not the installed PWA's ([#126](https://github.com/JiamanBettyWu/wardrobe-ai/issues/126)),
+  leaving the app logged out; the typed code lands in whichever window asked.
+  (Can offer both: link for desktop, code for the installed app.)
 - **Invitation flow**: open signup vs invite codes? For 5 friends, invite codes
   are simpler and bound the cost surface.
 - **Settings UI scope**: minimum is email opt-in + style notes. Could extend
