@@ -23,6 +23,7 @@ from datetime import date
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from pydantic import ValidationError
 
 from db.supabase import client as supabase
 from schemas import (
@@ -191,9 +192,18 @@ def reason_and_select_node(state: PackingState):
     response = recommend_packing_plan(user_prompt)
     parsed = parse_json(response)
 
+    # #120: a malformed gap (e.g. missing `category`) must not 500 the whole
+    # trip plan — drop it and keep the rest. Seen once in the trials=3 eval.
+    gaps = []
+    for g in parsed.get("gaps", []):
+        try:
+            gaps.append(Gap(**g))
+        except ValidationError:
+            log.warning("dropping malformed gap from model output: %r", g)
+
     return {
         "candidate_items": _hydrate_items(parsed["item_ids"], state["catalog"]),
-        "gaps": [Gap(**g) for g in parsed.get("gaps", [])],
+        "gaps": gaps,
         "reasoning": parsed["reasoning"],
         "essentials": parsed["essentials"],
     }
@@ -222,7 +232,9 @@ The packing plan should:
   plus outerwears if needed.
 - Be weather-appropriate (layers for cold, breathable for heat, water-resistant if rain is forecasted).
 - If weather context includes a climate estimate, use it conservatively and do not treat it as a live forecast.
-- Pick the number of items appropriate for the trip duration.
+- Scale quantities with trip duration: include at least 3 top-slot items (tops or dresses,
+  combined) — or one per day if the trip is shorter than 3 days. More than 3 is fine for
+  longer trips, but not required: re-wearing on long trips is normal packing advice.
 - Reference each item by its `id`, unless for `gaps` and `essentials`. 
 
 
@@ -313,6 +325,11 @@ def recommend_packing_plan(
         "trip_plan",
         model=MODEL,
         max_tokens=2048,
+        # #120: structured selection (pick ids, emit JSON) doesn't need the
+        # default temperature 1.0; low temp narrows run-to-run spread. The
+        # explicit quantity rule in the prompt moves the center — temp alone
+        # would just make a borderline judgment consistently borderline.
+        temperature=0.2,
         system=[
             {
                 "type": "text",

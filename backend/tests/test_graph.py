@@ -95,6 +95,37 @@ def test_check_gaps_router():
     assert check_gaps({}) == "no_gaps"  # key missing entirely
 
 
+def test_reason_and_select_drops_malformed_gaps(monkeypatch):
+    # #120: one eval trial's model output omitted `category` on a gap and the
+    # naive Gap(**g) crashed the whole plan. Malformed gaps get dropped with a
+    # warning; well-formed ones survive.
+    from services import trip_planner
+
+    parsed = {
+        "item_ids": [],
+        "gaps": [
+            {"item": "rain jacket", "rationale": "daily rain", "category": "outerwear"},
+            {"item": "evening top", "rationale": "no category here"},
+        ],
+        "essentials": [],
+        "reasoning": "r",
+    }
+    monkeypatch.setattr(trip_planner, "recommend_packing_plan", lambda blocks: object())
+    monkeypatch.setattr(trip_planner, "parse_json", lambda resp: parsed)
+
+    out = trip_planner.reason_and_select_node(
+        {
+            "destination": "Lisbon",
+            "start_date": date(2026, 7, 10),
+            "end_date": date(2026, 7, 12),
+            "additional_notes": "",
+            "weather": TripWeather(summary="warm", coverage="full_forecast", daily=[]),
+            "catalog": [],
+        }
+    )
+    assert [g.item for g in out["gaps"]] == ["rain jacket"]
+
+
 def test_search_purchases_node_builds_suggestions(monkeypatch):
     # The node imported search_products via `from services.search import ...`,
     # which binds the name in trip_planner's namespace — so patch it there,
