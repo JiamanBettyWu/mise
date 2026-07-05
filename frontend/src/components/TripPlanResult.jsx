@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 const CATEGORY_ORDER = [
   'dresses',
   'tops',
@@ -26,9 +28,20 @@ function normalizeGap(g) {
 }
 
 // Lingering "✓ Saved" confirmation (#128), same precedent as Profile.jsx's
-// Flash — remounted per save (via the `flash` counter as key) to restart.
+// Flash. Sits inline between the Save and Plan-another buttons, so — unlike
+// Profile.jsx's row-trailing flashes — it can't just fade to opacity:0 and
+// leave the span in place: the reserved flex space would show up as a
+// permanent gap after the first save. Unmount for real once the CSS fade
+// (profile-flash, 2.2s) finishes.
 function Flash({ flash, children }) {
-  if (!flash) return null;
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!flash) return;
+    setVisible(true);
+    const t = setTimeout(() => setVisible(false), 2200);
+    return () => clearTimeout(t);
+  }, [flash]);
+  if (!visible) return null;
   return <span key={flash} className="profile__flash">✓ {children}</span>;
 }
 

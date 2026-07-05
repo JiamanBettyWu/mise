@@ -114,7 +114,15 @@ export default function TripPlan() {
   useEffect(() => {
     if (!gen.done) return;
     if (gen.plan) setPlan(mergePurchases(gen.plan, gen.purchases));
-    consumePlan();
+    // Deferred a tick: consumePlan's store notification and this setPlan
+    // both trigger re-renders, and they don't always land in the same React
+    // commit. Clearing gen.plan/purchases synchronously here can produce one
+    // render where neither the (just-cleared) store nor `plan` (not yet
+    // committed) is populated — displayPlan goes briefly null/stale, which
+    // unmounts TripPlanResult and silently resets any state it owns (e.g.
+    // #128's Save-flash timer). Letting setPlan's render commit first closes
+    // that window.
+    setTimeout(consumePlan, 0);
   }, [gen.done]);
 
   useEffect(() => {
