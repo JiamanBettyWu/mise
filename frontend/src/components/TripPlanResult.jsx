@@ -25,7 +25,7 @@ function normalizeGap(g) {
   return { item: g.item, rationale: g.rationale || '', category: g.category || null };
 }
 
-export default function TripPlanResult({ plan, onPlanAnother }) {
+export default function TripPlanResult({ plan, onPlanAnother, purchasesPending = false }) {
   const sortedList = [...(plan.packing_list || [])].sort(
     (a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
   );
@@ -120,7 +120,14 @@ export default function TripPlanResult({ plan, onPlanAnother }) {
         </section>
       )}
 
-      {plan.purchase_suggestions?.length > 0 && (
+      {purchasesPending && (
+        <section className="trip-section">
+          <h3>Purchase suggestions</h3>
+          <p className="muted">Finding shopping suggestions…</p>
+        </section>
+      )}
+
+      {!purchasesPending && plan.purchase_suggestions?.length > 0 && (
         <section className="trip-section">
           <h3>Purchase suggestions</h3>
           {plan.purchase_suggestions.map((s, i) => {

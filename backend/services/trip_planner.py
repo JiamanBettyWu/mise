@@ -616,18 +616,21 @@ def build_graph():
     # calls would trigger it as soon as the shorter catalog branch finished.
     g.add_edge(["infer_weather_if_needed", "get_catalog"], "reason_and_select")
 
+    # #124: generate_output runs right after reason_and_select — it's pure
+    # Python (<50ms) categorizing candidate_items, and never needed the
+    # purchase results. This puts a display-ready packing_list on the wire
+    # as soon as reasoning finishes, before the purchase-search leg starts.
+    g.add_edge("reason_and_select", "generate_output")
     g.add_conditional_edges(
-        "reason_and_select",
+        "generate_output",
         check_gaps,
         {
             "has_gaps": "plan_purchase_queries",
-            "no_gaps": "generate_output",
+            "no_gaps": END,
         },
     )
     g.add_edge("plan_purchase_queries", "search_purchases")
-    g.add_edge("search_purchases", "generate_output")
-
-    g.add_edge("generate_output", END)
+    g.add_edge("search_purchases", END)
 
     return g.compile()
 
@@ -635,6 +638,23 @@ def build_graph():
 # ---- Public entrypoint ----------------------------------------------------
 
 _APP = build_graph()
+
+
+def _build_response(
+    req: TripPlanRequest, final_state: PackingState
+) -> TripPlanResponse:
+    return TripPlanResponse(
+        destination=req.destination,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        duration_days=(req.end_date - req.start_date).days + 1,
+        weather=final_state["weather"],
+        packing_list=final_state.get("packing_list", []),
+        gaps=final_state.get("gaps", []),
+        purchase_suggestions=final_state.get("purchase_suggestions", []),
+        reasoning=final_state.get("reasoning", ""),
+        essentials=final_state.get("essentials", []),
+    )
 
 
 def run(req: TripPlanRequest) -> TripPlanResponse:
@@ -651,18 +671,68 @@ def run(req: TripPlanRequest) -> TripPlanResponse:
 
     final_state = _APP.invoke(initial_state)
 
-    return TripPlanResponse(
-        destination=req.destination,
-        start_date=req.start_date,
-        end_date=req.end_date,
-        duration_days=(req.end_date - req.start_date).days + 1,
-        weather=final_state["weather"],
-        packing_list=final_state.get("packing_list", []),
-        gaps=final_state.get("gaps", []),
-        purchase_suggestions=final_state.get("purchase_suggestions", []),
-        reasoning=final_state.get("reasoning", ""),
-        essentials=final_state.get("essentials", []),
-    )
+    return _build_response(req, final_state)
+
+
+# #124: node -> progress stage surfaced while the plan streams. get_weather
+# and infer_weather_if_needed both tick "weather" (harmless double-tick when
+# a full forecast skips inference); plan_purchase_queries and
+# search_purchases both tick "shopping" — the frontend only shows one spinner
+# per stage, not a running count of node completions.
+STAGE_BY_NODE = {
+    "get_weather": "weather",
+    "infer_weather_if_needed": "weather",
+    "get_catalog": "catalog",
+    "reason_and_select": "reasoning",
+    "plan_purchase_queries": "shopping",
+    "search_purchases": "shopping",
+}
+
+
+def stream(req: TripPlanRequest):
+    """Yield (event, payload) tuples as the graph advances (#124).
+
+    This is node-progress streaming, not token streaming: `reason_and_select`
+    emits structured JSON, so there is nothing readable to show token-by-token.
+    Consumed by the SSE route in routers/trips.py. A plain sync generator —
+    FastAPI runs it in its threadpool, and search_purchases_node's own
+    ThreadPoolExecutor is unaffected.
+    """
+    initial_state: PackingState = {
+        "destination": req.destination,
+        "start_date": req.start_date,
+        "end_date": req.end_date,
+        "additional_notes": req.additional_notes,
+        "lat": req.lat,
+        "lon": req.lon,
+    }
+
+    final_state: PackingState = dict(initial_state)  # type: ignore[assignment]
+
+    for update in _APP.stream(initial_state, stream_mode="updates"):
+        for node_name, partial in update.items():
+            # LangGraph reports a node's empty-dict return (e.g.
+            # infer_weather_if_needed_node short-circuiting on a full
+            # forecast) as None here rather than {}.
+            if partial:
+                final_state.update(partial)
+
+            stage = STAGE_BY_NODE.get(node_name)
+            if stage:
+                yield "progress", {"stage": stage}
+
+            if node_name == "generate_output":
+                yield "plan", _build_response(req, final_state).model_dump(mode="json")
+
+            if node_name == "search_purchases":
+                yield "purchases", {
+                    "purchase_suggestions": [
+                        s.model_dump(mode="json")
+                        for s in final_state.get("purchase_suggestions", [])
+                    ]
+                }
+
+    yield "done", {}
 
 
 def _categorize(item_type: str) -> str:

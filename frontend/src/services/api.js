@@ -64,11 +64,51 @@ export const api = {
   outfitAttribution: (historyId, payload) =>
     request(`/outfits/${historyId}/attribution`, { method: 'POST', body: payload }),
 
-  planTrip: ({ destination, start_date, end_date, additional_notes = '', lat = null, lon = null }) =>
-    request('/trips/plan', {
+  // Node-progress streaming (#124): SSE frames of `event: <name>\ndata: <json>\n\n`.
+  // The non-streaming /trips/plan JSON endpoint still exists server-side (used
+  // by tests/eval) but has no frontend caller now that this replaced it.
+  // fetch + reader instead of EventSource — EventSource can't send the
+  // X-App-Password header. onEvent(name, payload) fires per frame.
+  planTripStream: async (
+    { destination, start_date, end_date, additional_notes = '', lat = null, lon = null },
+    onEvent,
+    { signal } = {}
+  ) => {
+    const res = await fetch(`${BASE_URL}/trips/plan/stream`, {
       method: 'POST',
-      body: { destination, start_date, end_date, additional_notes, lat, lon },
-    }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-App-Password': getStoredPassword(),
+      },
+      body: JSON.stringify({ destination, start_date, end_date, additional_notes, lat, lon }),
+      signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let boundary;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const lines = frame.split('\n');
+        const eventLine = lines.find((l) => l.startsWith('event: '));
+        const dataLine = lines.find((l) => l.startsWith('data: '));
+        if (eventLine && dataLine) {
+          onEvent(eventLine.slice('event: '.length), JSON.parse(dataLine.slice('data: '.length)));
+        }
+      }
+    }
+  },
 
   searchGeo: (q, limit = 5) =>
     request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),

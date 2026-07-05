@@ -17,6 +17,7 @@ from schemas import (
     PackingPlanOutput,
     PurchaseQuery,
     PurchaseResult,
+    PurchaseSuggestion,
     TripPlanRequest,
     TripWeather,
 )
@@ -31,6 +32,47 @@ from services.trip_planner import (
 )
 
 A_GAP = Gap(item="rain jacket", rationale="daily rain", category="outerwear")
+
+
+def _stream_req():
+    return TripPlanRequest(
+        destination="Paris, France",
+        start_date=date(2026, 7, 10),
+        end_date=date(2026, 7, 12),
+        additional_notes="",
+    )
+
+
+def _patch_front_half(monkeypatch, gaps):
+    # Stubs weather/catalog/reasoning so stream() tests focus on event
+    # shape/ordering, not the underlying node behavior (covered elsewhere).
+    monkeypatch.setattr(
+        "services.trip_planner.get_weather_node",
+        lambda s: {"weather": TripWeather(summary="Sunny.", coverage="full_forecast")},
+    )
+    monkeypatch.setattr(
+        "services.trip_planner.get_catalog_node", lambda s: {"catalog": []}
+    )
+    monkeypatch.setattr(
+        "services.trip_planner.reason_and_select_node",
+        lambda s: {
+            "candidate_items": [],
+            "gaps": gaps,
+            "reasoning": "r",
+            "essentials": [],
+        },
+    )
+
+
+def _use_patched_graph(monkeypatch):
+    # `_APP` is compiled once at module load with direct references to the
+    # node functions in scope at that time (see build_graph's docstring
+    # comment) — monkeypatching a node name afterwards doesn't reach it.
+    # Rebuilding after all node patches are in place picks them up, since
+    # build_graph() looks the names up in the module namespace at call time.
+    from services.trip_planner import build_graph
+
+    monkeypatch.setattr("services.trip_planner._APP", build_graph())
 
 
 def test_graph_shape():
@@ -57,9 +99,13 @@ def test_graph_shape():
     assert ("infer_weather_if_needed", "reason_and_select") in edges
     assert ("get_catalog", "reason_and_select") in edges
     assert ("plan_purchase_queries", "search_purchases") in edges
-    assert ("search_purchases", "generate_output") in edges
-    fork_targets = {t for s, t in edges if s == "reason_and_select"}
-    assert {"plan_purchase_queries", "generate_output"} <= fork_targets
+    # #124: generate_output now runs right after reason_and_select (it's pure
+    # Python and never needed purchase results), and the has_gaps/no_gaps fork
+    # moves from reason_and_select to generate_output.
+    assert ("reason_and_select", "generate_output") in edges
+    assert ("search_purchases", "__end__") in edges
+    fork_targets = {t for s, t in edges if s == "generate_output"}
+    assert {"plan_purchase_queries", "__end__"} <= fork_targets
 
 
 def test_fanout_joins_before_reason_and_select(monkeypatch):
@@ -340,6 +386,162 @@ def test_purchase_query_prompt_carries_preferences_as_applicability_context():
     assert "Prefers sandals over sneakers" in prompt
     assert "It is valid to use no preferences" in PURCHASE_QUERY_SYSTEM_PROMPT
     assert "Do not force outfit-composition preferences" in PURCHASE_QUERY_SYSTEM_PROMPT
+
+
+def test_stream_yields_plan_before_purchases_when_gaps(monkeypatch):
+    # #124: generate_output's plan event must be observable before
+    # search_purchases's purchases event, and done is always last.
+    _patch_front_half(monkeypatch, gaps=[A_GAP])
+    monkeypatch.setattr(
+        "services.trip_planner.plan_purchase_queries_node",
+        lambda s: {"purchase_queries": [], "shopping_department": "womens"},
+    )
+    monkeypatch.setattr(
+        "services.trip_planner.search_purchases_node",
+        lambda s: {"purchase_suggestions": [PurchaseSuggestion(gap=A_GAP, results=[])]},
+    )
+    _use_patched_graph(monkeypatch)
+
+    from services.trip_planner import stream
+
+    events = list(stream(_stream_req()))
+    kinds = [e for e, _ in events]
+
+    assert kinds.count("plan") == 1
+    assert kinds.count("purchases") == 1
+    assert kinds[-1] == "done"
+    assert kinds.index("plan") < kinds.index("purchases")
+
+    plan_payload = events[kinds.index("plan")][1]
+    assert plan_payload["packing_list"] == []
+    assert plan_payload["gaps"][0]["item"] == "rain jacket"
+
+    purchases_payload = events[kinds.index("purchases")][1]
+    assert purchases_payload["purchase_suggestions"][0]["gap"]["item"] == "rain jacket"
+
+
+def test_stream_ends_after_plan_when_no_gaps(monkeypatch):
+    # The no-gaps path skips plan_purchase_queries/search_purchases entirely,
+    # so no purchases event should ever fire.
+    _patch_front_half(monkeypatch, gaps=[])
+    _use_patched_graph(monkeypatch)
+
+    from services.trip_planner import stream
+
+    events = list(stream(_stream_req()))
+    kinds = [e for e, _ in events]
+
+    assert "purchases" not in kinds
+    assert kinds.count("plan") == 1
+    assert kinds[-1] == "done"
+
+
+def _parse_sse(text: str) -> list[tuple[str, dict]]:
+    events = []
+    for frame in text.strip().split("\n\n"):
+        event, data = None, None
+        for line in frame.split("\n"):
+            if line.startswith("event: "):
+                event = line[len("event: ") :]
+            elif line.startswith("data: "):
+                data = line[len("data: ") :]
+        if event is not None and data is not None:
+            events.append((event, json.loads(data)))
+    return events
+
+
+def _stream_client():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from auth import require_password
+    from routers import trips as trips_router
+
+    app = FastAPI()
+    app.include_router(trips_router.router)
+    app.dependency_overrides[require_password] = lambda: None
+    return TestClient(app)
+
+
+_STREAM_BODY = {
+    "destination": "Paris, France",
+    "start_date": "2026-07-10",
+    "end_date": "2026-07-12",
+    "additional_notes": "",
+}
+
+
+def test_plan_stream_route_orders_plan_before_purchases(monkeypatch):
+    _patch_front_half(monkeypatch, gaps=[A_GAP])
+    monkeypatch.setattr(
+        "services.trip_planner.plan_purchase_queries_node",
+        lambda s: {"purchase_queries": [], "shopping_department": "womens"},
+    )
+    monkeypatch.setattr(
+        "services.trip_planner.search_purchases_node",
+        lambda s: {"purchase_suggestions": [PurchaseSuggestion(gap=A_GAP, results=[])]},
+    )
+    _use_patched_graph(monkeypatch)
+
+    resp = _stream_client().post("/trips/plan/stream", json=_STREAM_BODY)
+    assert resp.status_code == 200
+    kinds = [e for e, _ in _parse_sse(resp.text)]
+    assert kinds.index("plan") < kinds.index("purchases")
+    assert kinds[-1] == "done"
+
+
+def test_plan_stream_route_mid_stream_error_becomes_error_event(monkeypatch):
+    # A failure after the first event has already been pulled (headers sent)
+    # can't become an HTTP error status — it must degrade to an `error` event
+    # followed by `done`, per the issue's error model.
+    _patch_front_half(monkeypatch, gaps=[])
+    monkeypatch.setattr(
+        "services.trip_planner.generate_output_node",
+        lambda s: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    _use_patched_graph(monkeypatch)
+
+    resp = _stream_client().post("/trips/plan/stream", json=_STREAM_BODY)
+    assert resp.status_code == 200
+    kinds = [e for e, _ in _parse_sse(resp.text)]
+    assert "error" in kinds
+    assert kinds[-1] == "done"
+
+
+def test_plan_stream_route_destination_not_found_becomes_error_event(monkeypatch):
+    # get_weather and get_catalog fan out from START and race; with
+    # get_catalog mocked to return instantly, its progress event wins the
+    # race and DestinationNotFound (raised inside get_weather) surfaces as a
+    # mid-stream `error` event rather than the eager-peek 400 — see the
+    # comment in routers/trips.py. This test pins that actual behavior down
+    # rather than assuming the 400 path.
+    from services.weather import DestinationNotFound
+
+    monkeypatch.setattr(
+        "services.trip_planner.get_weather_node",
+        lambda s: (_ for _ in ()).throw(DestinationNotFound("nope")),
+    )
+    monkeypatch.setattr(
+        "services.trip_planner.get_catalog_node", lambda s: {"catalog": []}
+    )
+    _use_patched_graph(monkeypatch)
+
+    resp = _stream_client().post("/trips/plan/stream", json=_STREAM_BODY)
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    kinds = [e for e, _ in events]
+    assert kinds[-1] == "done"
+    # The specific DestinationNotFound message must survive losing the race,
+    # not fall back to the generic "Trip planning failed".
+    error_payload = dict(events)["error"]
+    assert error_payload["detail"] == "nope"
+
+
+def test_plan_stream_route_rejects_bad_date_range():
+    resp = _stream_client().post(
+        "/trips/plan/stream", json={**_STREAM_BODY, "end_date": "2026-07-01"}
+    )
+    assert resp.status_code == 400
 
 
 @pytest.mark.skipif(
