@@ -8,6 +8,7 @@ This file provides guidance to coding agents (e.g. Claude Code, Codex) when work
 ```bash
 uv sync                                          # install deps
 uv run uvicorn main:app --reload --port 8000     # dev server
+SKIP_PURCHASE_SEARCH=1 uv run uvicorn main:app --reload --port 8000  # + skip SerpAPI in search_purchases_node (tight quota; results=[] per gap)
 uv run pytest                                    # offline test suite in tests/ (free, no network)
 RUN_E2E=1 uv run pytest                          # + the full trip-planner pipeline (hits live APIs)
 uv run black .                                   # format backend Python
@@ -49,8 +50,8 @@ A LangGraph `StateGraph` over a `PackingState` TypedDict:
 
 ```
 START ─┬→ get_weather → infer_weather_if_needed ─┐
-       └→ get_catalog ───────────────────────────┴→ reason_and_select ──(has_gaps)──→ plan_purchase_queries → search_purchases ─┐
-                                                                       ──(no_gaps )──────────────────────────────────────────────┴→ generate_output → END
+       └→ get_catalog ───────────────────────────┴→ reason_and_select → generate_output ──(has_gaps)──→ plan_purchase_queries → search_purchases ─┐
+                                                                                          ──(no_gaps )──────────────────────────────────────────────┴→ END
 ```
 
 - The graph is **compiled once at module load** (`_APP = build_graph()`) and reused across requests — see comment in `trip_planner.py`.
@@ -60,6 +61,7 @@ START ─┬→ get_weather → infer_weather_if_needed ─┐
 - The weather and catalog branches **fan out from START** and have unequal lengths, so the join uses the list form `add_edge(["infer_weather_if_needed", "get_catalog"], "reason_and_select")` — naive per-edge joins would fire `reason_and_select` a superstep early (#2).
 - `plan_purchase_queries_node` makes one lightweight **Haiku** call per trip to turn gaps into concise Google Shopping queries, using `profile.shopping_department` plus applicable preferences. If planning fails, it falls back to deterministic `{department} + {gap.item}` queries. (The main `reason_and_select` call deliberately stays on Sonnet.)
 - `search_purchases_node` is best-effort and **concurrent** (per-gap searches run in a thread pool, #107): any per-query failure or empty result keeps that gap visible with `results=[]`, so the packing plan still renders.
+- `generate_output` runs **right after `reason_and_select`**, before the has_gaps/no_gaps fork (#124) — it's pure Python (<50ms) categorizing `candidate_items` and never needed purchase results. `POST /trips/plan/stream` (SSE, node-progress streaming) relies on this ordering to render the full packing list before purchase suggestions land; `POST /trips/plan` (blocking JSON) is unaffected either way.
 
 **3. Weekly preference inference** — [`services/preference_inference.py`](backend/services/preference_inference.py)
 A LangGraph `StateGraph` over an `InferenceState` TypedDict, run from a weekly GitHub Actions cron ([`jobs/infer_preferences.py`](jobs/infer_preferences.py), [`.github/workflows/infer-preferences.yml`](.github/workflows/infer-preferences.yml)):

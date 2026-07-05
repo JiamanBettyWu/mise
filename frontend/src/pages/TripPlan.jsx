@@ -3,13 +3,22 @@ import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import TripPlanResult from '../components/TripPlanResult.jsx';
 import {
   clearError as clearPlanError,
-  consumeResult,
+  consumePlan,
   getSnapshot,
   startPlanning,
   subscribe,
 } from '../services/tripGeneration.js';
 
 const STORAGE_KEY = 'trip_state';
+
+// #124: node-progress labels shown while the plan streams in, before
+// `plan` lands. Falls back to a generic label for any stage not yet seen.
+const STAGE_LABELS = {
+  weather: 'Checking the weather…',
+  catalog: 'Loading your wardrobe…',
+  reasoning: 'Thinking through your packing list…',
+  shopping: 'Looking for missing pieces…',
+};
 
 function todayPlus(days) {
   const d = new Date();
@@ -19,6 +28,10 @@ function todayPlus(days) {
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function mergePurchases(plan, purchases) {
+  return { ...plan, purchase_suggestions: purchases ?? plan.purchase_suggestions ?? [] };
 }
 
 // Pull persisted state on mount. Silent expiry: trips whose end_date has
@@ -41,7 +54,10 @@ function hydrate() {
 }
 
 export default function TripPlan() {
-  const persisted = hydrate();
+  // Lazy initializer: hydrate() reads + can mutate localStorage (clearing an
+  // expired trip), so it must run once on mount, not on every render — the
+  // streaming updates below re-render the page ~8-10 times per generation.
+  const [persisted] = useState(() => hydrate());
   const [destination, setDestination] = useState(persisted?.form?.destination ?? '');
   const [selected, setSelected] = useState(persisted?.form?.selected ?? null);
   const [startDate, setStartDate] = useState(persisted?.form?.startDate ?? todayPlus(1));
@@ -51,17 +67,29 @@ export default function TripPlan() {
   const [error, setError] = useState(''); // local validation errors only
 
   // Planning lives in a module-scope store so it survives navigating away
-  // mid-request; we subscribe here and adopt the result when it lands (the
-  // persistence effect below then writes it into localStorage).
+  // mid-request; we subscribe here and render its plan/purchases as they
+  // stream in, then adopt the finished plan (the persistence effect below
+  // writes it into localStorage) once `done` fires.
   const gen = useSyncExternalStore(subscribe, getSnapshot);
   const { loading } = gen;
 
+  // The plan renders the moment `reason_and_select`/`generate_output` finish
+  // — purchase suggestions fill in afterward via `gen.purchases`, so this
+  // merges them onto the streamed plan rather than waiting for both.
+  const streamingPlan = gen.plan ? mergePurchases(gen.plan, gen.purchases) : null;
+  // Falls back to the last-good `plan` (not null) while loading with no
+  // streamed plan yet, so a failure before `plan` lands (bad destination,
+  // reasoning error) re-shows the previous result instead of losing it —
+  // `plan`/localStorage are only ever replaced by a plan that actually landed.
+  const displayPlan = streamingPlan ?? (loading ? null : plan);
+  const purchasesPending =
+    !!streamingPlan && !gen.done && (streamingPlan.gaps?.length ?? 0) > 0 && gen.purchases == null;
+
   useEffect(() => {
-    if (gen.result) {
-      setPlan(gen.result);
-      consumeResult();
-    }
-  }, [gen.result]);
+    if (!gen.done) return;
+    if (gen.plan) setPlan(mergePurchases(gen.plan, gen.purchases));
+    consumePlan();
+  }, [gen.done]);
 
   useEffect(() => {
     const isEmpty = !destination && !notes && !plan;
@@ -100,6 +128,10 @@ export default function TripPlan() {
       return;
     }
     setError('');
+    // Don't clear `plan` here — `displayPlan` already hides it behind the
+    // progress message while loading, and leaving it intact (and persisted)
+    // means a failed regenerate falls back to the last-good plan instead of
+    // losing it.
     startPlanning({
       destination: destination.trim(),
       start_date: startDate,
@@ -157,18 +189,31 @@ export default function TripPlan() {
 
         <div className="trip-form__actions">
           <button type="submit" disabled={loading}>
-            {loading ? 'Planning…' : plan ? 'Regenerate' : 'Generate packing plan'}
+            {loading ? 'Planning…' : displayPlan ? 'Regenerate' : 'Generate packing plan'}
           </button>
         </div>
 
-        {(gen.error || error) && <p className="error">{gen.error || error}</p>}
+        {/* Gated on streamingPlan (this generation's plan), not displayPlan
+            (which can be the stale last-good plan reappearing on failure) —
+            otherwise a failed regenerate with an old plan on screen would
+            silently fall back to that old plan with no indication the new
+            attempt failed. Only suppressed when THIS generation's plan
+            actually rendered (e.g. a late purchase-search failure shouldn't
+            read as "everything failed" over a plan that already succeeded). */}
+        {(gen.error || error) && !streamingPlan && <p className="error">{gen.error || error}</p>}
         </form>
       </div>
 
-      {loading && <p className="muted">Thinking through weather, catalog, and gaps…</p>}
+      {loading && !displayPlan && (
+        <p className="muted">{STAGE_LABELS[gen.stage] || 'Thinking through your trip…'}</p>
+      )}
 
-      {plan && !loading && (
-        <TripPlanResult plan={plan} onPlanAnother={planAnotherTrip} />
+      {displayPlan && (
+        <TripPlanResult
+          plan={displayPlan}
+          onPlanAnother={planAnotherTrip}
+          purchasesPending={purchasesPending}
+        />
       )}
     </div>
   );

@@ -76,14 +76,16 @@ def build_eval_graph():
 
     g.add_edge(START, "infer_weather_if_needed")
     g.add_edge("infer_weather_if_needed", "reason_and_select")
+    # #124: mirrors the production reorder — generate_output runs right after
+    # reason_and_select, and the has_gaps/no_gaps fork moves off of it.
+    g.add_edge("reason_and_select", "generate_output")
     g.add_conditional_edges(
-        "reason_and_select",
+        "generate_output",
         check_gaps,
-        {"has_gaps": "plan_purchase_queries", "no_gaps": "generate_output"},
+        {"has_gaps": "plan_purchase_queries", "no_gaps": END},
     )
     g.add_edge("plan_purchase_queries", "search_purchases")
-    g.add_edge("search_purchases", "generate_output")
-    g.add_edge("generate_output", END)
+    g.add_edge("search_purchases", END)
     return g.compile()
 
 

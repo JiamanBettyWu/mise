@@ -10,18 +10,27 @@ export function setStoredPassword(pw) {
   else localStorage.removeItem(PASSWORD_KEY);
 }
 
-async function request(path, { method = 'GET', body, headers = {}, auth = true } = {}) {
+// Builds the auth/JSON headers, fetches, and throws on a non-ok response —
+// shared by request() (which parses JSON) and planTripStream (which reads
+// the body as an SSE stream instead), so the auth/error contract has one
+// implementation.
+async function rawRequest(path, { method = 'GET', body, headers = {}, auth = true, signal } = {}) {
   const finalHeaders = { ...headers };
   if (auth) finalHeaders['X-App-Password'] = getStoredPassword();
   if (body && !(body instanceof FormData)) {
     finalHeaders['Content-Type'] = 'application/json';
     body = JSON.stringify(body);
   }
-  const res = await fetch(`${BASE_URL}${path}`, { method, headers: finalHeaders, body });
+  const res = await fetch(`${BASE_URL}${path}`, { method, headers: finalHeaders, body, signal });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`${res.status} ${res.statusText}: ${text}`);
   }
+  return res;
+}
+
+async function request(path, opts = {}) {
+  const res = await rawRequest(path, opts);
   if (res.status === 204) return null;
   return res.json();
 }
@@ -64,11 +73,43 @@ export const api = {
   outfitAttribution: (historyId, payload) =>
     request(`/outfits/${historyId}/attribution`, { method: 'POST', body: payload }),
 
-  planTrip: ({ destination, start_date, end_date, additional_notes = '', lat = null, lon = null }) =>
-    request('/trips/plan', {
+  // Node-progress streaming (#124): SSE frames of `event: <name>\ndata: <json>\n\n`.
+  // The non-streaming /trips/plan JSON endpoint still exists server-side (used
+  // by tests/eval) but has no frontend caller now that this replaced it.
+  // fetch + reader instead of EventSource — EventSource can't send the
+  // X-App-Password header. onEvent(name, payload) fires per frame.
+  planTripStream: async (
+    { destination, start_date, end_date, additional_notes = '', lat = null, lon = null },
+    onEvent,
+    { signal } = {}
+  ) => {
+    const res = await rawRequest('/trips/plan/stream', {
       method: 'POST',
       body: { destination, start_date, end_date, additional_notes, lat, lon },
-    }),
+      signal,
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let boundary;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const lines = frame.split('\n');
+        const eventLine = lines.find((l) => l.startsWith('event: '));
+        const dataLine = lines.find((l) => l.startsWith('data: '));
+        if (eventLine && dataLine) {
+          onEvent(eventLine.slice('event: '.length), JSON.parse(dataLine.slice('data: '.length)));
+        }
+      }
+    }
+  },
 
   searchGeo: (q, limit = 5) =>
     request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),

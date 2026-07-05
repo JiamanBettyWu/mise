@@ -25,7 +25,7 @@ function normalizeGap(g) {
   return { item: g.item, rationale: g.rationale || '', category: g.category || null };
 }
 
-export default function TripPlanResult({ plan, onPlanAnother }) {
+export default function TripPlanResult({ plan, onPlanAnother, purchasesPending = false }) {
   const sortedList = [...(plan.packing_list || [])].sort(
     (a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
   );
@@ -120,45 +120,49 @@ export default function TripPlanResult({ plan, onPlanAnother }) {
         </section>
       )}
 
-      {plan.purchase_suggestions?.length > 0 && (
+      {(purchasesPending || plan.purchase_suggestions?.length > 0) && (
         <section className="trip-section">
           <h3>Purchase suggestions</h3>
-          {plan.purchase_suggestions.map((s, i) => {
-            const gap = normalizeGap(s.gap);
-            return (
-              <div key={i} className="purchase-block">
-                <div className="purchase-block__header">
-                  <strong>{gap.item}</strong>
-                  {gap.rationale && (
-                    <p className="muted purchase-block__rationale">{gap.rationale}</p>
-                  )}
-                </div>
-                <div className="purchase-grid">
-                  {s.results.map((r, j) => (
-                    <a
-                      key={j}
-                      className="purchase-card"
-                      href={r.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {r.image_url && (
-                        <img src={r.image_url} alt={r.title} className="purchase-card__img" />
-                      )}
-                      <div className="purchase-card__body">
-                        <div className="purchase-card__title">{r.title}</div>
-                        <div className="muted purchase-card__meta">
-                          {r.retailer}
-                          {r.retailer && r.price ? ' · ' : ''}
-                          {r.price}
+          {purchasesPending ? (
+            <p className="muted">Finding shopping suggestions…</p>
+          ) : (
+            plan.purchase_suggestions.map((s, i) => {
+              const gap = normalizeGap(s.gap);
+              return (
+                <div key={i} className="purchase-block">
+                  <div className="purchase-block__header">
+                    <strong>{gap.item}</strong>
+                    {gap.rationale && (
+                      <p className="muted purchase-block__rationale">{gap.rationale}</p>
+                    )}
+                  </div>
+                  <div className="purchase-grid">
+                    {s.results.map((r, j) => (
+                      <a
+                        key={j}
+                        className="purchase-card"
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {r.image_url && (
+                          <img src={r.image_url} alt={r.title} className="purchase-card__img" />
+                        )}
+                        <div className="purchase-card__body">
+                          <div className="purchase-card__title">{r.title}</div>
+                          <div className="muted purchase-card__meta">
+                            {r.retailer}
+                            {r.retailer && r.price ? ' · ' : ''}
+                            {r.price}
+                          </div>
                         </div>
-                      </div>
-                    </a>
-                  ))}
+                      </a>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </section>
       )}
     </div>
