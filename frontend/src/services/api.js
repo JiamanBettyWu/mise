@@ -10,18 +10,27 @@ export function setStoredPassword(pw) {
   else localStorage.removeItem(PASSWORD_KEY);
 }
 
-async function request(path, { method = 'GET', body, headers = {}, auth = true } = {}) {
+// Builds the auth/JSON headers, fetches, and throws on a non-ok response —
+// shared by request() (which parses JSON) and planTripStream (which reads
+// the body as an SSE stream instead), so the auth/error contract has one
+// implementation.
+async function rawRequest(path, { method = 'GET', body, headers = {}, auth = true, signal } = {}) {
   const finalHeaders = { ...headers };
   if (auth) finalHeaders['X-App-Password'] = getStoredPassword();
   if (body && !(body instanceof FormData)) {
     finalHeaders['Content-Type'] = 'application/json';
     body = JSON.stringify(body);
   }
-  const res = await fetch(`${BASE_URL}${path}`, { method, headers: finalHeaders, body });
+  const res = await fetch(`${BASE_URL}${path}`, { method, headers: finalHeaders, body, signal });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`${res.status} ${res.statusText}: ${text}`);
   }
+  return res;
+}
+
+async function request(path, opts = {}) {
+  const res = await rawRequest(path, opts);
   if (res.status === 204) return null;
   return res.json();
 }
@@ -74,19 +83,11 @@ export const api = {
     onEvent,
     { signal } = {}
   ) => {
-    const res = await fetch(`${BASE_URL}/trips/plan/stream`, {
+    const res = await rawRequest('/trips/plan/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-App-Password': getStoredPassword(),
-      },
-      body: JSON.stringify({ destination, start_date, end_date, additional_notes, lat, lon }),
+      body: { destination, start_date, end_date, additional_notes, lat, lon },
       signal,
     });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`${res.status} ${res.statusText}: ${text}`);
-    }
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

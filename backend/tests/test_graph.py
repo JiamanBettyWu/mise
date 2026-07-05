@@ -509,12 +509,11 @@ def test_plan_stream_route_mid_stream_error_becomes_error_event(monkeypatch):
 
 
 def test_plan_stream_route_destination_not_found_becomes_error_event(monkeypatch):
-    # get_weather and get_catalog fan out from START and race; with
-    # get_catalog mocked to return instantly, its progress event wins the
-    # race and DestinationNotFound (raised inside get_weather) surfaces as a
-    # mid-stream `error` event rather than the eager-peek 400 — see the
-    # comment in routers/trips.py. This test pins that actual behavior down
-    # rather than assuming the 400 path.
+    # No eager peek in plan_stream (see routers/trips.py) — every
+    # DestinationNotFound, regardless of whether get_weather or get_catalog
+    # wins the START race, surfaces as a mid-stream `error` event. This test
+    # covers get_catalog mocked to return instantly (so it wins the race);
+    # the sibling test below covers the other ordering.
     from services.weather import DestinationNotFound
 
     monkeypatch.setattr(

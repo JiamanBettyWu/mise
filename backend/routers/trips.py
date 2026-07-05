@@ -45,28 +45,18 @@ def plan_stream(req: TripPlanRequest) -> StreamingResponse:
             status_code=400, detail="end_date must be on or after start_date"
         )
 
-    events = trip_planner.stream(req)
-    # Pull the first event eagerly, before headers go out: get_weather and
-    # get_catalog fan out from START and race, so this only turns into a real
-    # 400 when get_weather's DestinationNotFound is the first thing the graph
-    # yields (e.g. get_catalog hasn't returned yet). If get_catalog wins the
-    # race, the same failure surfaces later as a mid-stream `error` event
-    # instead — both are handled, so this is an optimization, not a guarantee.
-    try:
-        first = next(events, None)
-    except DestinationNotFound as e:
-        raise HTTPException(400, str(e))
-
+    # No eager peek here on purpose: get_weather and get_catalog fan out from
+    # START and race, so pulling the first event before headers go out only
+    # turns DestinationNotFound into a clean 400 when get_weather happens to
+    # win — any OTHER first-superstep failure (a Supabase/OWM outage) would
+    # escape uncaught as a raw 500, since there'd be nothing here to catch it.
+    # Degrading every failure to an `error` + `done` frame inside generate()
+    # gives one deterministic contract instead of a race-dependent split.
     def generate():
         try:
-            if first is not None:
-                yield _sse_frame(*first)
-            for event, payload in events:
+            for event, payload in trip_planner.stream(req):
                 yield _sse_frame(event, payload)
         except DestinationNotFound as e:
-            # Same failure as the eager-peek 400 above, just arriving after
-            # get_catalog won the START race — keep the specific message
-            # instead of falling through to the generic one below.
             yield _sse_frame("error", {"detail": str(e)})
             yield _sse_frame("done", {})
         except Exception:
@@ -77,5 +67,5 @@ def plan_stream(req: TripPlanRequest) -> StreamingResponse:
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache"},
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

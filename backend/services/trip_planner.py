@@ -657,10 +657,8 @@ def _build_response(
     )
 
 
-def run(req: TripPlanRequest) -> TripPlanResponse:
-    """Generate a packing plan for the trip."""
-
-    initial_state: PackingState = {
+def _initial_state(req: TripPlanRequest) -> PackingState:
+    return {
         "destination": req.destination,
         "start_date": req.start_date,
         "end_date": req.end_date,
@@ -669,7 +667,11 @@ def run(req: TripPlanRequest) -> TripPlanResponse:
         "lon": req.lon,
     }
 
-    final_state = _APP.invoke(initial_state)
+
+def run(req: TripPlanRequest) -> TripPlanResponse:
+    """Generate a packing plan for the trip."""
+
+    final_state = _APP.invoke(_initial_state(req))
 
     return _build_response(req, final_state)
 
@@ -698,15 +700,7 @@ def stream(req: TripPlanRequest):
     FastAPI runs it in its threadpool, and search_purchases_node's own
     ThreadPoolExecutor is unaffected.
     """
-    initial_state: PackingState = {
-        "destination": req.destination,
-        "start_date": req.start_date,
-        "end_date": req.end_date,
-        "additional_notes": req.additional_notes,
-        "lat": req.lat,
-        "lon": req.lon,
-    }
-
+    initial_state = _initial_state(req)
     final_state: PackingState = dict(initial_state)  # type: ignore[assignment]
 
     for update in _APP.stream(initial_state, stream_mode="updates"):

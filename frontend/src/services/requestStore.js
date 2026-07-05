@@ -88,14 +88,27 @@ export function createStreamRequestStore(runStream) {
       emit({ loading: true, error: '', stage: null, plan: null, purchases: null, done: false });
       try {
         await runStream(args, (event, payload) => {
-          if (event === 'progress') emit({ stage: payload.stage });
-          else if (event === 'plan') emit({ plan: payload });
+          // Skip a repeated tick for the same stage — several nodes map to
+          // one label (STAGE_BY_NODE in trip_planner.py), and re-emitting an
+          // unchanged stage is a wasted render.
+          if (event === 'progress') {
+            if (payload.stage !== getSnapshot().stage) emit({ stage: payload.stage });
+          } else if (event === 'plan') emit({ plan: payload });
           else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
           else if (event === 'error') emit({ error: payload.detail || 'Trip planning failed' });
           else if (event === 'done') emit({ loading: false, done: true });
         });
       } catch (e) {
         emit({ loading: false, error: String(e) });
+      }
+      // The body can close cleanly without a trailing `done` frame (backend
+      // worker killed mid-stream, proxy idle-timeout) — reader.read() then
+      // just returns { done: true } with no exception, so runStream resolves
+      // normally. Without this, `loading` would stay true forever and the
+      // `if (getSnapshot().loading) return` guard above would block every
+      // retry until a full page reload.
+      if (getSnapshot().loading) {
+        emit({ loading: false, error: getSnapshot().error || 'Connection lost' });
       }
     },
     // The page takes ownership of plan+purchases (into its own state +

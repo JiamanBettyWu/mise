@@ -54,7 +54,10 @@ function hydrate() {
 }
 
 export default function TripPlan() {
-  const persisted = hydrate();
+  // Lazy initializer: hydrate() reads + can mutate localStorage (clearing an
+  // expired trip), so it must run once on mount, not on every render — the
+  // streaming updates below re-render the page ~8-10 times per generation.
+  const [persisted] = useState(() => hydrate());
   const [destination, setDestination] = useState(persisted?.form?.destination ?? '');
   const [selected, setSelected] = useState(persisted?.form?.selected ?? null);
   const [startDate, setStartDate] = useState(persisted?.form?.startDate ?? todayPlus(1));
@@ -190,10 +193,14 @@ export default function TripPlan() {
           </button>
         </div>
 
-        {/* Suppressed once a plan is on screen: a same-generation failure after
-            the plan already rendered (e.g. the purchase-search leg) shouldn't
-            read as "everything failed" over a plan that actually succeeded. */}
-        {(gen.error || error) && !displayPlan && <p className="error">{gen.error || error}</p>}
+        {/* Gated on streamingPlan (this generation's plan), not displayPlan
+            (which can be the stale last-good plan reappearing on failure) —
+            otherwise a failed regenerate with an old plan on screen would
+            silently fall back to that old plan with no indication the new
+            attempt failed. Only suppressed when THIS generation's plan
+            actually rendered (e.g. a late purchase-search failure shouldn't
+            read as "everything failed" over a plan that already succeeded). */}
+        {(gen.error || error) && !streamingPlan && <p className="error">{gen.error || error}</p>}
         </form>
       </div>
 
