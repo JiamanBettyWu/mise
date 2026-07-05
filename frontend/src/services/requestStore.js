@@ -86,13 +86,26 @@ export function createStreamRequestStore(runStream) {
     async start(args) {
       if (getSnapshot().loading) return;
       emit({ loading: true, error: '', stage: null, plan: null, purchases: null, done: false });
+      // LangGraph's `stream_mode="updates"` reports a node's completion, not
+      // its start — so the real "reasoning" tick only fires once the Sonnet
+      // call is already done, which for a multi-second call means the label
+      // stalls on whichever of "weather"/"catalog" resolved last for the
+      // entire wait. reason_and_select always starts the instant BOTH fan-out
+      // branches have reported, so once we've seen both, infer it's running
+      // and show that label early instead of waiting for its own tick.
+      let sawWeather = false;
+      let sawCatalog = false;
+      let sawReasoning = false;
       try {
         await runStream(args, (event, payload) => {
-          // Skip a repeated tick for the same stage — several nodes map to
-          // one label (STAGE_BY_NODE in trip_planner.py), and re-emitting an
-          // unchanged stage is a wasted render.
           if (event === 'progress') {
-            if (payload.stage !== getSnapshot().stage) emit({ stage: payload.stage });
+            if (payload.stage === 'weather') sawWeather = true;
+            else if (payload.stage === 'catalog') sawCatalog = true;
+            else if (payload.stage === 'reasoning') sawReasoning = true;
+
+            const stage =
+              !sawReasoning && sawWeather && sawCatalog ? 'reasoning' : payload.stage;
+            if (stage !== getSnapshot().stage) emit({ stage });
           } else if (event === 'plan') emit({ plan: payload });
           else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
           else if (event === 'error') emit({ error: payload.detail || 'Trip planning failed' });
