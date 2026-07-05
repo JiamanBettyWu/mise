@@ -45,6 +45,31 @@
   flex-shrink: 0;
 }
 
+/* #134: destination demotes to a subtitle once a custom name is set. */
+.trip-tile__subtitle {
+  font-size: 0.85rem;
+  margin-top: 1px;
+}
+.trip-tile__saved-at {
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+/* #134 inline rename — same click-to-edit shape as .profile__pref-tile,
+   but laid out as one flex row (input left, Save/Cancel right) since a trip
+   tile has no multi-line text to stack around. */
+.trip-tile__edit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+.trip-tile__edit-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+}
+
 /* Wider variant of the shared .gmodal (ItemDetailModal.css) for the trip
    result view — the packing list needs room the item-detail card doesn't.
    Content scrolling comes from the existing .gmodal__body rule. */

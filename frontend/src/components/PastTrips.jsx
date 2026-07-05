@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api.js';
 import TripPlanResult from './TripPlanResult.jsx';
 import './PastTrips.css';
@@ -9,12 +9,34 @@ import './PastTrips.css';
 // when a tile is opened, since packed status must read LIVE catalog state,
 // never what's embedded in the snapshot.
 
+// #134: relative "saved X ago" for the tile timestamp — same shape as
+// Profile.jsx's inference-heartbeat helper, but this one's read at a glance
+// on a list rather than as a staleness signal, so seconds count too.
+function timeAgo(iso) {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  const sec = Math.round((then.getTime() - Date.now()) / 1000); // < 0 = past
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  for (const [unit, secs] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
+    if (Math.abs(sec) >= secs) return rtf.format(Math.round(sec / secs), unit);
+  }
+  return 'just now';
+}
+
 export default function PastTrips({ refreshSignal = 0 }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openingId, setOpeningId] = useState(null);
   const [viewing, setViewing] = useState(null); // { trip, catalogById }
+
+  // #134 inline rename — editingId → current draft text, same click-to-edit
+  // shape as Profile.jsx's preference tiles.
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const editRef = useRef(null);
 
   // refreshSignal bumps after a successful Save on the planning form above,
   // so a freshly-saved trip shows up here without a full page reload.
@@ -24,6 +46,10 @@ export default function PastTrips({ refreshSignal = 0 }) {
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
   }, [refreshSignal]);
+
+  useEffect(() => {
+    if (editRef.current) editRef.current.focus();
+  }, [editingId]);
 
   useEffect(() => {
     if (!viewing) return;
@@ -56,6 +82,36 @@ export default function PastTrips({ refreshSignal = 0 }) {
       setTrips((arr) => arr.filter((t) => t.id !== summary.id));
     } catch (e) {
       setError(String(e));
+    }
+  }
+
+  function startEdit(t, e) {
+    e.stopPropagation();
+    setEditingId(t.id);
+    setEditText(t.name || '');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditText('');
+  }
+
+  async function saveEdit(t) {
+    const name = editText.trim();
+    if (name === (t.name || '')) {
+      setEditingId(null);
+      return;
+    }
+    setEditSaving(true);
+    setError('');
+    try {
+      const updated = await api.updateTrip(t.id, { name });
+      setTrips((arr) => arr.map((x) => (x.id === updated.id ? updated : x)));
+      setEditingId(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -97,27 +153,63 @@ export default function PastTrips({ refreshSignal = 0 }) {
       <h3>Past trips</h3>
       {error && <p className="error">{error}</p>}
       <div className="past-trips__list">
-        {trips.map((t) => (
-          <div
-            key={t.id}
-            className="trip-tile"
-            role="button"
-            tabIndex={0}
-            onClick={() => open(t)}
-            onKeyDown={(e) => { if (e.key === 'Enter') open(t); }}
-          >
-            <div className="trip-tile__body">
-              <div className="trip-tile__destination">{t.destination}</div>
-              <div className="muted">{t.start_date} → {t.end_date}</div>
+        {trips.map((t) => {
+          const editing = editingId === t.id;
+          return (
+            <div
+              key={t.id}
+              className="trip-tile"
+              role="button"
+              tabIndex={0}
+              onClick={() => { if (!editing) open(t); }}
+              onKeyDown={(e) => { if (!editing && e.key === 'Enter') open(t); }}
+            >
+              {editing ? (
+                <div className="trip-tile__edit" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    ref={editRef}
+                    className="trip-tile__edit-input"
+                    placeholder={t.destination}
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEdit(t);
+                      if (e.key === 'Escape') cancelEdit();
+                    }}
+                  />
+                  <div className="trip-tile__actions">
+                    <button type="button" onClick={() => saveEdit(t)} disabled={editSaving}>
+                      {editSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" className="ghost" onClick={cancelEdit} disabled={editSaving}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="trip-tile__body">
+                    <div className="trip-tile__destination">{t.name || t.destination}</div>
+                    {t.name && <div className="muted trip-tile__subtitle">{t.destination}</div>}
+                    <div className="muted">{t.start_date} → {t.end_date}</div>
+                    <div className="muted trip-tile__saved-at" title={t.created_at}>
+                      Saved {timeAgo(t.created_at)}
+                    </div>
+                  </div>
+                  <div className="trip-tile__actions" onClick={(e) => e.stopPropagation()}>
+                    {openingId === t.id && <span className="muted">Opening…</span>}
+                    <button type="button" className="ghost" onClick={(e) => startEdit(t, e)}>
+                      Rename
+                    </button>
+                    <button type="button" className="danger" onClick={(e) => remove(t, e)}>
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="trip-tile__actions" onClick={(e) => e.stopPropagation()}>
-              {openingId === t.id && <span className="muted">Opening…</span>}
-              <button type="button" className="danger" onClick={(e) => remove(t, e)}>
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {viewing && (

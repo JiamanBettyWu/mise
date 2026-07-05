@@ -13,6 +13,7 @@ from schemas import (
     TripPlanSaved,
     TripPlanSaveRequest,
     TripPlanSummary,
+    TripPlanUpdate,
 )
 from services import trip_planner
 from services.weather import DestinationNotFound
@@ -84,7 +85,7 @@ def plan_stream(req: TripPlanRequest) -> StreamingResponse:
 # TripPlanResponse on the way in, but GET never re-validates the frozen
 # snapshot through the (possibly since-evolved) live schema.
 
-TRIP_SUMMARY_COLUMNS = "id,created_at,destination,start_date,end_date,notes,edited"
+TRIP_SUMMARY_COLUMNS = "id,created_at,destination,start_date,end_date,notes,edited,name"
 
 
 @router.post("", response_model=TripPlanSaved)
@@ -121,6 +122,17 @@ def get_trip(trip_id: str) -> TripPlanSaved:
     if not res.data:
         raise HTTPException(status_code=404, detail="Trip not found")
     return TripPlanSaved(**res.data[0])
+
+
+@router.patch("/{trip_id}", response_model=TripPlanSummary)
+def update_trip(trip_id: str, patch: TripPlanUpdate) -> TripPlanSummary:
+    fields = patch.model_dump(exclude_unset=True)
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    res = supabase().table("trip_plans").update(fields).eq("id", trip_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return TripPlanSummary(**res.data[0])
 
 
 @router.delete("/{trip_id}", status_code=204)

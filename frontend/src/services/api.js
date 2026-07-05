@@ -118,6 +118,8 @@ export const api = {
   saveTrip: (payload) => request('/trips', { method: 'POST', body: payload }),
   listTrips: () => request('/trips'),
   getTrip: (id) => request(`/trips/${id}`),
+  // #134: currently just the custom name; "" clears back to the destination fallback.
+  updateTrip: (id, patch) => request(`/trips/${id}`, { method: 'PATCH', body: patch }),
   deleteTrip: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
 
   // Profile
