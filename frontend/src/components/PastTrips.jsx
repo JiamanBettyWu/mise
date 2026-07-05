@@ -90,7 +90,7 @@ export default function PastTrips({ refreshSignal = 0 }) {
   }
 
   if (loading) return null;
-  if (trips.length === 0) return null;
+  if (trips.length === 0 && !error) return null;
 
   return (
     <div className="past-trips">
