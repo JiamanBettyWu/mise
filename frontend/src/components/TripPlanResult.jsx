@@ -267,7 +267,7 @@ function CategorySection({ category, items, gaps, onRemoveItem, catalogById, onT
                     onClick={() => onTogglePacked(live)}
                   >
                     <span className="chip__dot" />
-                    Packed
+                    {live.in_travel_bag ? 'Packed' : 'Pack'}
                   </button>
                 )}
               </div>

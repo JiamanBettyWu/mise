@@ -54,7 +54,7 @@ export default function ClothingCardGlass({ item, onChange, onOpen }) {
             onClick={(e) => patch({ in_travel_bag: !item.in_travel_bag }, e)}
           >
             <span className="chip__dot" />
-            Packed
+            {item.in_travel_bag ? 'Packed' : 'Pack'}
           </button>
         </div>
       </div>
