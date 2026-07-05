@@ -8,6 +8,7 @@ This file provides guidance to coding agents (e.g. Claude Code, Codex) when work
 ```bash
 uv sync                                          # install deps
 uv run uvicorn main:app --reload --port 8000     # dev server
+SKIP_PURCHASE_SEARCH=1 uv run uvicorn main:app --reload --port 8000  # + skip SerpAPI in search_purchases_node (tight quota; results=[] per gap)
 uv run pytest                                    # offline test suite in tests/ (free, no network)
 RUN_E2E=1 uv run pytest                          # + the full trip-planner pipeline (hits live APIs)
 uv run black .                                   # format backend Python

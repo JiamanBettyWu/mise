@@ -178,6 +178,21 @@ def test_reason_and_select_reads_parsed_output(monkeypatch):
     assert out["essentials"] == ["sunscreen"]
 
 
+def test_search_purchases_node_skips_search_when_env_set(monkeypatch):
+    # Dev convenience so manual testing doesn't spend SerpAPI quota.
+    called = []
+    monkeypatch.setattr(
+        "services.trip_planner.search_products",
+        lambda query, num=4: called.append(query) or [],
+    )
+    monkeypatch.setenv("SKIP_PURCHASE_SEARCH", "1")
+
+    out = search_purchases_node({"gaps": [A_GAP]})
+
+    assert called == [], "search_products must not be called"
+    assert out["purchase_suggestions"] == [PurchaseSuggestion(gap=A_GAP, results=[])]
+
+
 def test_search_purchases_node_builds_suggestions(monkeypatch):
     # The node imported search_products via `from services.search import ...`,
     # which binds the name in trip_planner's namespace — so patch it there,

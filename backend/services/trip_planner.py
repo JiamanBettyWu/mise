@@ -18,6 +18,7 @@ Useful existing utilities to reuse inside your graph:
 
 import json
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import TypedDict
@@ -557,12 +558,23 @@ def _clean_purchase_query(query: str) -> str:
 
 
 def search_purchases_node(state: PackingState) -> dict:
-    queries_by_index = {q.gap_index: q for q in state.get("purchase_queries", [])}
-    shopping_department = state.get("shopping_department", DEFAULT_SHOPPING_DEPARTMENT)
-
     gaps = state["gaps"]
     if not gaps:
         return {"purchase_suggestions": []}
+
+    if os.environ.get("SKIP_PURCHASE_SEARCH"):
+        # Dev convenience: SerpAPI has a tight quota, and this leg is the one
+        # part of the pipeline that spends it. Same best-effort shape as a
+        # real per-query failure (results=[]) — exercises the rest of the
+        # streaming pipeline (including the `purchases` SSE event) for free.
+        return {
+            "purchase_suggestions": [
+                PurchaseSuggestion(gap=gap, results=[]) for gap in gaps
+            ]
+        }
+
+    queries_by_index = {q.gap_index: q for q in state.get("purchase_queries", [])}
+    shopping_department = state.get("shopping_department", DEFAULT_SHOPPING_DEPARTMENT)
 
     queries = []
     for i, gap in enumerate(gaps):
