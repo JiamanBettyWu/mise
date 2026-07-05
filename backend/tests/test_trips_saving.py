@@ -67,4 +67,6 @@ def test_list_trips_never_selects_the_plan_column(monkeypatch):
     assert resp.status_code == 200
     assert fake.selects, "list_trips never called select()"
     assert "plan" not in fake.selects[0]
-    assert fake.selects[0] == "id,created_at,destination,start_date,end_date,notes,edited"
+    assert (
+        fake.selects[0] == "id,created_at,destination,start_date,end_date,notes,edited"
+    )
