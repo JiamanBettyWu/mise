@@ -1,0 +1,56 @@
+/* #128: past-trips list — row tiles reusing the .profile__pref-tile glass
+   formula (same surface, different content shape: destination + dates on
+   the left, a single ghost/danger delete on the right). */
+
+.past-trips {
+  margin-top: 2.5rem;
+}
+
+.past-trips__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.trip-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.trip-tile:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.trip-tile__destination {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: rgba(20, 20, 40, 0.95);
+}
+
+.trip-tile__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+/* Wider variant of the shared .gmodal (ItemDetailModal.css) for the trip
+   result view — the packing list needs room the item-detail card doesn't.
+   Content scrolling comes from the existing .gmodal__body rule. */
+.gmodal--wide {
+  max-width: 780px;
+}
+.gmodal--wide .gmodal__body {
+  padding-top: 2.5rem;
+}

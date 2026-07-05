@@ -1,6 +1,8 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
+import PastTrips from '../components/PastTrips.jsx';
 import TripPlanResult from '../components/TripPlanResult.jsx';
+import { api } from '../services/api.js';
 import {
   clearError as clearPlanError,
   consumePlan,
@@ -66,6 +68,16 @@ export default function TripPlan() {
   const [plan, setPlan] = useState(persisted?.plan ?? null);
   const [error, setError] = useState(''); // local validation errors only
 
+  // #128 explicit save: pruning is client-state only (never touches `plan`,
+  // which regenerate-fallback and localStorage persistence still rely on
+  // being the model's actual output). saveFlash bumps to retrigger the
+  // "✓ Saved" confirmation; tripsRefresh bumps to make PastTrips refetch.
+  const [removedItemIds, setRemovedItemIds] = useState(() => new Set());
+  const [saving, setSaving] = useState(false);
+  const [saveFlash, setSaveFlash] = useState(0);
+  const [saveError, setSaveError] = useState('');
+  const [tripsRefresh, setTripsRefresh] = useState(0);
+
   // Planning lives in a module-scope store so it survives navigating away
   // mid-request; we subscribe here and render its plan/purchases as they
   // stream in, then adopt the finished plan (the persistence effect below
@@ -84,6 +96,20 @@ export default function TripPlan() {
   const displayPlan = streamingPlan ?? (loading ? null : plan);
   const purchasesPending =
     !!streamingPlan && !gen.done && (streamingPlan.gaps?.length ?? 0) > 0 && gen.purchases == null;
+
+  // What Save actually persists — displayPlan with pre-save ✕ removals
+  // applied. Kept separate from `plan`/localStorage (see above).
+  const prunedPlan = useMemo(() => {
+    if (!displayPlan) return null;
+    if (removedItemIds.size === 0) return displayPlan;
+    return {
+      ...displayPlan,
+      packing_list: displayPlan.packing_list.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => !removedItemIds.has(item.id)),
+      })),
+    };
+  }, [displayPlan, removedItemIds]);
 
   useEffect(() => {
     if (!gen.done) return;
@@ -115,6 +141,8 @@ export default function TripPlan() {
     setPlan(null);
     setError('');
     clearPlanError();
+    setRemovedItemIds(new Set());
+    setSaveError('');
   }
 
   function generate(e) {
@@ -132,6 +160,8 @@ export default function TripPlan() {
     // progress message while loading, and leaving it intact (and persisted)
     // means a failed regenerate falls back to the last-good plan instead of
     // losing it.
+    setRemovedItemIds(new Set());
+    setSaveError('');
     startPlanning({
       destination: destination.trim(),
       start_date: startDate,
@@ -140,6 +170,32 @@ export default function TripPlan() {
       lat: selected?.lat ?? null,
       lon: selected?.lon ?? null,
     });
+  }
+
+  function handleRemoveItem(itemId) {
+    setRemovedItemIds((prev) => new Set(prev).add(itemId));
+  }
+
+  async function handleSave() {
+    if (!prunedPlan) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await api.saveTrip({
+        destination: prunedPlan.destination,
+        start_date: prunedPlan.start_date,
+        end_date: prunedPlan.end_date,
+        notes: notes.trim(),
+        plan: prunedPlan,
+        edited: removedItemIds.size > 0,
+      });
+      setSaveFlash((f) => f + 1);
+      setTripsRefresh((n) => n + 1);
+    } catch (e) {
+      setSaveError(String(e));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -208,13 +264,22 @@ export default function TripPlan() {
         <p className="muted">{STAGE_LABELS[gen.stage] || 'Thinking through your trip…'}</p>
       )}
 
-      {displayPlan && (
-        <TripPlanResult
-          plan={displayPlan}
-          onPlanAnother={planAnotherTrip}
-          purchasesPending={purchasesPending}
-        />
+      {prunedPlan && (
+        <>
+          <TripPlanResult
+            plan={prunedPlan}
+            onPlanAnother={planAnotherTrip}
+            purchasesPending={purchasesPending}
+            onSave={handleSave}
+            saving={saving}
+            saveFlash={saveFlash}
+            onRemoveItem={handleRemoveItem}
+          />
+          {saveError && <p className="error">{saveError}</p>}
+        </>
       )}
+
+      <PastTrips refreshSignal={tripsRefresh} />
     </div>
   );
 }

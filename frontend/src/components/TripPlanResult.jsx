@@ -25,7 +25,29 @@ function normalizeGap(g) {
   return { item: g.item, rationale: g.rationale || '', category: g.category || null };
 }
 
-export default function TripPlanResult({ plan, onPlanAnother, purchasesPending = false }) {
+// Lingering "✓ Saved" confirmation (#128), same precedent as Profile.jsx's
+// Flash — remounted per save (via the `flash` counter as key) to restart.
+function Flash({ flash, children }) {
+  if (!flash) return null;
+  return <span key={flash} className="profile__flash">✓ {children}</span>;
+}
+
+export default function TripPlanResult({
+  plan,
+  onPlanAnother,
+  purchasesPending = false,
+  // #128 draft (unsaved) controls — presence of onSave enables the Save
+  // button; presence of onRemoveItem enables the pre-save ✕ on tiles.
+  onSave,
+  saving = false,
+  saveFlash = 0,
+  onRemoveItem,
+  // #128 saved-plan controls — presence of catalogById enables Packed chips,
+  // read/written against LIVE clothing_items state, never the frozen snapshot.
+  catalogById,
+  onTogglePacked,
+  onMarkAllPacked,
+}) {
   const sortedList = [...(plan.packing_list || [])].sort(
     (a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category)
   );
@@ -48,6 +70,16 @@ export default function TripPlanResult({ plan, onPlanAnother, purchasesPending =
     .filter((c) => !renderedCategories.has(c))
     .sort((a, b) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b));
 
+  // "Mark all as packed" only offers to touch items that both still exist in
+  // the live catalog and aren't already packed — a since-deleted item has no
+  // chip at all, so it can't be included.
+  const unpackedLiveItems = catalogById
+    ? sortedList
+        .flatMap((s) => s.items)
+        .map((item) => catalogById.get(item.id))
+        .filter((live) => live && !live.in_travel_bag)
+    : [];
+
   return (
     <div className="trip-result">
       <WeatherStrip weather={plan.weather} />
@@ -60,15 +92,32 @@ export default function TripPlanResult({ plan, onPlanAnother, purchasesPending =
             {plan.duration_days === 1 ? '' : 's'}
           </p>
         </div>
-        {onPlanAnother && (
-          <button
-            type="button"
-            className="trip-result__plan-another"
-            onClick={onPlanAnother}
-          >
-            Plan another trip
-          </button>
-        )}
+        <div className="trip-result__actions">
+          {onSave && (
+            <button type="button" onClick={onSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save trip'}
+            </button>
+          )}
+          <Flash flash={saveFlash}>Saved</Flash>
+          {onMarkAllPacked && unpackedLiveItems.length > 0 && (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => onMarkAllPacked(unpackedLiveItems)}
+            >
+              Mark all as packed
+            </button>
+          )}
+          {onPlanAnother && (
+            <button
+              type="button"
+              className="trip-result__plan-another"
+              onClick={onPlanAnother}
+            >
+              Plan another trip
+            </button>
+          )}
+        </div>
       </div>
 
       {plan.reasoning && <p className="trip-result__reasoning">{plan.reasoning}</p>}
@@ -84,6 +133,9 @@ export default function TripPlanResult({ plan, onPlanAnother, purchasesPending =
               category={section.category}
               items={section.items}
               gaps={gapsByCategory.get(section.category) || []}
+              onRemoveItem={onRemoveItem}
+              catalogById={catalogById}
+              onTogglePacked={onTogglePacked}
             />
           ))}
           {gapOnlyCategories.map((cat) => (
@@ -169,18 +221,45 @@ export default function TripPlanResult({ plan, onPlanAnother, purchasesPending =
   );
 }
 
-function CategorySection({ category, items, gaps }) {
+function CategorySection({ category, items, gaps, onRemoveItem, catalogById, onTogglePacked }) {
   return (
     <section className="trip-section">
       <h4>{CATEGORY_LABELS[category] || category}</h4>
       {items.length > 0 && (
         <div className="outfit__items">
-          {items.map((item) => (
-            <div key={item.id} className="outfit__item">
-              <img src={item.photo_url} alt={item.name} />
-              <div className="outfit__item-name">{item.name}</div>
-            </div>
-          ))}
+          {items.map((item) => {
+            // Packed status is live catalog state, never the frozen snapshot
+            // (#128) — an id absent from catalogById means the item was since
+            // deleted, so it renders with no chip at all.
+            const live = catalogById?.get(item.id);
+            return (
+              <div key={item.id} className="outfit__item">
+                {onRemoveItem && (
+                  <button
+                    type="button"
+                    className="outfit__item-remove"
+                    aria-label={`Remove ${item.name} from this trip`}
+                    onClick={() => onRemoveItem(item.id)}
+                  >
+                    ×
+                  </button>
+                )}
+                <img src={item.photo_url} alt={item.name} />
+                <div className="outfit__item-name">{item.name}</div>
+                {catalogById && live && (
+                  <button
+                    type="button"
+                    className={`chip ${live.in_travel_bag ? 'chip--on-packed' : ''}`}
+                    aria-pressed={!!live.in_travel_bag}
+                    onClick={() => onTogglePacked(live)}
+                  >
+                    <span className="chip__dot" />
+                    Packed
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
       {gaps.length > 0 && (

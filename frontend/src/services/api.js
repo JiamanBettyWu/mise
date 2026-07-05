@@ -114,6 +114,12 @@ export const api = {
   searchGeo: (q, limit = 5) =>
     request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
+  // Saved trip plans (#128): explicit save only, frozen snapshot.
+  saveTrip: (payload) => request('/trips', { method: 'POST', body: payload }),
+  listTrips: () => request('/trips'),
+  getTrip: (id) => request(`/trips/${id}`),
+  deleteTrip: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
+
   // Profile
   getProfile: () => request('/profile'),
   updateProfile: (data) => request('/profile', { method: 'PUT', body: data }),
