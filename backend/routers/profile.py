@@ -102,7 +102,10 @@ def get_stats(range: Literal["7d", "30d", "90d", "all"] = "30d"):
     outfits = aggregate_outfits(outfits_q.execute().data or [])
 
     # Trips planned = trip_plan calls in llm_usage: exactly one per plan
-    # since #114, so no trip_plans table needed. Shares the since-#114 caveat.
+    # since #114. #128 added a trip_plans table, but that's for *saved* plans
+    # only (explicit, optional action) — this stat counts every generation,
+    # all-time and unaffected by later deletes, so it stays on llm_usage.
+    # Shares the since-#114 caveat.
     trips = usage["by_call_type"].get("trip_plan", {}).get("calls", 0)
 
     # Token data only exists from #114's deploy onward — surface the earliest

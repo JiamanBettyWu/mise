@@ -192,3 +192,46 @@ class TripPlanResponse(BaseModel):
     purchase_suggestions: list[PurchaseSuggestion] = []
     reasoning: str = ""
     essentials: list[str] = []
+
+
+# ---- Saved trip plans (#128) -----------------------------------------------
+
+
+class TripPlanSaveRequest(BaseModel):
+    """Body for POST /trips. `plan` is validated on write; reads return the
+    stored blob verbatim (see TripPlanSaved) so the frozen snapshot never
+    breaks or silently drops fields as TripPlanResponse evolves."""
+
+    destination: str = Field(..., min_length=1, max_length=200)
+    start_date: date
+    end_date: date
+    notes: str = ""
+    plan: TripPlanResponse
+    edited: bool = False
+
+
+class TripPlanUpdate(BaseModel):
+    """Body for PATCH /trips/{id} (#134) — currently just the custom name.
+    None/omitted leaves it unchanged; "" clears it back to the destination
+    fallback."""
+
+    name: Optional[str] = Field(default=None, max_length=200)
+
+
+class TripPlanSummary(BaseModel):
+    """GET /trips list row — scalar fields only, no plan blob."""
+
+    id: str
+    created_at: datetime
+    destination: str
+    start_date: date
+    end_date: date
+    notes: str = ""
+    edited: bool = False
+    name: Optional[str] = None
+
+
+class TripPlanSaved(TripPlanSummary):
+    """GET /trips/{id} — the full frozen snapshot, returned as-stored."""
+
+    plan: dict

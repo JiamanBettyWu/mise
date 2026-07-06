@@ -1,12 +1,21 @@
 import json
 import logging
 import traceback
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from auth import require_password
-from schemas import TripPlanRequest, TripPlanResponse
+from db.supabase import client as supabase
+from schemas import (
+    TripPlanRequest,
+    TripPlanResponse,
+    TripPlanSaved,
+    TripPlanSaveRequest,
+    TripPlanSummary,
+    TripPlanUpdate,
+)
 from services import trip_planner
 from services.weather import DestinationNotFound
 
@@ -69,3 +78,66 @@ def plan_stream(req: TripPlanRequest) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ---- Saved trip plans (#128) ------------------------------------------------
+# Explicit save only — nothing above this line ever writes to trip_plans.
+# `plan` is stored and returned verbatim; POST validates it against
+# TripPlanResponse on the way in, but GET never re-validates the frozen
+# snapshot through the (possibly since-evolved) live schema.
+
+TRIP_SUMMARY_COLUMNS = "id,created_at,destination,start_date,end_date,notes,edited,name"
+
+
+@router.post("", response_model=TripPlanSaved)
+def save_trip(req: TripPlanSaveRequest) -> TripPlanSaved:
+    row = {
+        "destination": req.destination,
+        "start_date": req.start_date.isoformat(),
+        "end_date": req.end_date.isoformat(),
+        "notes": req.notes,
+        "plan": req.plan.model_dump(mode="json"),
+        "edited": req.edited,
+    }
+    res = supabase().table("trip_plans").insert(row).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Insert returned no row")
+    return TripPlanSaved(**res.data[0])
+
+
+@router.get("", response_model=list[TripPlanSummary])
+def list_trips() -> list[TripPlanSummary]:
+    res = (
+        supabase()
+        .table("trip_plans")
+        .select(TRIP_SUMMARY_COLUMNS)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return [TripPlanSummary(**row) for row in (res.data or [])]
+
+
+@router.get("/{trip_id}", response_model=TripPlanSaved)
+def get_trip(trip_id: uuid.UUID) -> TripPlanSaved:
+    res = supabase().table("trip_plans").select("*").eq("id", str(trip_id)).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return TripPlanSaved(**res.data[0])
+
+
+@router.patch("/{trip_id}", response_model=TripPlanSummary)
+def update_trip(trip_id: uuid.UUID, patch: TripPlanUpdate) -> TripPlanSummary:
+    fields = patch.model_dump(exclude_unset=True)
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    res = supabase().table("trip_plans").update(fields).eq("id", str(trip_id)).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return TripPlanSummary(**res.data[0])
+
+
+@router.delete("/{trip_id}", status_code=204)
+def delete_trip(trip_id: uuid.UUID) -> None:
+    res = supabase().table("trip_plans").delete().eq("id", str(trip_id)).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Trip not found")

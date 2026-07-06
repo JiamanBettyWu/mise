@@ -114,6 +114,14 @@ export const api = {
   searchGeo: (q, limit = 5) =>
     request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
+  // Saved trip plans (#128): explicit save only, frozen snapshot.
+  saveTrip: (payload) => request('/trips', { method: 'POST', body: payload }),
+  listTrips: () => request('/trips'),
+  getTrip: (id) => request(`/trips/${id}`),
+  // #134: currently just the custom name; "" clears back to the destination fallback.
+  updateTrip: (id, patch) => request(`/trips/${id}`, { method: 'PATCH', body: patch }),
+  deleteTrip: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
+
   // Profile
   getProfile: () => request('/profile'),
   updateProfile: (data) => request('/profile', { method: 'PUT', body: data }),
