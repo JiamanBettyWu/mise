@@ -14,11 +14,11 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-05 (latest session):** #124 shipped (PR #131) — trip planner
-streams node-level progress via SSE, closing out #2. Two review rounds fixed
-real bugs (stuck loading, hidden errors on regenerate-failure, a 500-prone
-error path); a `SKIP_PURCHASE_SEARCH` env toggle and a client-side fix for a
-stalled progress label landed in the same PR after live testing. **Open manual
+**As of 2026-07-05 (latest session):** #128 shipped (PR #132, also closes #134)
+— explicit trip-plan saving, a Past Trips list, and packed chips that read/write
+live catalog state. A self-review pass on the PR caught nine bugs (stale
+closures, a spurious save-flash on remount, an unvalidated uuid path param
+500ing instead of 404ing, and more), all fixed same-session. **Open manual
 follow-up:** the local backend dev server is currently running with
 `SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
 SerpAPI results are wanted again. Full detail lives in [SESSIONS.md](SESSIONS.md).
