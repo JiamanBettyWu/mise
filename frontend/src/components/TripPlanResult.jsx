@@ -107,7 +107,12 @@ export default function TripPlanResult({
         </div>
         <div className="trip-result__actions">
           {onSave && (
-            <button type="button" onClick={onSave} disabled={saving}>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving || purchasesPending}
+              title={purchasesPending ? 'Wait for shopping suggestions to finish loading' : undefined}
+            >
               {saving ? 'Saving…' : 'Save trip'}
             </button>
           )}

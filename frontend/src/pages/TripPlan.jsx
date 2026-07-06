@@ -151,6 +151,7 @@ export default function TripPlan() {
     clearPlanError();
     setRemovedItemIds(new Set());
     setSaveError('');
+    setSaveFlash(0);
   }
 
   function generate(e) {
@@ -170,6 +171,7 @@ export default function TripPlan() {
     // losing it.
     setRemovedItemIds(new Set());
     setSaveError('');
+    setSaveFlash(0);
     startPlanning({
       destination: destination.trim(),
       start_date: startDate,

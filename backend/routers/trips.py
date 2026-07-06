@@ -1,6 +1,7 @@
 import json
 import logging
 import traceback
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -117,27 +118,26 @@ def list_trips() -> list[TripPlanSummary]:
 
 
 @router.get("/{trip_id}", response_model=TripPlanSaved)
-def get_trip(trip_id: str) -> TripPlanSaved:
-    res = supabase().table("trip_plans").select("*").eq("id", trip_id).execute()
+def get_trip(trip_id: uuid.UUID) -> TripPlanSaved:
+    res = supabase().table("trip_plans").select("*").eq("id", str(trip_id)).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Trip not found")
     return TripPlanSaved(**res.data[0])
 
 
 @router.patch("/{trip_id}", response_model=TripPlanSummary)
-def update_trip(trip_id: str, patch: TripPlanUpdate) -> TripPlanSummary:
+def update_trip(trip_id: uuid.UUID, patch: TripPlanUpdate) -> TripPlanSummary:
     fields = patch.model_dump(exclude_unset=True)
     if not fields:
         raise HTTPException(status_code=400, detail="No fields to update")
-    res = supabase().table("trip_plans").update(fields).eq("id", trip_id).execute()
+    res = supabase().table("trip_plans").update(fields).eq("id", str(trip_id)).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Trip not found")
     return TripPlanSummary(**res.data[0])
 
 
 @router.delete("/{trip_id}", status_code=204)
-def delete_trip(trip_id: str) -> None:
-    existing = supabase().table("trip_plans").select("id").eq("id", trip_id).execute()
-    if not existing.data:
+def delete_trip(trip_id: uuid.UUID) -> None:
+    res = supabase().table("trip_plans").delete().eq("id", str(trip_id)).execute()
+    if not res.data:
         raise HTTPException(status_code=404, detail="Trip not found")
-    supabase().table("trip_plans").delete().eq("id", trip_id).execute()

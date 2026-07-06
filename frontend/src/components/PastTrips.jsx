@@ -41,6 +41,7 @@ export default function PastTrips({ refreshSignal = 0 }) {
   // refreshSignal bumps after a successful Save on the planning form above,
   // so a freshly-saved trip shows up here without a full page reload.
   useEffect(() => {
+    setError('');
     api.listTrips()
       .then(setTrips)
       .catch((e) => setError(String(e)))
@@ -116,7 +117,18 @@ export default function PastTrips({ refreshSignal = 0 }) {
   }
 
   function togglePacked(item) {
-    api.patchClothing(item.id, { in_travel_bag: !item.in_travel_bag })
+    // Optimistic flip (applied before the PATCH fires) so a second rapid
+    // click reads the just-toggled value instead of closing over the same
+    // stale `item` — otherwise pack-then-unpack in quick succession both
+    // compute from the pre-click state and the second click gets swallowed.
+    const next = !item.in_travel_bag;
+    setViewing((v) => {
+      if (!v) return v;
+      const catalogById = new Map(v.catalogById);
+      catalogById.set(item.id, { ...item, in_travel_bag: next });
+      return { ...v, catalogById };
+    });
+    api.patchClothing(item.id, { in_travel_bag: next })
       .then((updated) => {
         setViewing((v) => {
           if (!v) return v;
@@ -125,23 +137,36 @@ export default function PastTrips({ refreshSignal = 0 }) {
           return { ...v, catalogById };
         });
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => {
+        setError(String(e));
+        setViewing((v) => {
+          if (!v) return v;
+          const catalogById = new Map(v.catalogById);
+          catalogById.set(item.id, item);
+          return { ...v, catalogById };
+        });
+      });
   }
 
   async function markAllPacked(liveItems) {
     if (liveItems.length === 0) return;
-    try {
-      const updated = await Promise.all(
-        liveItems.map((item) => api.patchClothing(item.id, { in_travel_bag: true }))
-      );
-      setViewing((v) => {
-        if (!v) return v;
-        const catalogById = new Map(v.catalogById);
-        for (const u of updated) catalogById.set(u.id, u);
-        return { ...v, catalogById };
-      });
-    } catch (e) {
-      setError(String(e));
+    // allSettled (not all): one failing PATCH out of N shouldn't discard the
+    // N-1 that already succeeded server-side — those still land in
+    // catalogById, and only the failures get reported/re-clickable.
+    const results = await Promise.allSettled(
+      liveItems.map((item) => api.patchClothing(item.id, { in_travel_bag: true }))
+    );
+    const failures = results.filter((r) => r.status === 'rejected');
+    setViewing((v) => {
+      if (!v) return v;
+      const catalogById = new Map(v.catalogById);
+      for (const r of results) {
+        if (r.status === 'fulfilled') catalogById.set(r.value.id, r.value);
+      }
+      return { ...v, catalogById };
+    });
+    if (failures.length > 0) {
+      setError(`${failures.length} item(s) failed to update: ${failures[0].reason}`);
     }
   }
 
