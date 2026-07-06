@@ -129,7 +129,7 @@ export default function TripPlanResult({
           {onPlanAnother && (
             <button
               type="button"
-              className="trip-result__plan-another"
+              className="ghost trip-result__plan-another"
               onClick={onPlanAnother}
             >
               Plan another trip

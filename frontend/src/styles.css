@@ -60,8 +60,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 
 /* Ghost — quiet secondary action (transparent, fills on hover). Pairs next to
-   a primary glass pill. `.trip-result__plan-another` is the original bespoke
-   instance of this pattern. */
+   a primary glass pill. */
 .ghost {
   background: transparent;
   backdrop-filter: none;
@@ -670,20 +669,10 @@ textarea {
   flex-shrink: 0;
 }
 
-/* Secondary action — quieter than the primary Generate button. */
+/* Now plain `.ghost` (unified sizing with Save trip, #128 follow-up) — this
+   only pins it from shrinking when `.trip-result__actions` wraps. */
 .trip-result__plan-another {
-  background: transparent;
-  backdrop-filter: none;
-  border-color: rgba(20, 20, 40, 0.2);
-  color: rgba(20, 20, 40, 0.65);
-  font-size: 0.85rem;
-  padding: 0.4rem 0.9rem;
   flex-shrink: 0;
-}
-.trip-result__plan-another:hover {
-  background: rgba(255, 255, 255, 0.55);
-  color: rgba(20, 20, 40, 0.95);
-  border-color: rgba(20, 20, 40, 0.35);
 }
 
 .trip-result__reasoning {
