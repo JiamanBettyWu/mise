@@ -72,26 +72,45 @@ def recommend(
     lon: float | None = None,
     modes: list[dict] | None = None,
     persist: bool = True,
+    weather: dict | None = None,
+    wardrobe: list[dict] | None = None,
+    history_rows: list[dict] | None = None,
+    today: date | None = None,
 ) -> dict:
     # persist=False runs the full decision path (weather → gate → sample →
     # Claude pick) but skips the outfit_history write — the read-only mode for
     # Weave trace runs (#85) and Phase 2 eval replays, so probing the pipeline
     # never pollutes the 👍/👎 dataset it learns from. history_id comes back
     # None; the output shape is otherwise identical to a persisted run.
+    #
+    # weather / wardrobe / history_rows / today are the offline-eval seam
+    # (#118), mirroring how eval_trip.py replaces the trip graph's fetch nodes:
+    # each one, when given, replaces the corresponding live fetch so the eval
+    # runs the real gate → sampler → Claude path over a frozen scenario.
+    # Preferences (#61/#62) still read live, same as the eval_trip Haiku
+    # planner. Production callers pass none of them.
+    #
     # Profile home location is the weather fallback; env vars are the last resort.
-    if lat is None or lon is None:
-        home = _get_home_coords()
-        if home:
-            lat, lon = home
-
-    weather = get_today(lat=lat, lon=lon)
+    today = today or date.today()
+    if weather is None:
+        if lat is None or lon is None:
+            home = _get_home_coords()
+            if home:
+                lat, lon = home
+        weather = get_today(lat=lat, lon=lon)
     user_prefs, inferred_prefs = _get_active_preferences()
 
-    q = supabase().table("clothing_items").select(WARDROBE_FIELDS).eq("available", True)
-    if travel_mode:
-        q = q.eq("in_travel_bag", True)
-    res = q.execute()
-    wardrobe = res.data or []
+    frozen_catalog = wardrobe is not None
+    if wardrobe is None:
+        q = (
+            supabase()
+            .table("clothing_items")
+            .select(WARDROBE_FIELDS)
+            .eq("available", True)
+        )
+        if travel_mode:
+            q = q.eq("in_travel_bag", True)
+        wardrobe = q.execute().data or []
     wardrobe_size = len(wardrobe)
 
     # Extremes gate first (issue #18) so absurd items can't displace useful
@@ -100,7 +119,9 @@ def recommend(
     # excluded. Small-category counts inside sampling see the post-gate pool —
     # substitutes that don't exist *today* shouldn't count.
     wearable = gate_extremes(wardrobe, weather)
-    candidate_pool = sample_wardrobe(wearable, modes=modes)
+    candidate_pool = sample_wardrobe(
+        wearable, modes=modes, today=today, history_rows=history_rows
+    )
 
     # One line of observability (#63): when a mode lacks the right item, this
     # answers "was it sampled out of the pool, or did the model ignore it?"
@@ -116,22 +137,29 @@ def recommend(
     # combination-attributed 👎s (#60) and exact sets from the last 7 days
     # (#17) are hard candidate blocklists (#63): set-level dedup in code;
     # item-level rotation stays the sampler's job.
+    frozen_names = (
+        {item["id"]: item.get("name", "") for item in wardrobe}
+        if history_rows is not None
+        else None
+    )
     outfits = recommend_outfits(
         weather=weather,
         wardrobe=candidate_pool,
         n=n,
         notes=notes,
         modes=modes,
-        feedback_entries=recent_feedback_outfits(),
-        blocked_combos=blocked_combos(),
-        recent_combos=recent_combos(),
+        feedback_entries=recent_feedback_outfits(
+            today=today, rows=history_rows, names_by_id=frozen_names
+        ),
+        blocked_combos=blocked_combos(rows=history_rows),
+        recent_combos=recent_combos(today=today, rows=history_rows),
         preferences=user_prefs or None,
         inferred_preferences=inferred_prefs or None,
     )
 
     history_ids = (
         log_outfits(
-            date.today(),
+            today,
             [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
             weather=weather,
             notes=notes,
@@ -140,15 +168,21 @@ def recommend(
         else [None] * len(outfits)
     )
 
-    # Hydrate with full item objects so the frontend can show photos without re-querying.
-    full = (
-        supabase()
-        .table("clothing_items")
-        .select("*")
-        .in_("id", [iid for o in outfits for iid in o.get("item_ids", [])])
-        .execute()
-    )
-    by_id = {row["id"]: row for row in (full.data or [])}
+    # Hydrate with full item objects so the frontend can show photos without
+    # re-querying. Frozen-wardrobe runs (#118) hydrate from the injected
+    # catalog instead — the frozen rows carry only WARDROBE_FIELDS, but the
+    # eval scorers never need photo_url.
+    if frozen_catalog:
+        by_id = {item["id"]: item for item in wardrobe}
+    else:
+        full = (
+            supabase()
+            .table("clothing_items")
+            .select("*")
+            .in_("id", [iid for o in outfits for iid in o.get("item_ids", [])])
+            .execute()
+        )
+        by_id = {row["id"]: row for row in (full.data or [])}
 
     hydrated = [
         {

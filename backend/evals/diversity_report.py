@@ -2,7 +2,8 @@
 
 Run from the repo root:
 
-    uv --project backend run python backend/evals/diversity_report.py [--days 60]
+    uv --project backend run python backend/evals/diversity_report.py \
+        [--days 60] [--exclude-default]
 
 Read-only diagnosis, no LLM calls, free. Answers "is the recommender
 repeating itself, where, and why" over the trailing window: item-usage
@@ -46,6 +47,13 @@ def entropy_ratio(counts: list[int]) -> float:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=60)
+    ap.add_argument(
+        "--exclude-default",
+        action="store_true",
+        help='Drop mode="(default)" rows — web/eval bursts without a mode '
+        "(e.g. the 2026-07-02 eval-session burst, #137) that would otherwise "
+        "skew recency and concentration stats.",
+    )
     args = ap.parse_args()
     since = (date.today() - timedelta(days=args.days)).isoformat()
 
@@ -59,6 +67,8 @@ def main() -> None:
         .data
         or []
     )
+    if args.exclude_default:
+        hist = [r for r in hist if r["mode"] != "(default)"]
     items = (
         supabase().table("clothing_items").select("id,name,type").execute().data or []
     )
@@ -68,7 +78,8 @@ def main() -> None:
         it = by_id.get(iid)
         return f"{it['name']} ({it['type']})" if it else f"<deleted {iid[:8]}>"
 
-    print(f"# Diversity report — last {args.days} days ({since} → today)")
+    scope = " (excluding (default)-mode rows)" if args.exclude_default else ""
+    print(f"# Diversity report — last {args.days} days ({since} → today){scope}")
     print(f"{len(hist)} outfit rows, catalog size {len(items)}\n")
     if not hist:
         print("No history rows in window.")

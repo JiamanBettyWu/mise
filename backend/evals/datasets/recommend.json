@@ -1,0 +1,1248 @@
+{
+  "_comment": "Frozen fixture for eval_recommend.py (#118). catalog = live clothing_items snapshot (WARDROBE_FIELDS, available only); history = 14d outfit_history snapshot ending snapshot_date, (default)-mode rows excluded (#137); cases anchor `today` to the day after the last history row so recency math is stable. Weather values are synthetic: hot-heatwave trips the hot gate (low>=25), cold-deep-freeze trips the cold footwear gate (high<=-5). Refresh by re-running the snapshot (see eval_recommend.py docstring) \u2014 but note scores are only comparable within one dataset version.",
+  "snapshot_date": "2026-07-07",
+  "modes": [
+    {
+      "name": "Smart casual",
+      "description": "Default mode for a normal day. Polished but relaxed \u2014 workable in an office without a strict dress code, and equally good for going out afterward. Avoid athleisure or formal-only pieces."
+    },
+    {
+      "name": "Athleisure",
+      "description": "Workout-friendly, casual, comfortable for active days. Think joggers, leggings, sneakers, breathable layers. Skip dress shirts, blazers, heels, or anything restrictive."
+    },
+    {
+      "name": "Elevated",
+      "description": "Polished and elegant for nicer occasions \u2014 date night, dinner, events. Lean into formal or smart-casual pieces, refined fabrics, and dressier shoes. Avoid athleisure or rugged casual."
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "shoulder-all-modes",
+      "today": "2026-07-08",
+      "mode_names": [
+        "Smart casual",
+        "Athleisure",
+        "Elevated"
+      ],
+      "notes": "",
+      "weather": {
+        "temp_high_c": 18.0,
+        "temp_low_c": 9.0,
+        "conditions": "Clouds",
+        "precip_chance": 0.1,
+        "wind_kmh": 12.0
+      }
+    },
+    {
+      "case_id": "shoulder-smart-casual-only",
+      "today": "2026-07-08",
+      "mode_names": [
+        "Smart casual"
+      ],
+      "notes": "",
+      "weather": {
+        "temp_high_c": 17.0,
+        "temp_low_c": 10.0,
+        "conditions": "Clouds",
+        "precip_chance": 0.05,
+        "wind_kmh": 10.0
+      }
+    },
+    {
+      "case_id": "hot-heatwave",
+      "today": "2026-07-08",
+      "mode_names": [
+        "Smart casual",
+        "Athleisure"
+      ],
+      "notes": "",
+      "weather": {
+        "temp_high_c": 35.0,
+        "temp_low_c": 26.0,
+        "conditions": "Clear",
+        "precip_chance": 0.0,
+        "wind_kmh": 8.0
+      }
+    },
+    {
+      "case_id": "rain-cool",
+      "today": "2026-07-08",
+      "mode_names": [
+        "Smart casual"
+      ],
+      "notes": "walking to the office, no umbrella hands \u2014 lots of errands",
+      "weather": {
+        "temp_high_c": 12.0,
+        "temp_low_c": 6.0,
+        "conditions": "Rain",
+        "precip_chance": 0.9,
+        "wind_kmh": 30.0
+      }
+    },
+    {
+      "case_id": "cold-deep-freeze",
+      "today": "2026-07-08",
+      "mode_names": [
+        "Smart casual",
+        "Elevated"
+      ],
+      "notes": "dinner out in the evening",
+      "weather": {
+        "temp_high_c": -8.0,
+        "temp_low_c": -15.0,
+        "conditions": "Snow",
+        "precip_chance": 0.3,
+        "wind_kmh": 20.0
+      }
+    }
+  ],
+  "catalog": [
+    {
+      "id": "04affbb0-344e-43d5-a5df-e09199d7c375",
+      "name": "Blue satin strapless ruched tube top",
+      "type": "blouse",
+      "color": "royal blue",
+      "formality": "formal",
+      "season": "all-season",
+      "fabric": "satin",
+      "warmth": 1,
+      "brand": null,
+      "description": "Strapless bandeau-style top in glossy satin fabric. Features a gathered ruching detail at the center front, creating a draped, cinched effect at the waist. Straight neckline with a sleek, fitted silhouette. The lustrous finish gives it an elevated, evening-wear aesthetic."
+    },
+    {
+      "id": "088b93ef-dab5-4210-b4ec-6afbf5469a15",
+      "name": "Green Patagonia quarter-zip fleece pullover",
+      "type": "sweater",
+      "color": "Dark green",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "fleece",
+      "warmth": 4,
+      "brand": "Patagonia",
+      "description": "Patagonia Better Sweater-style quarter-zip pullover with a mock neck collar and center-front zipper. Features a small Patagonia logo patch on the left chest and a zippered pocket on the left sleeve. Relaxed fit with raglan-style seaming on the shoulders and ribbed cuffs and hem."
+    },
+    {
+      "id": "0b391980-c967-4ad5-b3cf-2cc477481563",
+      "name": "Cream ribbed button-front cardigan",
+      "type": "sweater",
+      "color": "cream",
+      "formality": "smart-casual",
+      "season": "fall",
+      "fabric": "wool blend",
+      "warmth": 3,
+      "brand": "Abercrombie & Fitch",
+      "description": "Cropped ribbed-knit cardigan with a deep V-neckline and a full-length button placket featuring small pearlescent buttons. The texture has a soft, slightly boucl\u00e9 quality. Fitted silhouette with long sleeves and a slightly curved hem."
+    },
+    {
+      "id": "0c3b2022-ea7b-4d35-9d5d-66db14da6725",
+      "name": "Mint green pleated athletic skirt",
+      "type": "skirt",
+      "color": "mint green",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Lululemon",
+      "description": "A flowy, pleated tennis-style skirt with a wide waistband and a short, flared silhouette. Features an asymmetric wrap-style front panel and likely includes built-in shorts underneath. Lightweight performance fabric with a subtle sheen, designed for active wear."
+    },
+    {
+      "id": "0c568281-bcd1-48fb-b495-de447395e266",
+      "name": "Patagonia P-6 Logo Graphic Tee",
+      "type": "t-shirt",
+      "color": "sage green",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Patagonia",
+      "description": "Crew-neck short-sleeve t-shirt in a relaxed fit. Features the iconic Patagonia P-6 back graphic \u2014 a rectangular black box print with mountain silhouette, colorful horizontal stripes, and bold white 'patagonia' wordmark. Shown from the back view with slightly dropped shoulders and a clean hemline."
+    },
+    {
+      "id": "0e5fe74a-74aa-4df9-ba6d-d5357a20954b",
+      "name": "White Peanuts Snoopy Linus Graphic Tee",
+      "type": "t-shirt",
+      "color": "white",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Uniqlo",
+      "description": "Crew-neck short-sleeve t-shirt in white with a center-chest graphic print featuring Linus holding Snoopy above his head. Bold black text below reads 'SNOOPY & LINUS'. Relaxed, slightly boxy fit. Part of Uniqlo's UT graphic tee line."
+    },
+    {
+      "id": "10b554c3-506b-4c6f-8771-28ee3e9e0317",
+      "name": "Navy knit cardigan with white scallop trim",
+      "type": "sweater",
+      "color": "navy blue",
+      "formality": "smart-casual",
+      "season": "fall",
+      "fabric": "cotton",
+      "warmth": 3,
+      "brand": null,
+      "description": ""
+    },
+    {
+      "id": "13b87033-f7b7-4a19-8863-8e44d7a54232",
+      "name": "Pale pink leather ballet flats",
+      "type": "shoes",
+      "color": "pale pink",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "leather",
+      "warmth": 1,
+      "brand": "Everlane",
+      "description": "Minimalist ballet flats in soft pebbled leather with a slightly squared toe. Features a low profile silhouette, thin tan rubber sole, and a clean topstitched edge along the vamp. Interior lining matches the exterior pale pink tone. No hardware or embellishments."
+    },
+    {
+      "id": "1a0ec635-4db5-4b6b-9e74-561c0566ef3f",
+      "name": "Sage satin short-sleeve button blouse",
+      "type": "blouse",
+      "color": "sage green",
+      "formality": "smart-casual",
+      "season": "spring",
+      "fabric": "satin (likely viscose or cupro)",
+      "warmth": 2,
+      "brand": "Wilfred",
+      "description": "Relaxed, boxy silhouette with an open notch/camp collar and a three-button front placket. Short sleeves with a slight drape and clean hemmed cuffs. Features a curved high-low hem, longer at the back. The lustrous satin fabric has a subtle crinkle texture that adds visual interest."
+    },
+    {
+      "id": "1d260a54-338c-4164-9527-009e439765f4",
+      "name": "Lavender daisy print peplum blouse",
+      "type": "blouse",
+      "color": "lavender",
+      "formality": "smart-casual",
+      "season": "spring",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "LOFT",
+      "description": "Flutter-sleeve peplum blouse in a light lavender base with an allover scattered daisy print in white and orange. V-neckline with a back zipper closure. Empire waist seam with gentle gathering creates a peplum silhouette. Slightly hi-low hem and textured crinkle fabric."
+    },
+    {
+      "id": "215c6d56-d4a2-4b8d-b11f-6034d61dfa25",
+      "name": "Navy high-waist full-length leggings",
+      "type": "trousers",
+      "color": "navy blue",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "Lululemon",
+      "description": "Full-length athletic leggings with a wide, structured high-rise waistband that sits several inches above the natural waist. Slim, body-skimming fit throughout the leg with a smooth, matte finish and no visible seams on the front panel. A slim side pocket is visible on the right hip. Clean, minimal design with no patterns or hardware."
+    },
+    {
+      "id": "22e4cc37-0b25-4d6f-99cd-f39138ae6dda",
+      "name": "Grey button-front tailored vest",
+      "type": "vest",
+      "color": "coal grey",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "Wilfred",
+      "description": "Sleeveless tailored vest with a collarless round neckline and single-breasted button closure featuring five black buttons. The silhouette is fitted through the waist with subtle princess seaming that creates a slightly flared hem. A front center vent adds a refined, structured finish."
+    },
+    {
+      "id": "268683a8-4e68-4ad6-b814-8c4cb27279a0",
+      "name": "Cream ribbed long sleeve top",
+      "type": "t-shirt",
+      "color": "cream",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton blend",
+      "warmth": 2,
+      "brand": "Lululemon",
+      "description": "Fitted ribbed long-sleeve top with a crew neckline and curved hem that dips slightly longer at the back. Fine vertical ribbing runs throughout the fabric. Slim silhouette with no hardware or embellishments. Side seams add subtle structure to the fit."
+    },
+    {
+      "id": "2c11dd01-d1aa-4b70-afcc-ff5f2c938990",
+      "name": "Retro geometric print sleeveless top",
+      "type": "blouse",
+      "color": "burnt orange",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": null,
+      "description": "Sleeveless shell top with a straight, boxy silhouette and modest boat neckline. Features an all-over retro diamond and medallion geometric print in burnt orange, amber, and dark brown \u2014 reminiscent of 1960s\u201370s mod style. The fabric has a slight sheen suggesting a synthetic weave. Clean, unembellished edges with no visible hardware or closures."
+    },
+    {
+      "id": "305feb00-b8fb-43c8-98ea-c0d4e1c4cff6",
+      "name": "Gray ribbed scoop neck tee",
+      "type": "t-shirt",
+      "color": "light gray",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Hollister",
+      "description": "Form-fitting ribbed knit baby tee with a deep scoop neckline and short cap sleeves. The stretchy ribbed texture runs vertically throughout. Cropped-to-standard length with a slim, body-conscious silhouette. No graphics or embellishments."
+    },
+    {
+      "id": "340e3c13-7aab-4d10-916b-d6543f8ca495",
+      "name": "Light green jacquard wrap maxi skirt",
+      "type": "skirt",
+      "color": "Light green",
+      "formality": "smart-casual",
+      "season": "spring",
+      "fabric": "silk or satin blend",
+      "warmth": 2,
+      "brand": null,
+      "description": "A-line maxi wrap skirt with a tone-on-tone jacquard pattern depicting an East Asian landscape scene \u2014 mountains, pagodas, trees, and waterways woven into the fabric. Features a side wrap closure secured with a knotted cord tie at the upper right. The silhouette is slightly flared with a smooth, lustrous surface and a clean hem."
+    },
+    {
+      "id": "36b805cf-717d-4ca2-bffa-9eafdee1c25f",
+      "name": "Black hooded zip-up athletic jacket",
+      "type": "jacket",
+      "color": "black",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "Lululemon",
+      "description": "Slim-fitting full-zip hooded jacket with a structured, slightly tapered silhouette. Features a small chest zip pocket, two lower hand pockets, and raglan-style sleeves with thumbhole cuffs. The smooth, matte shell has a subtle technical appearance consistent with a water-repellent finish. Hood sits close to the head with a streamlined profile."
+    },
+    {
+      "id": "3ad554b8-a803-466d-b60a-dd6eb917f46b",
+      "name": "Gold charm anklet or necklace",
+      "type": "accessory",
+      "color": "gold",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "metal",
+      "warmth": null,
+      "brand": null,
+      "description": "A gold-tone delicate chain piece featuring multiple small charms including what appears to be a butterfly and a mushroom or floral pendant. The chain is thin and twisted into a loose arrangement."
+    },
+    {
+      "id": "3b665ad8-255f-49a8-988a-87f845820b46",
+      "name": "Silver delicate chain necklace set",
+      "type": "accessory",
+      "color": "silver",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "metal",
+      "warmth": null,
+      "brand": null,
+      "description": "A fine silver-tone chain necklace or bracelet with a small decorative charm or pendant, laid out in a loose tangle. The chain is very delicate and thin with a small clasp."
+    },
+    {
+      "id": "3fe16e46-4393-4dd1-914b-76e7257d53fc",
+      "name": "Cream ribbed long-sleeve fitted top",
+      "type": "t-shirt",
+      "color": "cream",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Universal Thread",
+      "description": "Slim-fitting ribbed knit long-sleeve top with a scoop neckline and slightly cropped length. The fine vertical ribbing runs throughout the body and sleeves. Clean, minimal silhouette with no hardware or embellishments."
+    },
+    {
+      "id": "415bf4dc-a3cb-4bde-ae4d-bfca7f7b66ed",
+      "name": "Black cushioned recovery flip flop",
+      "type": "sandals",
+      "color": "black",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "OOFOS",
+      "description": "Thong-style recovery sandal with a thick, rocker-profile midsole designed for arch support and cushioning. The single-piece molded upper features smooth straps with a textured footbed surface. The chunky outsole has a slightly curved bottom, characteristic of recovery footwear. Entirely monochromatic in black with a subtle brand logo embossed on the midsole sidewall."
+    },
+    {
+      "id": "453d6b7e-2994-44ba-bfad-8ff6cd3d0e24",
+      "name": "Pink navy stripe classic-fit tee",
+      "type": "t-shirt",
+      "color": "light pink",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton blend",
+      "warmth": 2,
+      "brand": "Lululemon",
+      "description": "Classic-fit crew-neck tee with a boxy, slightly cropped silhouette. Features thin horizontal navy stripes on a light pink base. Short sleeves with a clean hem and a relaxed, straight-cut body. Minimal detailing with no graphics or hardware."
+    },
+    {
+      "id": "4549ba88-1e0f-48f7-b9f5-201cc1501b84",
+      "name": "Navy high-waist straight-leg trousers",
+      "type": "trousers",
+      "color": "navy blue",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "Aritzia",
+      "description": "Tailored straight-leg trousers with a high-rise waistband featuring belt loops and a concealed front closure. Clean, minimal silhouette with no visible pleats or cuffs. The smooth, structured fabric gives a polished, office-ready appearance."
+    },
+    {
+      "id": "49524857-9be9-41d9-b217-fff458ffead1",
+      "name": "Lilac strapless A-line midi dress",
+      "type": "dress",
+      "color": "Lilac",
+      "formality": "formal",
+      "season": "spring",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Aritzia",
+      "description": ""
+    },
+    {
+      "id": "49ea8240-e2c4-4c42-b814-bf43ec8cec70",
+      "name": "Shady blue satin maxi skirt",
+      "type": "skirt",
+      "color": "Shady blue",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "satin (likely polyester or viscose)",
+      "warmth": 1,
+      "brand": "Aritzia",
+      "description": "Maxi-length bias-cut skirt with a subtle A-line flare toward the hem. Features a lustrous satin finish with a characteristically crinkled texture across the surface. High waistband with a clean, minimal finish and no visible hardware. The fluid drape and sheen give it an elevated, occasion-ready feel."
+    },
+    {
+      "id": "4c93948a-0b30-48b3-9b46-8c252db86448",
+      "name": "L.L.Bean Colorblock Anorak Pullover",
+      "type": "jacket",
+      "color": "teal/navy/olive/rust multicolor",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "L.L.Bean",
+      "description": "Pullover anorak with a half-zip chest closure and an attached hood with yellow drawcords. Bold colorblocking features teal on the upper body, navy raglan sleeves, rust side panels, and an olive front kangaroo pocket with its own zip. A woven geometric-patterned ribbon trim separates the upper and lower color zones. Elastic cuffs and a relaxed fit complete the outdoor-ready silhouette."
+    },
+    {
+      "id": "4cc2d844-1b48-41a6-b2f7-2322310d6c89",
+      "name": "Metropolis taupe structured strapless peplum top",
+      "type": "blouse",
+      "color": "metropolis taupe",
+      "formality": "smart-casual",
+      "season": "summer",
+      "fabric": "Recycled polyester",
+      "warmth": 1,
+      "brand": "Aritzia",
+      "description": "Strapless structured top with a wide fold-over bandeau neckline and pronounced hourglass silhouette. Features vertical seam paneling that creates a fitted waist flaring into a peplum hem. The construction is architectural and tailored, giving it a sculptural quality. Clean, minimalist design with no hardware or embellishment."
+    },
+    {
+      "id": "50aa2855-86c1-443f-b70a-70a0c3b4f86e",
+      "name": "White floral embroidered Mexican blouse",
+      "type": "blouse",
+      "color": "off-white",
+      "formality": "casual",
+      "season": "spring",
+      "fabric": "cotton",
+      "warmth": 1,
+      "brand": null,
+      "description": "Boxy, relaxed-fit sleeveless blouse with a scoop neckline. Features dense multicolor hand embroidery around the neckline in a floral wreath pattern using pink, navy, yellow, and green threads. A single small embroidered flower motif sits at center front below the chest. Edges are finished with multicolor whipstitching in yellow, pink, and blue. Traditional Mexican huipil-style construction."
+    },
+    {
+      "id": "534d806c-bed9-4d5c-bd66-c66176084586",
+      "name": "Gold chain necklace with pendant",
+      "type": "accessory",
+      "color": "gold",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "metal",
+      "warmth": null,
+      "brand": null,
+      "description": "Delicate gold-tone chain necklace with a small pendant near the clasp end and a lobster clasp closure. The chain appears fine and dainty, laid out loosely on the surface."
+    },
+    {
+      "id": "53abf1da-7c5f-4107-8f81-251844846b84",
+      "name": "Teal Graphic T-Shirt",
+      "type": "t-shirt",
+      "color": "teal",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Abercrombie",
+      "description": "Crew neck short-sleeve t-shirt in a washed teal colorway. Features a small Peanuts branded graphic with Snoopy on the left chest. Relaxed, slightly boxy fit with a clean, minimalist front presentation."
+    },
+    {
+      "id": "546024b2-4bd4-4a7b-aef5-c3f1f4c71b58",
+      "name": "Lilac crepe slip midi dress with draped neckline",
+      "type": "dress",
+      "color": "Lilac",
+      "formality": "formal",
+      "season": "summer",
+      "fabric": "crepe/polyester",
+      "warmth": 1,
+      "brand": null,
+      "description": ""
+    },
+    {
+      "id": "5d2014c9-d4f8-4e6a-b611-77adfd839d03",
+      "name": "Striped open-knit sweater vest",
+      "type": "vest",
+      "color": "blue, brown, and white stripe",
+      "formality": "smart-casual",
+      "season": "spring",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Madewell",
+      "description": "Sleeveless sweater vest in a bold horizontal stripe pattern of blue, dark brown, and white. Features an open-knit, ladder-stitch construction that creates a semi-sheer texture throughout the body. Ribbed trim at the crew neckline and armholes. Relaxed, slightly boxy silhouette with a cropped-to-regular length."
+    },
+    {
+      "id": "5ee897c7-3b65-4137-9f12-4dc98ad8b1e5",
+      "name": "Black long-sleeve merino crew tee",
+      "type": "t-shirt",
+      "color": "black",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "merino wool",
+      "warmth": 2,
+      "brand": "Icebreaker",
+      "description": "Lightweight long-sleeve top with a relaxed yet slightly fitted silhouette and a classic crew neckline. Features a curved hem that is slightly longer at the back. The fabric appears very fine and smooth, consistent with Icebreaker's Cool-Lite merino blend. An orange contrast stitch runs along the inner collar, and a small woven label sits at the left hem."
+    },
+    {
+      "id": "66f8aa8c-13a3-4079-b67d-a45fbe512025",
+      "name": "Light blue athletic zip-up hoodie jacket",
+      "type": "jacket",
+      "color": "light blue",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "\u7126\u4e0b",
+      "description": "Fitted athletic softshell jacket with an attached hood and full front zip closure. Features curved seam detailing across the chest and body for a contoured, feminine silhouette. Two zippered side pockets sit at the lower front. Raglan-style sleeves with thumb holes at the cuffs. A small logo is embroidered on the left chest."
+    },
+    {
+      "id": "6908d4ac-7724-4d79-9198-03ec21a0c6c5",
+      "name": "Blush pink cropped tank top",
+      "type": "t-shirt",
+      "color": "blush pink",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "cotton",
+      "warmth": 1,
+      "brand": "Uniqlo",
+      "description": "Cropped sleeveless tank top with a round scoop neckline and wide shoulder straps. Features a slim, form-fitting silhouette with a slightly structured body. Solid, unadorned design in a soft blush pink tone with no hardware or embellishments."
+    },
+    {
+      "id": "6c5e4921-4b05-4baa-a2b3-2d91d7eca037",
+      "name": "'90s Vintage Maxi Denim Skirt front slit",
+      "type": "skirt",
+      "color": "5 yrs kiss n tell bleu",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "denim",
+      "warmth": 2,
+      "brand": "Aritzia | Denim Forum",
+      "description": "High-waisted maxi-length denim skirt with a classic five-pocket construction and copper rivets. Features a straight, slim silhouette with a prominent front center slit running from mid-thigh to the hem for ease of movement. Finished with orange contrast topstitching, a silver button closure, and a lightly faded wash that gives it a worn-in feel."
+    },
+    {
+      "id": "6d5759b4-d95c-4a88-93e6-1cf4f71f4fff",
+      "name": "True navy high-rise training tights with pockets",
+      "type": "trousers",
+      "color": "true navy",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "lululemon",
+      "description": "Sleek 7/8-length athletic tights with a wide, structured high-rise waistband that folds over for a smooth silhouette. Form-fitting compression fit throughout the leg. Features side pockets. Solid black with a subtle sheen typical of performance fabric. Cropped just above the ankle."
+    },
+    {
+      "id": "6d719cb3-b11f-4304-9970-41097c0630db",
+      "name": "Light grey cropped tank top",
+      "type": "t-shirt",
+      "color": "light grey",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "cotton",
+      "warmth": 1,
+      "brand": "Uniqlo",
+      "description": "Slim-fitting cropped tank top with a round scoop neckline and wide shoulder straps. Slightly heathered grey fabric with a smooth, jersey-knit texture. Cropped length hits at or just above the waist. Clean, minimal design with no embellishments or graphics."
+    },
+    {
+      "id": "717b67e9-2044-4616-aadd-9ed671a95623",
+      "name": "Silver hoop earrings pair",
+      "type": "accessory",
+      "color": "silver",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "metal",
+      "warmth": null,
+      "brand": null,
+      "description": "A pair of medium-sized silver-tone hoop earrings with a simple, smooth circular design and hinged closure. Both hoops overlap slightly as they rest on the surface."
+    },
+    {
+      "id": "735b3b7c-a3e7-4bc5-85b3-ce07111d84f4",
+      "name": "Forest green long-sleeve crewneck top",
+      "type": "t-shirt",
+      "color": "forest green",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "cotton",
+      "warmth": 3,
+      "brand": "Abercrombie & Fitch",
+      "description": "Slim-fitting long-sleeve top with a clean crewneck and no graphics or embellishments. Features a slightly cropped silhouette with a straight hem. The solid fabric has a smooth, slightly structured jersey feel with subtle shoulder definition."
+    },
+    {
+      "id": "7dd3cd2e-c63d-4e9f-8004-ded8f242e998",
+      "name": "Periwinkle high-waist pleated skort",
+      "type": "skirt",
+      "color": "periwinkle",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Nike",
+      "description": "Mini-length athletic skort with a wide, structured high-rise waistband. Features a front inverted box pleat concealing built-in shorts underneath. Clean, solid construction with a smooth, stretchy performance fabric suited for golf or tennis. Small embossed logo detail visible on the right hip."
+    },
+    {
+      "id": "7f0e8564-4308-4b47-ae9e-d9110c225c1c",
+      "name": "Oatmeal wide-leg drawstring trousers",
+      "type": "trousers",
+      "color": "oatmeal",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "linen",
+      "warmth": 1,
+      "brand": "Abercrombie & Fitch",
+      "description": "Relaxed wide-leg silhouette with an elasticated drawstring waist. Features side slash pockets and a distinctive hemline detail with a row of ladder-stitch or pin-tuck openwork trim. The fabric has a natural linen texture with subtle heathered variation. Clean, minimal construction throughout."
+    },
+    {
+      "id": "8204657e-6ef5-486a-8090-7164484f2933",
+      "name": "White fitted hooded zip-up jacket",
+      "type": "jacket",
+      "color": "white",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "lululemon",
+      "description": "Slim athletic fit with a full-length center zip closure and an attached hood. Features thumbholes at the cuffs and subtle seam detailing at the chest. Lightweight and form-fitting silhouette designed for running or training. Cropped slightly at the hip."
+    },
+    {
+      "id": "82980de4-631e-40fe-bb1d-c964164ad548",
+      "name": "Black Patagonia Baggies shorts",
+      "type": "shorts",
+      "color": "black",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "nylon",
+      "warmth": 1,
+      "brand": "Patagonia",
+      "description": "Lightweight nylon pull-on shorts with an elastic waistband and a relaxed, slightly baggy fit. Features two angled side hand pockets and a short inseam of approximately 5 inches. Small woven Patagonia logo label stitched at the lower left hem. Minimal construction with subtle vertical seam detailing on the front panels."
+    },
+    {
+      "id": "895e76bd-34d6-49f1-b6a0-c7684ae836e3",
+      "name": "Lavender crew neck basic tee",
+      "type": "t-shirt",
+      "color": "lavender",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "\u672c\u6765",
+      "description": "Plain short-sleeve t-shirt in a soft lavender hue. Features a ribbed crew neckline and a relaxed, slightly boxy silhouette. The hem is curved, sitting slightly longer at the back than the front. No graphics or embellishments. Interior label visible at the back neck."
+    },
+    {
+      "id": "95b96779-b9d0-4462-a7d1-4dd9a47275ff",
+      "name": "Cream wide-leg pleated trousers",
+      "type": "trousers",
+      "color": "cream",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "Aritzia",
+      "description": "High-waisted wide-leg trousers with double front pleats and a clean, tailored silhouette. Features belt loops, a concealed front closure, and pressed center creases running the full length of each leg. The straight, slightly cropped cut gives them a polished yet relaxed feel."
+    },
+    {
+      "id": "983dfbe5-5ba1-4a94-a274-1b1dd6842566",
+      "name": "Oatmeal wide-leg pleated trousers",
+      "type": "trousers",
+      "color": "Natural Ecru",
+      "formality": "smart-casual",
+      "season": "spring",
+      "fabric": "linen",
+      "warmth": 1,
+      "brand": "Aritzia",
+      "description": "High-waisted wide-leg trousers with a relaxed, fluid silhouette. Feature single front pleats on each leg and a partial elasticated waistband at the back. Clean front with a concealed closure and belt loops. Pressed centre-front creases run the full length of each leg for a polished finish."
+    },
+    {
+      "id": "9c44f7ae-0fee-4419-b556-bea9d5c71c8c",
+      "name": "Gray scope-neck long sleeve sweater",
+      "type": "sweater",
+      "color": "heather gray",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "cotton blend",
+      "warmth": 3,
+      "brand": "Aritzia",
+      "description": "Relaxed-fit long sleeve sweater with a scope-neckline featuring a subtle double-layered trim detail. Slightly cropped length with a raw-style curved hem. Fine ribbed texture throughout gives it a soft, casual feel. Small embroidered logo detail at the lower right hem."
+    },
+    {
+      "id": "9e1a72f7-86a0-4b82-b008-47add6f0bf9b",
+      "name": "Lavender satin midi bias skirt",
+      "type": "skirt",
+      "color": "pale lavender",
+      "formality": "smart-casual",
+      "season": "spring",
+      "fabric": "satin (likely polyester)",
+      "warmth": 2,
+      "brand": "Aritzia",
+      "description": "A fluid midi-length skirt with a subtle A-line silhouette that flares gently from the hips. The fabric has a high-sheen satin finish with natural drape wrinkles throughout, giving it a slip-skirt aesthetic. Features a clean, minimal waistband with no visible hardware or embellishment. The hem falls to approximately maxi length and has a softly curved edge."
+    },
+    {
+      "id": "a18c5b8b-3be7-4a99-9136-3a863ed78058",
+      "name": "Lavender elastic waist casual shorts",
+      "type": "shorts",
+      "color": "lavender",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Patagonia",
+      "description": "Mid-thigh length shorts with a fully elasticated waistband and a contrasting periwinkle blue inner waistband lining. Features two side slash pockets and a relaxed, straight-leg silhouette. A small rectangular brand label is sewn onto the lower right leg. Subtle vertical texture or stripe pattern visible in the fabric."
+    },
+    {
+      "id": "a69963b5-749c-4146-a242-bdf258bf487a",
+      "name": "Light blue rose jacquard button blouse",
+      "type": "blouse",
+      "color": "light blue",
+      "formality": "smart-casual",
+      "season": "summer",
+      "fabric": "Silk",
+      "warmth": 2,
+      "brand": null,
+      "description": "Cropped relaxed-fit blouse with a V-neckline and tonal rose jacquard pattern throughout. Features three small gold metallic buttons down the center front placket. Long sleeves with a slightly boxy silhouette and a subtle high-low hem. The embossed floral texture adds visual interest while keeping a soft, feminine aesthetic."
+    },
+    {
+      "id": "a9e5cb7b-3a40-479a-a57f-72cccf105a0a",
+      "name": "Forest green long-sleeve baby tee",
+      "type": "t-shirt",
+      "color": "forest green",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Abercrombie & Fitch",
+      "description": "Cropped baby-tee silhouette with a fitted, form-skimming cut. Features a classic crew neckline and full-length sleeves. Double-lined construction adds opacity and structure. Solid color with no pattern or hardware. Hem sits at or above the natural waist."
+    },
+    {
+      "id": "abe22fc0-72c8-4e43-8f60-211ece16caab",
+      "name": "Aritzia Wilfred black suit vest",
+      "type": "jacket",
+      "color": "Dark Night Navy",
+      "formality": "smart-casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "Aritzia",
+      "description": ""
+    },
+    {
+      "id": "ac82bac6-d7dc-4ab1-bcc6-570078d4573a",
+      "name": "Pale Lavender Athletic Tennis Skirt",
+      "type": "skirt",
+      "color": "pale lavender",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Nike",
+      "description": "A-line flared tennis skirt with a high-rise waistband and built-in shorts underneath. Lightweight performance fabric with a smooth finish. Mini length with a relaxed, flowy silhouette suited for athletic movement."
+    },
+    {
+      "id": "b01051fd-5197-473a-ab54-5b0e7fb7111d",
+      "name": "Slate grey straight-leg tailored trousers",
+      "type": "trousers",
+      "color": "Coal grey",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "Aritzia",
+      "description": ""
+    },
+    {
+      "id": "bea0e3e2-9c06-4f1f-875b-b16d4bf4049f",
+      "name": "White platform low-top leather sneaker",
+      "type": "sneakers",
+      "color": "white",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "leather",
+      "warmth": 2,
+      "brand": "Nike",
+      "description": "Low-top court-style sneaker with a chunky platform sole. Features a dusty rose/mauve oversized Swoosh on the lateral side, quilted stitching detail on the upper, and a cream midsole stripe separating the upper from the white platform. A burgundy accent stripe runs along the lower midsole. Padded collar with a small Nike logo hit on the tongue."
+    },
+    {
+      "id": "bef1eeb7-4a2c-463a-9c03-1b16fc7cae31",
+      "name": "Cropped half-zip jacquard athletic pullover",
+      "type": "sweater",
+      "color": "heathered grey",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "Lululemon",
+      "description": "Slim-fit cropped half-zip pullover with a mock neck collar and a short center-front zipper. Features a tonal jacquard pattern with an abstract leaf or feather motif across the body. Raglan-style long sleeves with thumbholes at the cuffs and contrast dark piping along the hem and cuffs. Designed as athletic activewear with a body-skimming silhouette that hits above the hip."
+    },
+    {
+      "id": "c5d94726-1d63-4099-b9d3-cd5970492976",
+      "name": "Light grey wide-leg tailored trousers",
+      "type": "trousers",
+      "color": "light grey",
+      "formality": "formal",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 3,
+      "brand": "Babaton",
+      "description": "Wide-leg silhouette with a mid-to-high rise waistband featuring belt loops and a concealed front closure. Clean, unpleated front with a smooth drape and subtle heathered texture throughout. Slant pockets sit flush against the hip for a streamlined look. The straight, full-length leg has a slight press crease, lending a polished, suiting aesthetic."
+    },
+    {
+      "id": "c7657d45-584e-480b-9cce-20b4e3161981",
+      "name": "Medium wash wide leg jeans",
+      "type": "jeans",
+      "color": "medium blue",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "denim",
+      "warmth": 3,
+      "brand": "Abercrombie",
+      "description": "High-rise wide leg jeans in a classic medium blue wash. Features a five-pocket design, belt loops, and a zip fly with button closure. The straight, wide leg silhouette falls from the hip with a relaxed, full-length cut. Minimal distressing for a clean, versatile look."
+    },
+    {
+      "id": "c9705ab0-9a75-493a-bf4b-12aea9fa3b9f",
+      "name": "Navy cable-knit crewneck sweater",
+      "type": "sweater",
+      "color": "navy blue",
+      "formality": "smart-casual",
+      "season": "fall",
+      "fabric": "cotton",
+      "warmth": 4,
+      "brand": "Polo Ralph Lauren",
+      "description": "Classic cable-knit sweater with a ribbed crewneck, cuffs, and hem. Features an all-over twisted cable pattern running vertically across the body. Small embroidered polo pony logo on the left chest in white. Slim, fitted silhouette with long sleeves."
+    },
+    {
+      "id": "d31cfcd9-d94c-44bc-921b-2545893f03cf",
+      "name": "Pearl stud earrings pair",
+      "type": "accessory",
+      "color": "white",
+      "formality": "formal",
+      "season": "all-season",
+      "fabric": "unknown",
+      "warmth": null,
+      "brand": null,
+      "description": "A pair of small pearl stud earrings with white faux or real pearl tops and small metal butterfly backs visible. Classic and understated design."
+    },
+    {
+      "id": "d3a5c358-7b21-488c-bc78-d5499331810e",
+      "name": "Serene Blue High-Rise Running Shorts",
+      "type": "shorts",
+      "color": "serene blue",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Lululemon",
+      "description": "Lightweight high-rise running shorts with a 2.5\" inseam and flowy silhouette. Features an elastic waistband with a subtle gathered detail and side slits for freedom of movement. The relaxed, airy cut is designed for athletic performance."
+    },
+    {
+      "id": "d700deb0-c569-4bb7-869c-b9b2dd872184",
+      "name": "Slate blue hooded Cerium Down Hoody jacket",
+      "type": "jacket",
+      "color": "slate blue",
+      "formality": "casual",
+      "season": "winter",
+      "fabric": "synthetic",
+      "warmth": 5,
+      "brand": "Arc'teryx",
+      "description": "Lightweight quilted down puffer jacket with horizontal baffle stitching throughout. Features a fitted hood, center front zip closure, and two angled zip hand pockets. Slim, fitted silhouette with a small tonal logo embossed on the left chest. The shell has a subtle sheen typical of a ripstop or nylon outer fabric."
+    },
+    {
+      "id": "d7b5426a-769e-4173-b0bb-1024b21f767c",
+      "name": "Black ribbed boat-neck tee",
+      "type": "t-shirt",
+      "color": "black",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 2,
+      "brand": "Levi's",
+      "description": "Fitted short-sleeve t-shirt in a fine ribbed knit with a wide boat neckline. Slim, body-skimming silhouette with a slightly curved hem. Features a small embroidered Levi's batwing logo patch at the center chest."
+    },
+    {
+      "id": "dbc86b6d-7073-47dd-8c1f-badf8f86cd57",
+      "name": "Lavender seamless athletic t-shirt",
+      "type": "t-shirt",
+      "color": "lavender",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "Lululemon",
+      "description": "Fitted seamless athletic tee with a crew neckline and raglan-style short sleeves. Features subtle tonal texture variation across the chest and ribbed detailing on the sleeves and hem. Slight high-low hem. Designed for athletic or activewear use."
+    },
+    {
+      "id": "de6dfea1-cede-4e64-a32c-26898314fac2",
+      "name": "White ribbed boat-neck long sleeve top",
+      "type": "shirt",
+      "color": "white",
+      "formality": "smart-casual",
+      "season": "all-season",
+      "fabric": "cotton",
+      "warmth": 3,
+      "brand": "Abercrombie & Fitch",
+      "description": "Fitted ribbed long-sleeve top with a wide boat neckline. Slim silhouette with a slightly cropped length. Fine vertical ribbing runs throughout the fabric, adding subtle texture. Clean, minimalist design with no hardware or embellishments."
+    },
+    {
+      "id": "e0acf1d8-08bb-404f-b420-af923de96f2b",
+      "name": "Cream ribbed half-zip knit sweater",
+      "type": "sweater",
+      "color": "cream",
+      "formality": "smart-casual",
+      "season": "fall",
+      "fabric": "wool",
+      "warmth": 4,
+      "brand": "Massimo Dutti",
+      "description": "Relaxed-fit ribbed knit pullover with a quarter-zip silver-tone metal zipper and a wide funnel collar. Features a chunky rib texture throughout, dropped shoulders, and slightly flared silhouette toward the hem. Ribbed cuffs and hem finish the piece cleanly."
+    },
+    {
+      "id": "e3dc35d9-c22a-488e-8c15-901a00002e0e",
+      "name": "Two-tone sport strap sandal",
+      "type": "sandals",
+      "color": "light blue and lavender",
+      "formality": "casual",
+      "season": "summer",
+      "fabric": "synthetic",
+      "warmth": 1,
+      "brand": "Teva",
+      "description": "Classic sport sandal featuring two-tone nylon webbing straps in light blue and lavender with gold-toned hardware buckles. Adjustable hook-and-loop ankle strap for secure fit. Striped EVA footbed with a rubber outsole. Minimalist silhouette with crisscross toe straps typical of the Original Universal style."
+    },
+    {
+      "id": "e8b76bfd-7dc8-4100-bd59-6a6391bc155f",
+      "name": "Light blue floral satin maxi dress",
+      "type": "dress",
+      "color": "light blue",
+      "formality": "formal",
+      "season": "spring",
+      "fabric": "satin",
+      "warmth": 1,
+      "brand": "Reformation",
+      "description": "Floor-length slip-style gown with a straight square neckline and thin spaghetti straps. Features a body-skimming, column silhouette with a subtle waist definition. The fabric has a lustrous satin sheen with an all-over muted floral jacquard or printed pattern in pale blue and white tones. Elegant and minimalist in construction with no visible hardware."
+    },
+    {
+      "id": "f12afef2-c6e5-4e15-babf-3e21066337a5",
+      "name": "Cream collarless ultra light down jacket",
+      "type": "jacket",
+      "color": "cream",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "synthetic",
+      "warmth": 4,
+      "brand": "UNIQLO",
+      "description": "Lightweight quilted down jacket with a collarless round neckline and snap button front closure. Features horizontal quilted channels throughout the body and sleeves for a classic puffer silhouette. Slim, fitted cut with a short hip-length hem. Minimalist design with no visible pockets or external hardware beyond the snap buttons."
+    },
+    {
+      "id": "f44d70e2-140a-49ac-9bc0-7185301d8f10",
+      "name": "Light blue cable-knit oversized sweater",
+      "type": "sweater",
+      "color": "light blue",
+      "formality": "casual",
+      "season": "fall",
+      "fabric": "wool blend",
+      "warmth": 4,
+      "brand": "Abercrombie & Finch",
+      "description": "Relaxed oversized silhouette with a prominent cable-knit pattern running vertically across the body and sleeves. Features a ribbed mock neck, ribbed cuffs, and a ribbed hem. The slightly cropped boxy cut and wide sleeves give it a cozy, laid-back feel. The yarn has a subtle marl texture with flecks of white mixed into the blue."
+    },
+    {
+      "id": "fae721da-c552-433b-880b-e6bc297fb265",
+      "name": "Reebok Club C 85 Vintage Sneaker",
+      "type": "sneakers",
+      "color": "chalk white",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "leather",
+      "warmth": 2,
+      "brand": "Reebok",
+      "description": "Low-top court sneaker in a vintage chalk colorway with a smooth leather upper and perforated toe box detailing. Features a powder blue Reebok vector logo patch with a small Union Jack flag on the side panel. The tongue displays a retro-style blue starburst graphic with a red arrow accent and Reebok script. Laces and midsole share the same aged off-white tone, reinforcing the vintage aesthetic."
+    },
+    {
+      "id": "fec4d8c5-62da-4e2f-8533-719ad83fc069",
+      "name": "Blue North Face hooded rain jacket",
+      "type": "jacket",
+      "color": "royal blue",
+      "formality": "casual",
+      "season": "all-season",
+      "fabric": "synthetic",
+      "warmth": 2,
+      "brand": "The North Face",
+      "description": "Lightweight waterproof shell jacket with an attached hood featuring a drawcord. Center front zip closure with a storm flap, zippered side hand pockets, and a relaxed straight silhouette. Features The North Face logo embroidered on the left chest and a custom 'Data Decisions & A.I.' owl logo embroidered on the left shoulder."
+    }
+  ],
+  "history": [
+    {
+      "recommended_on": "2026-06-23",
+      "mode": "Smart casual",
+      "item_ids": [
+        "de6dfea1-cede-4e64-a32c-26898314fac2",
+        "4549ba88-1e0f-48f7-b9f5-201cc1501b84",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-24",
+      "mode": "Smart casual",
+      "item_ids": [
+        "a69963b5-749c-4146-a242-bdf258bf487a",
+        "9e1a72f7-86a0-4b82-b008-47add6f0bf9b",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-25",
+      "mode": "Smart casual",
+      "item_ids": [
+        "a69963b5-749c-4146-a242-bdf258bf487a",
+        "9e1a72f7-86a0-4b82-b008-47add6f0bf9b",
+        "bea0e3e2-9c06-4f1f-875b-b16d4bf4049f"
+      ],
+      "feedback": 1,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-26",
+      "mode": "Athleisure",
+      "item_ids": [
+        "895e76bd-34d6-49f1-b6a0-c7684ae836e3",
+        "215c6d56-d4a2-4b8d-b11f-6034d61dfa25",
+        "36b805cf-717d-4ca2-bffa-9eafdee1c25f",
+        "fae721da-c552-433b-880b-e6bc297fb265"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-26",
+      "mode": "Smart casual",
+      "item_ids": [
+        "1d260a54-338c-4164-9527-009e439765f4",
+        "95b96779-b9d0-4462-a7d1-4dd9a47275ff",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-27",
+      "mode": "Smart casual",
+      "item_ids": [
+        "de6dfea1-cede-4e64-a32c-26898314fac2",
+        "0b391980-c967-4ad5-b3cf-2cc477481563",
+        "95b96779-b9d0-4462-a7d1-4dd9a47275ff",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232"
+      ],
+      "feedback": -1,
+      "feedback_reason": "combination",
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-28",
+      "mode": "Athleisure",
+      "item_ids": [
+        "dbc86b6d-7073-47dd-8c1f-badf8f86cd57",
+        "6d5759b4-d95c-4a88-93e6-1cf4f71f4fff",
+        "bef1eeb7-4a2c-463a-9c03-1b16fc7cae31",
+        "fae721da-c552-433b-880b-e6bc297fb265"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-28",
+      "mode": "Smart casual",
+      "item_ids": [
+        "a69963b5-749c-4146-a242-bdf258bf487a",
+        "9e1a72f7-86a0-4b82-b008-47add6f0bf9b",
+        "0b391980-c967-4ad5-b3cf-2cc477481563",
+        "bea0e3e2-9c06-4f1f-875b-b16d4bf4049f"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-29",
+      "mode": "Smart casual",
+      "item_ids": [
+        "a69963b5-749c-4146-a242-bdf258bf487a",
+        "9e1a72f7-86a0-4b82-b008-47add6f0bf9b",
+        "bea0e3e2-9c06-4f1f-875b-b16d4bf4049f",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-29",
+      "mode": "Athleisure",
+      "item_ids": [
+        "dbc86b6d-7073-47dd-8c1f-badf8f86cd57",
+        "6d5759b4-d95c-4a88-93e6-1cf4f71f4fff",
+        "66f8aa8c-13a3-4079-b67d-a45fbe512025",
+        "bea0e3e2-9c06-4f1f-875b-b16d4bf4049f",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-06-30",
+      "mode": "Smart casual",
+      "item_ids": [
+        "1a0ec635-4db5-4b6b-9e74-561c0566ef3f",
+        "49ea8240-e2c4-4c42-b814-bf43ec8cec70",
+        "0b391980-c967-4ad5-b3cf-2cc477481563",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232"
+      ],
+      "feedback": -1,
+      "feedback_reason": "combination",
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-01",
+      "mode": "Smart casual",
+      "item_ids": [
+        "1a0ec635-4db5-4b6b-9e74-561c0566ef3f",
+        "340e3c13-7aab-4d10-916b-d6543f8ca495",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-02",
+      "mode": "Smart casual",
+      "item_ids": [
+        "a69963b5-749c-4146-a242-bdf258bf487a",
+        "340e3c13-7aab-4d10-916b-d6543f8ca495",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-03",
+      "mode": "Smart casual",
+      "item_ids": [
+        "22e4cc37-0b25-4d6f-99cd-f39138ae6dda",
+        "268683a8-4e68-4ad6-b814-8c4cb27279a0",
+        "b01051fd-5197-473a-ab54-5b0e7fb7111d",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232",
+        "717b67e9-2044-4616-aadd-9ed671a95623"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-04",
+      "mode": "Smart casual",
+      "item_ids": [
+        "d7b5426a-769e-4173-b0bb-1024b21f767c",
+        "49ea8240-e2c4-4c42-b814-bf43ec8cec70",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069",
+        "717b67e9-2044-4616-aadd-9ed671a95623"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-05",
+      "mode": "Smart casual",
+      "item_ids": [
+        "de6dfea1-cede-4e64-a32c-26898314fac2",
+        "983dfbe5-5ba1-4a94-a274-1b1dd6842566",
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069",
+        "bea0e3e2-9c06-4f1f-875b-b16d4bf4049f",
+        "534d806c-bed9-4d5c-bd66-c66176084586"
+      ],
+      "feedback": -1,
+      "feedback_reason": "specific_items",
+      "feedback_item_ids": [
+        "fec4d8c5-62da-4e2f-8533-719ad83fc069"
+      ],
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-06",
+      "mode": "Smart casual",
+      "item_ids": [
+        "a69963b5-749c-4146-a242-bdf258bf487a",
+        "4549ba88-1e0f-48f7-b9f5-201cc1501b84",
+        "10b554c3-506b-4c6f-8771-28ee3e9e0317",
+        "13b87033-f7b7-4a19-8863-8e44d7a54232",
+        "3b665ad8-255f-49a8-988a-87f845820b46"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-06",
+      "mode": "Athleisure",
+      "item_ids": [
+        "bef1eeb7-4a2c-463a-9c03-1b16fc7cae31",
+        "215c6d56-d4a2-4b8d-b11f-6034d61dfa25",
+        "fae721da-c552-433b-880b-e6bc297fb265"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    },
+    {
+      "recommended_on": "2026-07-07",
+      "mode": "Smart casual",
+      "item_ids": [
+        "268683a8-4e68-4ad6-b814-8c4cb27279a0",
+        "95b96779-b9d0-4462-a7d1-4dd9a47275ff",
+        "0b391980-c967-4ad5-b3cf-2cc477481563",
+        "fae721da-c552-433b-880b-e6bc297fb265",
+        "534d806c-bed9-4d5c-bd66-c66176084586"
+      ],
+      "feedback": null,
+      "feedback_reason": null,
+      "feedback_item_ids": null,
+      "feedback_note": null
+    }
+  ]
+}
