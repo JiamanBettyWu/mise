@@ -62,6 +62,7 @@ def sample_wardrobe(
     wardrobe: list[dict],
     modes: list[dict] | None,
     today: date | None = None,
+    history_rows: list[dict] | None = None,
 ) -> list[dict]:
     """Return a recency-weighted random subset of the wardrobe.
 
@@ -71,6 +72,12 @@ def sample_wardrobe(
 
     Items in small categories (≤ SMALL_CATEGORY_MAX available) are exempt
     from recency weighting — see _sampling_weights.
+
+    `history_rows` is the offline-eval seam (#118): when given, both recency
+    and feedback multipliers are computed purely from those frozen rows (no
+    Supabase reads), so eval runs are reproducible. Production callers leave
+    it None and get the live queries. Note the frozen path derives feedback
+    from the same window-bounded snapshot, whereas live feedback is unwindowed.
     """
     if not wardrobe:
         return wardrobe
@@ -78,11 +85,15 @@ def sample_wardrobe(
     today = today or date.today()
     mode_names = [m["name"] for m in modes] if modes else None
 
-    scores = _recency_scores(
-        modes=mode_names,
-        today=today,
-    )
-    multipliers = _feedback_multipliers(_feedback_rows())
+    if history_rows is None:
+        scores = _recency_scores(modes=mode_names, today=today)
+        feedback_rows = _feedback_rows()
+    else:
+        scores = _aggregate_scores(
+            _window_rows(history_rows, today=today, modes=mode_names), today
+        )
+        feedback_rows = [r for r in history_rows if r.get("feedback") in (1, -1)]
+    multipliers = _feedback_multipliers(feedback_rows)
     weights = _sampling_weights(wardrobe, scores, multipliers)
 
     target_size = max(1, math.ceil(len(wardrobe) * SAMPLE_FRACTION))
@@ -132,8 +143,11 @@ def log_outfits(
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
 
 
-def blocked_combos() -> set[frozenset[str]]:
+def blocked_combos(rows: list[dict] | None = None) -> set[frozenset[str]]:
     """Item-id sets of combination-attributed 👎 outfits (#63).
+
+    `rows` is the offline-eval seam (#118): frozen outfit_history rows to
+    filter purely instead of querying Supabase.
 
     A 👎 tagged "the combination" is not a soft preference — it's a recorded
     known-bad fact, so it's enforced deterministically (candidate filter in
@@ -143,20 +157,31 @@ def blocked_combos() -> set[frozenset[str]]:
     Exact-set matching, deliberately: Jaccard-overlap blocking was considered
     again with #17 (2026-06-12) and rejected until near-misses show up.
     """
-    rows = (
-        supabase()
-        .table("outfit_history")
-        .select("item_ids")
-        .eq("feedback", -1)
-        .eq("feedback_reason", "combination")
-        .execute()
-        .data
-        or []
-    )
+    if rows is None:
+        rows = (
+            supabase()
+            .table("outfit_history")
+            .select("item_ids")
+            .eq("feedback", -1)
+            .eq("feedback_reason", "combination")
+            .execute()
+            .data
+            or []
+        )
+    else:
+        rows = [
+            r
+            for r in rows
+            if r.get("feedback") == -1 and r.get("feedback_reason") == "combination"
+        ]
     return {frozenset(row["item_ids"]) for row in rows if row.get("item_ids")}
 
 
-def recent_combos(days: int = HISTORY_WINDOW_DAYS) -> set[frozenset[str]]:
+def recent_combos(
+    days: int = HISTORY_WINDOW_DAYS,
+    today: date | None = None,
+    rows: list[dict] | None = None,
+) -> set[frozenset[str]]:
     """Exact item-id sets recommended in the last `days` days (#17).
 
     The candidate filter rejects these so the same assembly never recurs
@@ -167,17 +192,24 @@ def recent_combos(days: int = HISTORY_WINDOW_DAYS) -> set[frozenset[str]]:
     blocked_combos this is time-boxed: yesterday's outfit is fine again
     next week. Window reuses HISTORY_WINDOW_DAYS — one episodic horizon
     across recency, feedback context (#59), and dedup.
+
+    `rows`/`today` are the offline-eval seam (#118): frozen rows filtered
+    purely against an injected anchor date instead of a Supabase query.
     """
-    cutoff = (date.today() - timedelta(days=days)).isoformat()
-    rows = (
-        supabase()
-        .table("outfit_history")
-        .select("item_ids")
-        .gte("recommended_on", cutoff)
-        .execute()
-        .data
-        or []
-    )
+    today = today or date.today()
+    if rows is None:
+        cutoff = (today - timedelta(days=days)).isoformat()
+        rows = (
+            supabase()
+            .table("outfit_history")
+            .select("item_ids")
+            .gte("recommended_on", cutoff)
+            .execute()
+            .data
+            or []
+        )
+    else:
+        rows = _window_rows(rows, today=today, days=days)
     return {frozenset(row["item_ids"]) for row in rows if row.get("item_ids")}
 
 
@@ -249,7 +281,11 @@ def record_attribution(
     return updated.data[0]
 
 
-def recent_feedback_outfits(today: date | None = None) -> list[dict]:
+def recent_feedback_outfits(
+    today: date | None = None,
+    rows: list[dict] | None = None,
+    names_by_id: dict[str, str] | None = None,
+) -> list[dict]:
     """Recently thumbed outfits, name-hydrated, for prompt context (#59).
 
     Episodic combination-level memory: the per-item multiplier (#42) smears a
@@ -259,34 +295,51 @@ def recent_feedback_outfits(today: date | None = None) -> list[dict]:
     memory and the sampler's rotation pressure share one horizon.
 
     Returns entries shaped by _select_feedback_entries, newest first.
+
+    `rows`/`names_by_id` are the offline-eval seam (#118): frozen
+    outfit_history rows plus an id→name map built from the frozen catalog,
+    so the eval path touches no Supabase table.
     """
     today = today or date.today()
-    cutoff = today - timedelta(days=HISTORY_WINDOW_DAYS)
-    rows = (
-        supabase()
-        .table("outfit_history")
-        .select(
-            "recommended_on, mode, item_ids, feedback,"
-            " feedback_reason, feedback_item_ids, feedback_note"
-        )
-        .gte("recommended_on", cutoff.isoformat())
-        .not_.is_("feedback", "null")
-        .order("recommended_on", desc=True)
-        .execute()
-        .data
-        or []
-    )
-    ids = sorted({iid for row in rows for iid in (row.get("item_ids") or [])})
-    names: dict[str, str] = {}
-    if ids:
-        res = (
+    if rows is None:
+        cutoff = today - timedelta(days=HISTORY_WINDOW_DAYS)
+        rows = (
             supabase()
-            .table("clothing_items")
-            .select("id, name")
-            .in_("id", ids)
+            .table("outfit_history")
+            .select(
+                "recommended_on, mode, item_ids, feedback,"
+                " feedback_reason, feedback_item_ids, feedback_note"
+            )
+            .gte("recommended_on", cutoff.isoformat())
+            .not_.is_("feedback", "null")
+            .order("recommended_on", desc=True)
             .execute()
+            .data
+            or []
         )
-        names = {r["id"]: r["name"] for r in (res.data or [])}
+    else:
+        rows = sorted(
+            (
+                r
+                for r in _window_rows(rows, today=today)
+                if r.get("feedback") is not None
+            ),
+            key=lambda r: r["recommended_on"],
+            reverse=True,
+        )
+    names = names_by_id
+    if names is None:
+        ids = sorted({iid for row in rows for iid in (row.get("item_ids") or [])})
+        names = {}
+        if ids:
+            res = (
+                supabase()
+                .table("clothing_items")
+                .select("id, name")
+                .in_("id", ids)
+                .execute()
+            )
+            names = {r["id"]: r["name"] for r in (res.data or [])}
     return _select_feedback_entries(rows, names)
 
 
@@ -461,6 +514,21 @@ def _recency_scores(
     rows = q.execute().data or []
 
     return _aggregate_scores(rows, today)
+
+
+def _window_rows(
+    rows: list[dict],
+    today: date,
+    days: int = HISTORY_WINDOW_DAYS,
+    modes: list[str] | None = None,
+) -> list[dict]:
+    """Pure equivalent of the SQL window/mode filter, for injected rows (#118)."""
+    cutoff = (today - timedelta(days=days)).isoformat()
+    return [
+        r
+        for r in rows
+        if r["recommended_on"] >= cutoff and (not modes or r["mode"] in modes)
+    ]
 
 
 def _aggregate_scores(rows: list[dict], today: date) -> dict[str, float]:

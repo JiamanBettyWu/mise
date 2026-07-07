@@ -32,6 +32,8 @@ uv --project backend run python jobs/daily_outfit.py
 ```bash
 uv --project backend run python jobs/backfill_warmth.py --dry-run   # warmth backfill (#40); drop --dry-run to write
 uv --project backend run python backend/evals/eval_trip.py          # trip-planner offline eval (#30) — manual, paid (real Sonnet calls), results in Weave
+uv --project backend run python backend/evals/eval_recommend.py     # daily-recommender offline eval (#118) — manual, paid; frozen scenarios, --trials 3 when comparing sampler configs
+uv --project backend run python backend/evals/diversity_report.py   # recommender-repetition diagnosis over live outfit_history (#118) — read-only, free
 ```
 
 ### Other useful
