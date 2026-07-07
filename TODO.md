@@ -14,58 +14,58 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-05 (latest session):** #128 shipped (PR #132, also closes #134)
-— explicit trip-plan saving, a Past Trips list, and packed chips that read/write
-live catalog state. A self-review pass on the PR caught nine bugs (stale
-closures, a spurious save-flash on remount, an unvalidated uuid path param
-500ing instead of 404ing, and more), all fixed same-session. Later same day:
-diversity-report prototype confirmed the recommender-repetition problem →
-#118 rescoped (code scorers + report; LAAJ split to #136) and #135/#137 filed;
-`backend/evals/diversity_report.py` is **uncommitted** — commit it on the #118
-branch. **Open manual follow-up:** the local backend dev server is running with
-`SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
+**As of 2026-07-07 (latest session):** #118 shipped (PR #138) — the recommender
+offline eval: diversity report promoted with `--exclude-default`, plus a frozen-
+scenario `weave.Evaluation` over the real `recommend()` with the `repeat_gap`
+scorer as #135's measuring stick (baseline: fresh_fraction ~0.29, repeat_gap
+1–2/5). Entropy read-through shifted #135's target: footwear repetition is
+mostly arithmetic (entropy ~0.9); the satin-skirt alternation in bottoms is the
+real fix. **Open manual follow-up:** the local backend dev server is running
+with `SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
 SerpAPI results are wanted again. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **[#118](https://github.com/JiamanBettyWu/wardrobe-ai/issues/118)** —
-   recommender offline eval (rescoped: diversity report + code-based scorers).
-   The measuring stick for the repetition fix
-   ([#135](https://github.com/JiamanBettyWu/wardrobe-ai/issues/135) — satin-skirt
-   alternation, jeans never picked). Do
-   [#137](https://github.com/JiamanBettyWu/wardrobe-ai/issues/137) (experiment
-   flag + 7/2 `(default)` burst cleanup) first or alongside so eval runs stop
-   polluting `outfit_history`.
-2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
+1. **[#135](https://github.com/JiamanBettyWu/wardrobe-ai/issues/135)** — the
+   variety fix, now that #118's eval is its measuring stick (baseline:
+   `repeat_gap` 1–2/5, fresh_fraction ~0.29). Focus on the satin-skirt
+   alternation in bottoms — footwear entropy (~0.9) says shoe repetition is
+   mostly arithmetic, so `SMALL_CATEGORY_MAX` 5→4 is likely not the lever.
+   Workflow: `--trials 3` baseline → one constant → re-run → compare in Weave.
+2. **[#137](https://github.com/JiamanBettyWu/wardrobe-ai/issues/137)** —
+   remaining slice: audit how the 7/2 `(default)` burst got written + one-time
+   cleanup of those rows (the eval itself uses `persist=False`, and the report
+   has `--exclude-default` since #118).
+3. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
    MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project.
-3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+4. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+5. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-5. **Check the first real-event morning for #64's events path** — the empty-day
+6. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+7. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+8. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+9. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
@@ -74,7 +74,7 @@ Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/
 (prepare repo for public release), [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
 (local Python → 3.11 parity; largely defanged by CI),
 [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
-LLM judge + thumbs calibration, split from #118; learning-track, after #118),
+LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
 [#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
 `Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
 spans, not perf). See the
