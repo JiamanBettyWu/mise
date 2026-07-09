@@ -26,6 +26,10 @@ class RecommendRequest(BaseModel):
     n: int = Field(default=3, ge=1, le=5)
     lat: float | None = Field(default=None, ge=-90, le=90)
     lon: float | None = Field(default=None, ge=-180, le=180)
+    # Experiment flag (#137): dev/eval probes set persist=False so trial runs
+    # never land in outfit_history (they'd phantom-penalize items via recency
+    # and skew the diversity report). The web Generate button omits it → True.
+    persist: bool = True
 
 
 class FeedbackRequest(BaseModel):
@@ -100,6 +104,7 @@ def recommend_endpoint(req: RecommendRequest):
             n=req.n,
             lat=req.lat,
             lon=req.lon,
+            persist=req.persist,
         )
     except Exception as e:
         log.error("Recommendation failed:\n%s", traceback.format_exc())
