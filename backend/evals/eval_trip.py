@@ -48,6 +48,7 @@ from langgraph.graph import END, START, StateGraph  # noqa: E402
 from evals import scorers  # noqa: E402
 from schemas import ClothingItem, TripWeather  # noqa: E402
 from services.trip_planner import (  # noqa: E402
+    PACKING_SYSTEM_PROMPT,
     PackingState,
     check_gaps,
     generate_output_node,
@@ -176,6 +177,16 @@ def main() -> int:
             "`uv add --dev weave`)."
         )
         return 1
+
+    # Publish the prompt under test as a content-versioned Weave object (#143,
+    # same pattern as eval_recommend.py): same text → same version, edited
+    # text → new version with a diff in the Weave UI. Unlike the outfit
+    # prompt, this one has no Supabase cohort label or registry — no
+    # longitudinal report reads trip plans — so Weave versioning is the whole
+    # story here. Dev-only by construction: only this launcher imports weave.
+    weave.publish(
+        weave.StringPrompt(PACKING_SYSTEM_PROMPT), name="packing-system-prompt"
+    )
 
     evaluation = weave.Evaluation(
         evaluation_name="trip-planner-code-checks",
