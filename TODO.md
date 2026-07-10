@@ -14,14 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-07 (latest session):** #118 shipped (PR #138) — the recommender
-offline eval: diversity report promoted with `--exclude-default`, plus a frozen-
-scenario `weave.Evaluation` over the real `recommend()` with the `repeat_gap`
-scorer as #135's measuring stick (baseline: fresh_fraction ~0.29, repeat_gap
-1–2/5). Entropy read-through shifted #135's target: footwear repetition is
-mostly arithmetic (entropy ~0.9); the satin-skirt alternation in bottoms is the
-real fix. **Open manual follow-up:** the local backend dev server is running
-with `SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
+**As of 2026-07-09 (latest session):** #137 shipped (PR #139) — the 7/2
+`(default)` burst (15 verdict-free rows from dev iteration against
+`POST /outfits/recommend`) deleted from prod, and the endpoint gained a
+`persist` flag so dev/eval probes never write `outfit_history`. Next up: #135,
+with clean data and #118's eval as the measuring stick. **Open manual
+follow-up:** the local backend dev server is running with
+`SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
 SerpAPI results are wanted again. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
@@ -34,38 +33,34 @@ SerpAPI results are wanted again. Full detail lives in [SESSIONS.md](SESSIONS.md
    alternation in bottoms — footwear entropy (~0.9) says shoe repetition is
    mostly arithmetic, so `SMALL_CATEGORY_MAX` 5→4 is likely not the lever.
    Workflow: `--trials 3` baseline → one constant → re-run → compare in Weave.
-2. **[#137](https://github.com/JiamanBettyWu/wardrobe-ai/issues/137)** —
-   remaining slice: audit how the 7/2 `(default)` burst got written + one-time
-   cleanup of those rows (the eval itself uses `persist=False`, and the report
-   has `--exclude-default` since #118).
-3. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
+2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
    MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project.
-4. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-5. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-6. **Check the first real-event morning for #64's events path** — the empty-day
+5. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-7. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-8. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-9. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
