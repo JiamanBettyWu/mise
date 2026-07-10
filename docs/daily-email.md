@@ -20,8 +20,8 @@ Add each of these (paste values from your local `.env`):
 | `SUPABASE_SERVICE_ROLE_KEY` | (long jwt) |
 | `ANTHROPIC_API_KEY` | `sk-ant-...` |
 | `OPENWEATHERMAP_API_KEY` | (32-char hex) |
-| `WEATHER_LAT` | e.g. `38.92` |
-| `WEATHER_LON` | e.g. `-77.23` |
+| `WEATHER_LAT` | e.g. `40.71` |
+| `WEATHER_LON` | e.g. `-74.01` |
 | `GMAIL_SENDER` | `you@example.com` |
 | `GMAIL_APP_PASSWORD` | 16-char app password from step 1 |
 | `EMAIL_RECIPIENT` | `you@example.com` |
