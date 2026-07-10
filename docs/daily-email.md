@@ -22,9 +22,9 @@ Add each of these (paste values from your local `.env`):
 | `OPENWEATHERMAP_API_KEY` | (32-char hex) |
 | `WEATHER_LAT` | e.g. `38.92` |
 | `WEATHER_LON` | e.g. `-77.23` |
-| `GMAIL_SENDER` | `jiaman.betty.wu@gmail.com` |
+| `GMAIL_SENDER` | `you@example.com` |
 | `GMAIL_APP_PASSWORD` | 16-char app password from step 1 |
-| `EMAIL_RECIPIENT` | `jiaman.betty.wu@gmail.com` |
+| `EMAIL_RECIPIENT` | `you@example.com` |
 | `FEEDBACK_SECRET` | any long random string — **must match the same secret in `.env` and Render** (signs the 👍/👎 links; Render verifies them) |
 | `BACKEND_PUBLIC_URL` | `https://<your-render-app>.onrender.com` — base URL the job builds feedback links against |
 | `CALENDAR_ICS_URL` | *(optional, #64)* Google Calendar "secret address in iCal format" URL. **Presence of this secret is the toggle** — set it to make the day's modes calendar-driven; leave it unset for the hardcoded three modes |
