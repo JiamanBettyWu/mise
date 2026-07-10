@@ -14,13 +14,12 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-09 (latest session):** #143 shipped (PR #147, migration run)
-— every persisted `outfit_history` row now carries a `config` cohort label
-(prompt sha `5e98927e` + sampler constants + model), the diversity report
-groups headline metrics per cohort, and outfit-prompt edits fail CI until
-registered in `backend/evals/prompt_versions.md`. Follow-up PR #148 publishes
-`PACKING_SYSTEM_PROMPT` as a Weave `StringPrompt` from `eval_trip.py`
-(Weave-only by design — no registry; nothing reads trip plans longitudinally).
+**As of 2026-07-09 (latest session):** the repo is **PUBLIC and renamed to
+`mise`** (#5 closed; #125 repo-level items done — remaining: local folder
+rename + `.mcp.json` path, Render/Vercel dashboard verification, cosmetic
+sweep PR). Earlier same day: #143 shipped (PR #147 + follow-up #148) — config
+cohort labels on `outfit_history`, prompt-registry CI guard, Weave
+StringPrompt publishes in both eval launchers.
 **Open manual follow-ups:** re-run `diversity_report.py --exclude-default
 --save` in a few weeks and diff against the 2026-07-09 report (now with
 cohort labels); the local backend dev server is running with
@@ -68,8 +67,9 @@ SerpAPI results are wanted again. Full detail lives in
    planner for Oaxaca).
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
-(catalog by categories), [#5](https://github.com/JiamanBettyWu/wardrobe-ai/issues/5)
-(prepare repo for public release), [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
+(catalog by categories), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
+(finish the mise rename: local folder, `.mcp.json`, cosmetic sweep),
+[#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
 (local Python → 3.11 parity; largely defanged by CI),
 [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
