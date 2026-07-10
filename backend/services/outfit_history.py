@@ -109,6 +109,7 @@ def log_outfits(
     mode_items: list[tuple[str, list[str]]],
     weather: dict | None = None,
     notes: str = "",
+    config: dict | None = None,
 ) -> list[str | None]:
     """Insert one outfit_history row per non-empty (mode, item_ids) pair.
 
@@ -118,6 +119,9 @@ def log_outfits(
     `weather` and `notes` are the recommendation-time context (#60): the
     weekly preference-inference job (#62) needs "what was the weather / the
     ask when she judged this", and neither can be backfilled later.
+
+    `config` is the prompt/sampler cohort label (#143) — which prompt hash
+    and sampling constants produced the row. NULL means "pre-versioning".
 
     Returns the inserted row ids aligned with `mode_items` (None at skipped
     positions), so callers can attach feedback links to each outfit (#39).
@@ -130,6 +134,7 @@ def log_outfits(
             "item_ids": item_ids,
             "weather": weather,
             "notes": notes or None,
+            "config": config,
         }
         for mode, item_ids in mode_items
         if item_ids

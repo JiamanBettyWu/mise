@@ -22,6 +22,7 @@ between two dated reports instead of an eyeball-and-memory exercise.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import math
@@ -90,7 +91,7 @@ def main() -> None:
     hist = (
         supabase()
         .table("outfit_history")
-        .select("recommended_on,mode,item_ids,feedback")
+        .select("recommended_on,mode,item_ids,feedback,config")
         .gte("recommended_on", since)
         .order("recommended_on")
         .execute()
@@ -130,6 +131,41 @@ def main() -> None:
     )
 
 
+def _cohort_metrics(rows: list[dict]) -> dict:
+    """Headline metrics for one config cohort (#143) — a compact per-version
+    slice of the stats the full report computes over the whole window.
+
+    Boundary effect: `last_seen` starts empty per cohort, so repeat gaps that
+    span a config change are dropped — a young cohort's median_gap / ≤3d
+    numbers look artificially clean until it has a week-plus of its own
+    history. Don't over-read a fresh cohort; the whole-window "Repeat gaps"
+    section below is the boundary-free view."""
+    picks = Counter(iid for r in rows for iid in (r["item_ids"] or []))
+    total = sum(picks.values())
+    last_seen: dict[str, date] = {}
+    gaps: list[int] = []
+    for r in rows:
+        d = date.fromisoformat(r["recommended_on"])
+        for iid in r["item_ids"] or []:
+            if iid in last_seen and (g := (d - last_seen[iid]).days) > 0:
+                gaps.append(g)
+            last_seen[iid] = d
+    gaps.sort()
+    return {
+        "first": rows[0]["recommended_on"],
+        "last": rows[-1]["recommended_on"],
+        "rows": len(rows),
+        "distinct_items": len(picks),
+        "top5_share": (
+            round(sum(c for _, c in picks.most_common(5)) / total, 3) if total else 0.0
+        ),
+        "median_gap_days": gaps[len(gaps) // 2] if gaps else None,
+        "pct_repeats_within_3d": (
+            round(sum(1 for g in gaps if g <= 3) / len(gaps), 3) if gaps else None
+        ),
+    }
+
+
 def _report(hist: list[dict], items: list[dict], args, since: str) -> dict:
     """Print the report; return the headline metrics for the JSON footer."""
     by_id = {i["id"]: i for i in items}
@@ -151,6 +187,51 @@ def _report(hist: list[dict], items: list[dict], args, since: str) -> dict:
     if not hist:
         print("No history rows in window.")
         return summary
+
+    # --- config cohorts (#143) ---
+    # Group headline metrics by the FULL config stamped on each row (not just
+    # prompt_sha — a sampler-constant or model change without a prompt edit
+    # must split the cohort too), so one report answers "did metrics move
+    # across a prompt/config change" on live data. The cohort key is a short
+    # hash of the canonical config JSON; the config itself is echoed in the
+    # output/summary so keys stay decodable. Rows without a config predate
+    # versioning. prompt_sha → prompt text lives in evals/prompt_versions.md.
+    print("## Config cohorts (see evals/prompt_versions.md for prompt_sha)")
+    cohorts: dict[str, list[dict]] = defaultdict(list)
+    configs: dict[str, dict | None] = {}
+    for r in hist:
+        cfg = r.get("config") or None
+        key = (
+            hashlib.sha256(json.dumps(cfg, sort_keys=True).encode()).hexdigest()[:8]
+            if cfg
+            else "pre-versioning"
+        )
+        cohorts[key].append(r)
+        configs[key] = cfg
+    summary["cohorts"] = {}
+    for key, rows in sorted(cohorts.items(), key=lambda kv: kv[1][0]["recommended_on"]):
+        m = _cohort_metrics(rows)
+        m["config"] = configs[key]
+        summary["cohorts"][key] = m
+        gap = "n/a" if m["median_gap_days"] is None else f"{m['median_gap_days']}d"
+        le3 = (
+            "n/a"
+            if m["pct_repeats_within_3d"] is None
+            else f"{m['pct_repeats_within_3d']:.0%}"
+        )
+        cfg = configs[key]
+        desc = (
+            "pre-versioning"
+            if cfg is None
+            else " ".join(f"{k}={v}" for k, v in sorted(cfg.items()))
+        )
+        print(
+            f"  {key:14s} {m['first']} → {m['last']}  {m['rows']:3d} rows, "
+            f"{m['distinct_items']} distinct items, top-5 share "
+            f"{m['top5_share']:.0%}, median gap {gap}, ≤3d repeats {le3}"
+        )
+        print(f"  {'':14s} {desc}")
+    print()
 
     # --- item usage distribution ---
     picks = Counter(iid for r in hist for iid in (r["item_ids"] or []))

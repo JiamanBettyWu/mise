@@ -56,7 +56,8 @@ TRACING = init_weave()
 from datetime import date  # noqa: E402
 
 from evals import recommend_scorers  # noqa: E402
-from services.recommend import recommend  # noqa: E402
+from services.claude import OUTFIT_SYSTEM_PROMPT  # noqa: E402
+from services.recommend import RECOMMEND_CONFIG, recommend  # noqa: E402
 
 DATASET_PATH = Path(__file__).resolve().parent / "datasets" / "recommend.json"
 
@@ -138,6 +139,14 @@ def main() -> int:
             "`uv add --dev weave`)."
         )
         return 1
+
+    # Publish the prompt under test as a content-versioned Weave object (#143):
+    # same text → same version, edited text → new version with a diff in the
+    # Weave UI. Dev-only by construction — only this launcher imports weave.
+    # RECOMMEND_CONFIG["prompt_sha"] is the join key back to the git-derived
+    # cohort labels on live outfit_history rows.
+    weave.publish(weave.StringPrompt(OUTFIT_SYSTEM_PROMPT), name="outfit-system-prompt")
+    print(f"[eval] recommend config: {json.dumps(RECOMMEND_CONFIG)}")
 
     evaluation = weave.Evaluation(
         evaluation_name="daily-recommender-code-checks",
