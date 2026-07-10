@@ -46,7 +46,7 @@ export default function App() {
   if (!unlocked) {
     return (
       <form className="gate" onSubmit={onSubmit}>
-        <h1>Wardrobe AI</h1>
+        <h1>mise</h1>
         <label>Password</label>
         <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
         <button type="submit">Unlock</button>

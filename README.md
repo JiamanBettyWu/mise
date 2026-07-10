@@ -1,4 +1,4 @@
-# Wardrobe AI
+# mise
 
 A personal wardrobe assistant. Upload photos of your clothes once and Claude's
 vision model auto-tags them; from there the app:

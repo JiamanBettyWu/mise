@@ -8,6 +8,9 @@ Future-me uses this to remember what was actually hard, for blog posts and inter
 
 ## 2026
 
+### 2026-07 — Renaming a project folder silently breaks its venv
+After `~/dev/wardrobe-ai` → `~/dev/mise`, `uv run pytest` failed with a bare "Failed to spawn: pytest" even though `.venv/bin/pytest` existed — every venv script hardcodes the absolute python path in its shebang, so the whole venv still pointed at the dead old path. Venvs aren't relocatable; after any folder rename just `rm -rf .venv && uv sync` (same for node: reinstall if native binaries act up).
+
 ### 2026-07 — trials=3 didn't reproduce the flaky scorer, but it caught a crash n=1 never showed
 Running #120's baseline at `trials=3` (24 rows): the `quantity_for_duration` failure from the n=1 runs never reappeared — but one trial crashed outright because the model emitted a gap missing `category` and `Gap(**g)` raised, which in prod would 500 the whole trip plan. Repeated sampling finds *different* tail events than the one you went looking for; harden every model-output parse (drop-and-warn beats raise) because at temp>0 any omittable field eventually gets omitted.
 

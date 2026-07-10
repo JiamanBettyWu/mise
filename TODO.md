@@ -1,6 +1,6 @@
 # TODO
 
-The concise "what's next" for wardrobe-ai. **GitHub Issues** + the
+The concise "what's next" for mise. **GitHub Issues** + the
 **[Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/issues)** are the
 source of truth for tracked work; this file is the forward-looking scratchpad.
 
