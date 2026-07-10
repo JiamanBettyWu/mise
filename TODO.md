@@ -77,7 +77,13 @@ Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
 [#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
 `Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
-spans, not perf). See the
+spans, not perf),
+[#144](https://github.com/JiamanBettyWu/wardrobe-ai/issues/144) (email
+one-tap refine links) + [#145](https://github.com/JiamanBettyWu/wardrobe-ai/issues/145)
+(multi-turn refinement in the UI — the checkpointer LangGraph rep; same
+feature, two front doors),
+[#146](https://github.com/JiamanBettyWu/wardrobe-ai/issues/146) (Insights
+dashboard: drift trends + usage, multi-user-ready). See the
 [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/issues) for status.
 
 ---
