@@ -14,23 +14,25 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-09 (latest session):** #137 (PR #139) and #135 (PR #140) both
-shipped. The variety fix landed as candidate A — this week's picks rendered
-into the prompt with a prefer-fresh rule; eval moved fresh_fraction
-0.338 → 0.502, repeat_gap pass 4/15 → 10/15, structural scorers clean.
-**Open manual follow-ups:** re-run `diversity_report.py` on live data in a few
-weeks to confirm the satin-skirt alternation breaks; the local backend dev
-server is running with `SKIP_PURCHASE_SEARCH=1` set — restart it without that
-env var when real SerpAPI results are wanted again. Full detail lives in
+**As of 2026-07-09 (latest session):** three PRs shipped — #137 (PR #139,
+experiment flag + prod burst cleanup), #135 (PR #140, variety fix: recent
+picks in the prompt; fresh_fraction 0.338 → 0.502), and #141 (PR #142,
+`diversity_report.py --save` stores dated reports; the 2026-07-09 pre-#135
+live baseline is committed). **Open manual follow-ups:** re-run
+`diversity_report.py --exclude-default --save` in a few weeks and diff
+against the 2026-07-09 report; the local backend dev server is running with
+`SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
+SerpAPI results are wanted again. Full detail lives in
 [SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **Re-run `diversity_report.py` on live data (~late July)** — confirm the
-   #135 fix breaks the satin-skirt alternation in production, not just on the
-   frozen scenarios (fresh eyes on `fresh_fraction` / repeat gaps).
+1. **Re-run `diversity_report.py --exclude-default --save` (~late July)** and
+   git-diff against `backend/evals/reports/diversity/2026-07-09.md` — confirm
+   the #135 fix breaks the satin-skirt alternation in production (watch
+   bottoms entropy 0.902, median gap 3d, % repeats ≤3d 61%).
 2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
    MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project.
