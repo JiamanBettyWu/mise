@@ -90,7 +90,7 @@ def main() -> None:
     hist = (
         supabase()
         .table("outfit_history")
-        .select("recommended_on,mode,item_ids,feedback")
+        .select("recommended_on,mode,item_ids,feedback,config")
         .gte("recommended_on", since)
         .order("recommended_on")
         .execute()
@@ -130,6 +130,35 @@ def main() -> None:
     )
 
 
+def _cohort_metrics(rows: list[dict]) -> dict:
+    """Headline metrics for one config cohort (#143) — a compact per-version
+    slice of the stats the full report computes over the whole window."""
+    picks = Counter(iid for r in rows for iid in (r["item_ids"] or []))
+    total = sum(picks.values())
+    last_seen: dict[str, date] = {}
+    gaps: list[int] = []
+    for r in rows:
+        d = date.fromisoformat(r["recommended_on"])
+        for iid in r["item_ids"] or []:
+            if iid in last_seen and (g := (d - last_seen[iid]).days) > 0:
+                gaps.append(g)
+            last_seen[iid] = d
+    gaps.sort()
+    return {
+        "first": rows[0]["recommended_on"],
+        "last": rows[-1]["recommended_on"],
+        "rows": len(rows),
+        "distinct_items": len(picks),
+        "top5_share": (
+            round(sum(c for _, c in picks.most_common(5)) / total, 3) if total else 0.0
+        ),
+        "median_gap_days": gaps[len(gaps) // 2] if gaps else None,
+        "pct_repeats_within_3d": (
+            round(sum(1 for g in gaps if g <= 3) / len(gaps), 3) if gaps else None
+        ),
+    }
+
+
 def _report(hist: list[dict], items: list[dict], args, since: str) -> dict:
     """Print the report; return the headline metrics for the JSON footer."""
     by_id = {i["id"]: i for i in items}
@@ -151,6 +180,32 @@ def _report(hist: list[dict], items: list[dict], args, since: str) -> dict:
     if not hist:
         print("No history rows in window.")
         return summary
+
+    # --- config cohorts (#143) ---
+    # Group headline metrics by the prompt_sha stamped on each row, so one
+    # report answers "did metrics move across a prompt/config change" on live
+    # data. Rows without a config predate versioning.
+    print("## Config cohorts (by prompt_sha; see evals/prompt_versions.md)")
+    cohorts: dict[str, list[dict]] = defaultdict(list)
+    for r in hist:
+        sha = (r.get("config") or {}).get("prompt_sha") or "pre-versioning"
+        cohorts[sha].append(r)
+    summary["cohorts"] = {}
+    for sha, rows in sorted(cohorts.items(), key=lambda kv: kv[1][0]["recommended_on"]):
+        m = _cohort_metrics(rows)
+        summary["cohorts"][sha] = m
+        gap = "n/a" if m["median_gap_days"] is None else f"{m['median_gap_days']}d"
+        le3 = (
+            "n/a"
+            if m["pct_repeats_within_3d"] is None
+            else f"{m['pct_repeats_within_3d']:.0%}"
+        )
+        print(
+            f"  {sha:14s} {m['first']} → {m['last']}  {m['rows']:3d} rows, "
+            f"{m['distinct_items']} distinct items, top-5 share "
+            f"{m['top5_share']:.0%}, median gap {gap}, ≤3d repeats {le3}"
+        )
+    print()
 
     # --- item usage distribution ---
     picks = Counter(iid for r in hist for iid in (r["item_ids"] or []))

@@ -1,12 +1,16 @@
 """Shared outfit recommendation logic — used by the API router and the daily cron."""
 
+import hashlib
 import logging
 from datetime import date
 
 from db.supabase import client as supabase
 from observability import op
-from services.claude import recommend_outfits
+from services.claude import MODEL, OUTFIT_SYSTEM_PROMPT, recommend_outfits
 from services.outfit_history import (
+    DAILY_DECAY,
+    SAMPLE_FRACTION,
+    SMALL_CATEGORY_MAX,
     blocked_combos,
     log_outfits,
     recent_combos,
@@ -18,6 +22,19 @@ from services.weather import get_today
 from services.weather_gate import gate_extremes
 
 log = logging.getLogger("wardrobe.recommend")
+
+# Cohort label written onto every outfit_history row (#143): which prompt +
+# sampler config generated it. Hash-the-artifact — the prompt fingerprint is
+# derived from the prompt text itself, so there's no manual version bump to
+# forget. New fingerprints must be registered in
+# backend/evals/prompt_versions.md (a test enforces it).
+RECOMMEND_CONFIG = {
+    "prompt_sha": hashlib.sha256(OUTFIT_SYSTEM_PROMPT.encode()).hexdigest()[:8],
+    "daily_decay": DAILY_DECAY,
+    "sample_fraction": SAMPLE_FRACTION,
+    "small_category_max": SMALL_CATEGORY_MAX,
+    "model": MODEL,
+}
 
 
 def _get_home_coords() -> tuple[float, float] | None:
@@ -170,6 +187,7 @@ def recommend(
             [(o.get("label", ""), o.get("item_ids", [])) for o in outfits],
             weather=weather,
             notes=notes,
+            config=RECOMMEND_CONFIG,
         )
         if persist
         else [None] * len(outfits)
