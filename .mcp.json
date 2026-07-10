@@ -5,7 +5,7 @@
       "args": [
         "run",
         "--directory",
-        "/Users/jiamanwu/dev/wardrobe-ai/backend",
+        "/Users/jiamanwu/dev/mise/backend",
         "python",
         "-m",
         "mcp_server.shopping_server"
