@@ -213,6 +213,69 @@ def recent_combos(
     return {frozenset(row["item_ids"]) for row in rows if row.get("item_ids")}
 
 
+def recent_picks(
+    today: date | None = None,
+    rows: list[dict] | None = None,
+    names_by_id: dict[str, str] | None = None,
+) -> list[dict]:
+    """Item names recommended in the last HISTORY_WINDOW_DAYS days, for prompt
+    context (#135).
+
+    The sampler only controls pool *membership* — a downweighted item is
+    usually still present, and once in the pool the model picks by taste, so
+    two similar favorites can alternate forever without ever tripping the
+    exact-combo guard (#17). This is the choice-level counterpart: show the
+    model what it already picked this week so the prompt can ask it to prefer
+    unused items. Returns [{name, days_ago}] sorted most-recent-first, one
+    entry per distinct item (most recent occurrence wins).
+
+    `rows`/`names_by_id` are the offline-eval seam (#118), same contract as
+    recent_feedback_outfits.
+    """
+    today = today or date.today()
+    if rows is None:
+        cutoff = (today - timedelta(days=HISTORY_WINDOW_DAYS)).isoformat()
+        rows = (
+            supabase()
+            .table("outfit_history")
+            .select("recommended_on, item_ids")
+            .gte("recommended_on", cutoff)
+            .execute()
+            .data
+            or []
+        )
+    else:
+        rows = _window_rows(rows, today=today)
+
+    last_seen: dict[str, int] = {}
+    for row in rows:
+        days_ago = (today - date.fromisoformat(row["recommended_on"])).days
+        for iid in row.get("item_ids") or []:
+            if iid not in last_seen or days_ago < last_seen[iid]:
+                last_seen[iid] = days_ago
+
+    names = names_by_id
+    if names is None:
+        names = {}
+        ids = sorted(last_seen)
+        if ids:
+            res = (
+                supabase()
+                .table("clothing_items")
+                .select("id, name")
+                .in_("id", ids)
+                .execute()
+            )
+            names = {r["id"]: r["name"] for r in (res.data or [])}
+    picks = [
+        {"name": names[iid], "days_ago": days_ago}
+        for iid, days_ago in last_seen.items()
+        if iid in names and names[iid]
+    ]
+    picks.sort(key=lambda p: (p["days_ago"], p["name"]))
+    return picks
+
+
 class AttributionError(ValueError):
     """Invalid attribution payload or row state. `.status` is the HTTP code."""
 
