@@ -14,12 +14,11 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-09 (latest session):** the repo is **PUBLIC and renamed to
-`mise`** (#5 closed; #125 repo-level items done — remaining: local folder
-rename + `.mcp.json` path, Render/Vercel dashboard verification, cosmetic
-sweep PR). Earlier same day: #143 shipped (PR #147 + follow-up #148) — config
-cohort labels on `outfit_history`, prompt-registry CI guard, Weave
-StringPrompt publishes in both eval launchers.
+**As of 2026-07-10 (latest session):** the **mise rename is done** except one
+box on #125 — local folder + `.mcp.json` fixed, cosmetic sweep + README
+rewrite merged (PR #151); remaining: verify Render/Vercel dashboards track
+the renamed repo (manual). NB: the folder rename broke `backend/.venv`
+(shebangs) — rebuilt; see LEARNINGS.md.
 **Open manual follow-ups:** re-run `diversity_report.py --exclude-default
 --save` in a few weeks and diff against the 2026-07-09 report (now with
 cohort labels); the local backend dev server is running with
@@ -68,7 +67,7 @@ SerpAPI results are wanted again. Full detail lives in
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
 (catalog by categories), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
-(finish the mise rename: local folder, `.mcp.json`, cosmetic sweep),
+(mise rename: only Render/Vercel dashboard verification left),
 [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
 (local Python → 3.11 parity; largely defanged by CI),
 [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
