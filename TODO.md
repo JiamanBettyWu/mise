@@ -14,11 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-09 (latest session):** #143 shipped (PR #147) — every
-persisted `outfit_history` row now carries a `config` cohort label (prompt
-sha `5e98927e` + sampler constants + model), the diversity report groups
-headline metrics per cohort, and prompt edits fail CI until registered in
-`backend/evals/prompt_versions.md`; migration run in Supabase pre-merge.
+**As of 2026-07-09 (latest session):** #143 shipped (PR #147, migration run)
+— every persisted `outfit_history` row now carries a `config` cohort label
+(prompt sha `5e98927e` + sampler constants + model), the diversity report
+groups headline metrics per cohort, and outfit-prompt edits fail CI until
+registered in `backend/evals/prompt_versions.md`. Follow-up PR #148 publishes
+`PACKING_SYSTEM_PROMPT` as a Weave `StringPrompt` from `eval_trip.py`
+(Weave-only by design — no registry; nothing reads trip plans longitudinally).
 **Open manual follow-ups:** re-run `diversity_report.py --exclude-default
 --save` in a few weeks and diff against the 2026-07-09 report (now with
 cohort labels); the local backend dev server is running with
