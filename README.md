@@ -40,6 +40,18 @@ npm run dev
 
 Open http://localhost:5173 and enter your `APP_PASSWORD` to unlock the UI.
 
+### Diagnostics & evals (run from the repo root)
+```bash
+# Recommendation-diversity report over live outfit_history — read-only, free.
+# --save writes a dated markdown report (+ JSON metrics footer) to
+# backend/evals/reports/diversity/; commit it and compare runs with git diff.
+uv --project backend run python backend/evals/diversity_report.py --exclude-default --save
+
+# Offline evals (manual, paid — real Claude calls; results land in W&B Weave)
+uv --project backend run python backend/evals/eval_recommend.py --trials 3
+uv --project backend run python backend/evals/eval_trip.py
+```
+
 > **Config note:** there is a **single `.env` at the repo root** — every Python
 > entry point loads it by an explicit path. Don't create a `backend/.env`
 > (see AGENTS.md for why).
