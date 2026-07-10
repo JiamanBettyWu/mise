@@ -14,25 +14,23 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-09 (latest session):** #137 shipped (PR #139) — the 7/2
-`(default)` burst (15 verdict-free rows from dev iteration against
-`POST /outfits/recommend`) deleted from prod, and the endpoint gained a
-`persist` flag so dev/eval probes never write `outfit_history`. Next up: #135,
-with clean data and #118's eval as the measuring stick. **Open manual
-follow-up:** the local backend dev server is running with
-`SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
-SerpAPI results are wanted again. Full detail lives in [SESSIONS.md](SESSIONS.md).
+**As of 2026-07-09 (latest session):** #137 (PR #139) and #135 (PR #140) both
+shipped. The variety fix landed as candidate A — this week's picks rendered
+into the prompt with a prefer-fresh rule; eval moved fresh_fraction
+0.338 → 0.502, repeat_gap pass 4/15 → 10/15, structural scorers clean.
+**Open manual follow-ups:** re-run `diversity_report.py` on live data in a few
+weeks to confirm the satin-skirt alternation breaks; the local backend dev
+server is running with `SKIP_PURCHASE_SEARCH=1` set — restart it without that
+env var when real SerpAPI results are wanted again. Full detail lives in
+[SESSIONS.md](SESSIONS.md).
 
 ---
 
 ## Next time I sit down, pick one
 
-1. **[#135](https://github.com/JiamanBettyWu/wardrobe-ai/issues/135)** — the
-   variety fix, now that #118's eval is its measuring stick (baseline:
-   `repeat_gap` 1–2/5, fresh_fraction ~0.29). Focus on the satin-skirt
-   alternation in bottoms — footwear entropy (~0.9) says shoe repetition is
-   mostly arithmetic, so `SMALL_CATEGORY_MAX` 5→4 is likely not the lever.
-   Workflow: `--trials 3` baseline → one constant → re-run → compare in Weave.
+1. **Re-run `diversity_report.py` on live data (~late July)** — confirm the
+   #135 fix breaks the satin-skirt alternation in production, not just on the
+   frozen scenarios (fresh eyes on `fresh_fraction` / repeat gaps).
 2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
    MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
    LangGraph node — the part most transferable to the work MCP project.
