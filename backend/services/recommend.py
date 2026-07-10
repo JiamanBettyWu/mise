@@ -11,6 +11,7 @@ from services.outfit_history import (
     log_outfits,
     recent_combos,
     recent_feedback_outfits,
+    recent_picks,
     sample_wardrobe,
 )
 from services.weather import get_today
@@ -155,6 +156,12 @@ def recommend(
         recent_combos=recent_combos(today=today, rows=history_rows),
         preferences=user_prefs or None,
         inferred_preferences=inferred_prefs or None,
+        # Choice-level variety signal (#135): show the model this week's
+        # already-picked items so it can prefer fresh pieces — the sampler
+        # only shapes the pool, not which pool item the model reaches for.
+        recent_picks=recent_picks(
+            today=today, rows=history_rows, names_by_id=frozen_names
+        ),
     )
 
     history_ids = (

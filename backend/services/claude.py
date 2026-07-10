@@ -395,6 +395,13 @@ Each outfit should:
 - Favor variety across days. The inventory order is randomized and does not
   imply preference; explore the full set rather than defaulting to the first
   few items, unless weather or mode genuinely require a specific piece.
+- The user message may include a "Recently recommended items" section listing
+  items already picked in the past week and how many days ago. STRONGLY prefer
+  items and silhouettes NOT on that list — a fresh piece over a familiar
+  favorite whenever both would work. Do not alternate between two similar
+  recent items (e.g. two satin skirts); reach for a genuinely different piece.
+  Weather-appropriateness, mode fit, and coherence still win: a recently-worn
+  item that is clearly the only right choice beats an ill-fitting fresh one.
 - The user message may include a "Recent outfit feedback" section listing
   outfits the user recently disliked or liked. Avoid recombining assemblies
   similar to a disliked outfit. Liked outfits are style direction ONLY — do
@@ -465,6 +472,7 @@ def recommend_outfits(
     recent_combos: set[frozenset[str]] | None = None,
     preferences: list[str] | None = None,
     inferred_preferences: list[str] | None = None,
+    recent_picks: list[dict] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
@@ -494,6 +502,8 @@ def recommend_outfits(
         )
     if notes.strip():
         user_blocks.append(f"User notes for today: {notes.strip()}")
+    if recent_picks:
+        user_blocks.append(_recent_picks_block(recent_picks))
     if feedback_entries:
         user_blocks.append(_feedback_block(feedback_entries))
     if preferences:
@@ -668,6 +678,25 @@ def _inferred_preferences_block(preferences: list[str]) -> str:
     if not preferences:
         return ""
     return "Learned preferences:\n" + "\n".join(f"- {p}" for p in preferences)
+
+
+def _recent_picks_block(picks: list[dict]) -> str:
+    """Pure: render this week's already-picked items (#135) as the prompt
+    section the system prompt's variety bullet refers to.
+
+    The choice-level anti-repetition signal: the sampler downweights recent
+    items but rarely removes them, and the exact-combo guard (#17) can't see
+    two similar items alternating across different assemblies. Empty → empty
+    string.
+    """
+    if not picks:
+        return ""
+    lines = ["Recently recommended items (prefer pieces NOT on this list):"]
+    for p in picks:
+        days = p["days_ago"]
+        when = "today" if days == 0 else f"{days}d ago"
+        lines.append(f"- {p['name']} ({when})")
+    return "\n".join(lines)
 
 
 def _feedback_block(entries: list[dict]) -> str:
