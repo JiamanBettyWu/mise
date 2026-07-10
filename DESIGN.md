@@ -1,6 +1,6 @@
 # Design system
 
-The visual language for Wardrobe AI's frontend. The codebase is the source of truth — this doc captures the *principles*, *vocabulary*, and *non-obvious decisions* behind the code so future changes stay coherent.
+The visual language for mise's frontend. The codebase is the source of truth — this doc captures the *principles*, *vocabulary*, and *non-obvious decisions* behind the code so future changes stay coherent.
 
 ## Principles
 
