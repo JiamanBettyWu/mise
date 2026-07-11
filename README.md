@@ -34,6 +34,12 @@ instead of a blank slate, plus the occasional pairing you'd never have tried
 yourself. The app doesn't have to be right — only useful. That tolerance is
 what lets it lean on randomness and learning instead of chasing correctness.
 
+> **⚠️ Single-user by design (for now).** mise currently has no accounts or
+> signup — it's a single-tenant personal app: one wardrobe, one shared
+> password, one database. You're welcome to clone it and run your own
+> instance, but you can't "join" a hosted one. Multi-user support is on the
+> long-term roadmap.
+
 ## Three AIs, one principle
 
 "The AI" turned out to be three systems, because the three jobs have different
