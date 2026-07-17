@@ -14,17 +14,19 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-10 (latest session):** the **mise rename is done** except one
-box on #125 — local folder + `.mcp.json` fixed, cosmetic sweep + README
-rewrite merged (PR #151); remaining: verify Render/Vercel dashboards track
-the renamed repo (manual). NB: the folder rename broke `backend/.venv`
-(shebangs) — rebuilt; see LEARNINGS.md.
-**Open manual follow-ups:** re-run `diversity_report.py --exclude-default
---save` in a few weeks and diff against the 2026-07-09 report (now with
-cohort labels); the local backend dev server is running with
-`SKIP_PURCHASE_SEARCH=1` set — restart it without that env var when real
-SerpAPI results are wanted again. Full detail lives in
-[SESSIONS.md](SESSIONS.md).
+**As of 2026-07-16 (latest session):** **#86 shipped (PR #152)** — the MCP
+server now speaks Streamable HTTP (`--http`) and a LangGraph agent consumes
+it via `langchain-mcp-adapters`; the MCP learning track is done, next rep
+would be #111 or #145. Same PR fixed a SerpAPI-key leak via raw httpx
+exception logging in `services/search.py`.
+**Open manual follow-ups:** the `claude-review` workflow's `ANTHROPIC_API_KEY`
+Actions secret is **empty** — workflow disabled (`gh workflow disable`);
+re-set the secret then `gh workflow enable 307678548` (the @claude mention
+workflow shares the secret and is still active); SerpAPI quota was exhausted
+(429) — re-run the two `mcp_server` demos for real products once it resets;
+re-run `diversity_report.py --exclude-default --save` in a few weeks and diff
+against the 2026-07-09 report; #125: verify Render/Vercel dashboards track
+the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -34,34 +36,31 @@ SerpAPI results are wanted again. Full detail lives in
    git-diff against `backend/evals/reports/diversity/2026-07-09.md` — confirm
    the #135 fix breaks the satin-skirt alternation in production (watch
    bottoms entropy 0.902, median gap 3d, % repeats ≤3d 61%).
-2. **[#86](https://github.com/JiamanBettyWu/wardrobe-ai/issues/86)** —
-   MCP stretch: Streamable HTTP transport + `langchain-mcp-adapters` into a
-   LangGraph node — the part most transferable to the work MCP project.
-3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+2. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+3. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-5. **Check the first real-event morning for #64's events path** — the empty-day
+4. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+5. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+6. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+7. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
