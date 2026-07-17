@@ -1,9 +1,12 @@
-"""MCP server exposing wardrobe product search over stdio (#79 learning track).
+"""MCP server exposing wardrobe product search (#79 stdio, #86 Streamable HTTP).
 
 Thin adapter over services.search — no business logic lives here.
-Run from backend/:  uv run python -m mcp_server.shopping_server
+Run from backend/:
+  uv run python -m mcp_server.shopping_server          # stdio (spawned per client)
+  uv run python -m mcp_server.shopping_server --http   # standalone HTTP on :8765/mcp
 """
 
+import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -14,7 +17,7 @@ from pydantic import Field
 from schemas import PurchaseResult
 from services.search import search_products as _search  # alias avoids name clash
 
-mcp = FastMCP("wardrobe-shopping")  # ← (1) the server name a client sees
+mcp = FastMCP("wardrobe-shopping", port=8765)  # ← (1) the server name a client sees
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
@@ -46,4 +49,10 @@ def search_products(
 
 
 if __name__ == "__main__":
-    mcp.run()  # stdio transport by default
+    if "--http" in sys.argv:
+        # Standalone service at http://127.0.0.1:8765/mcp — many clients can
+        # connect to ONE long-lived process (vs stdio: one spawned process per
+        # client). Trade-off: you now own a port, a lifecycle, and auth.
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()  # stdio: client spawns us and owns our lifetime

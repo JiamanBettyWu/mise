@@ -44,7 +44,15 @@ def _fetch_search_results(query: str) -> list[dict]:
         resp.raise_for_status()
         data = resp.json().get("shopping_results", [])
     except httpx.HTTPError as e:
-        logger.error("SerpAPI search failed for %r: %s", query, e)
+        # Don't log `e` itself — HTTPStatusError's message embeds the full
+        # request URL, api_key query param included (#88's sibling leak).
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        logger.error(
+            "SerpAPI search failed for %r: %s (status=%s)",
+            query,
+            type(e).__name__,
+            status,
+        )
         return []
 
     # caching all results
