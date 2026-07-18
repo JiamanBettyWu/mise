@@ -14,11 +14,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-16 (latest session):** **#86 shipped (PR #152)** — the MCP
-server now speaks Streamable HTTP (`--http`) and a LangGraph agent consumes
-it via `langchain-mcp-adapters`; the MCP learning track is done, next rep
-would be #111 or #145. Same PR fixed a SerpAPI-key leak via raw httpx
-exception logging in `services/search.py`.
+**As of 2026-07-17 (latest session):** **#145 shipped (PR #153)** — multi-turn
+outfit refinement: the checkpointer LangGraph (`MemorySaver`, thread =
+history_id), `POST /outfits/{id}/refine`, an always-visible "Want to change
+something?" composer, and web Generate now returns one outfit. Design of
+record: `docs/outfit-refinement-design.md`; follow-ups filed: #154 (SSE
+progress for refine/generate) and #155 (per-turn outfit snapshots for undo).
+**Not yet driven live** — verify the first real refinement turn (see list).
 **Open manual follow-ups:** the `claude-review` workflow's `ANTHROPIC_API_KEY`
 Actions secret is **empty** — workflow disabled (`gh workflow disable`);
 re-set the secret then `gh workflow enable 307678548` (the @claude mention
@@ -32,35 +34,42 @@ the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ## Next time I sit down, pick one
 
-1. **Re-run `diversity_report.py --exclude-default --save` (~late July)** and
+1. **Drive the first live refinement turn (#145 verification).** Generate a
+   web outfit, refine it twice ("swap the shoes…", then a follow-up), and
+   check: the card swaps in place, the row's `item_ids` updated + verdict
+   cleared, `config` gained `refined: true`, and `llm_usage` shows
+   `outfit_refine_route`/`outfit_refine` rows. Also feel out whether refine
+   latency is route+pool (first turn) or every turn — that decides whether
+   #154 is UX or caching first.
+2. **Re-run `diversity_report.py --exclude-default --save` (~late July)** and
    git-diff against `backend/evals/reports/diversity/2026-07-09.md` — confirm
    the #135 fix breaks the satin-skirt alternation in production (watch
    bottoms entropy 0.902, median gap 3d, % repeats ≤3d 61%).
-2. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-3. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-4. **Check the first real-event morning for #64's events path** — the empty-day
+5. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-5. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-6. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-7. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
@@ -75,9 +84,13 @@ LLM judge + thumbs calibration, split from the now-shipped #118; learning-track)
 `Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
 spans, not perf),
 [#144](https://github.com/JiamanBettyWu/wardrobe-ai/issues/144) (email
-one-tap refine links) + [#145](https://github.com/JiamanBettyWu/wardrobe-ai/issues/145)
-(multi-turn refinement in the UI — the checkpointer LangGraph rep; same
-feature, two front doors),
+one-tap refine links — small PR now: reuses #145's
+`update_outfit_items` helper, or canned messages into the refine endpoint),
+[#154](https://github.com/JiamanBettyWu/mise/issues/154) (SSE progress
+indicators for generate/refine, the #124 pattern; + pool `cache_control`
+latency note), [#155](https://github.com/JiamanBettyWu/mise/issues/155)
+(per-turn outfit snapshots in the refine state so "go back to the original
+shoes" works — deferred until a real undo moment),
 [#146](https://github.com/JiamanBettyWu/wardrobe-ai/issues/146) (Insights
 dashboard: drift trends + usage, multi-user-ready). See the
 [Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/issues) for status.
