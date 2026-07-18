@@ -30,36 +30,10 @@ from services.calendar import calendar_modes  # noqa: E402
 from services.email import send_html_email  # noqa: E402
 from services.email_template import render_outfit_email  # noqa: E402
 from services.feedback_token import sign_token  # noqa: E402
+from services.modes import DAILY_MODES  # noqa: E402
 from services.recommend import recommend  # noqa: E402
 
 TZ = ZoneInfo("America/New_York")
-
-DAILY_MODES = [
-    {
-        "name": "Smart casual",
-        "description": (
-            "Default mode for a normal day. Polished but relaxed — workable in "
-            "an office without a strict dress code, and equally good for going "
-            "out afterward. Avoid athleisure or formal-only pieces."
-        ),
-    },
-    {
-        "name": "Athleisure",
-        "description": (
-            "Workout-friendly, casual, comfortable for active days. Think "
-            "joggers, leggings, sneakers, breathable layers. Skip dress shirts, "
-            "blazers, heels, or anything restrictive."
-        ),
-    },
-    {
-        "name": "Elevated",
-        "description": (
-            "Polished and elegant for nicer occasions — date night, dinner, "
-            "events. Lean into formal or smart-casual pieces, refined fabrics, "
-            "and dressier shoes. Avoid athleisure or rugged casual."
-        ),
-    },
-]
 
 
 def main() -> int:

@@ -131,6 +131,33 @@ export default function TodayOutfit() {
     }));
   }, []);
 
+  // Multi-turn refinement (#145): each turn revises the same outfit_history
+  // row server-side (history_id doubles as the conversation thread id), so
+  // the card swaps items in place and any verdict resets — it judged the
+  // old items, and the backend already cleared it.
+  const sendRefine = useCallback(
+    async (index, message) => {
+      const outfit = data?.outfits?.[index];
+      if (!outfit?.history_id) return;
+      const revised = await api.outfitRefine(outfit.history_id, message);
+      setData((d) => ({
+        ...d,
+        outfits: d.outfits.map((o, i) =>
+          i === index
+            ? {
+                ...o,
+                items: revised.items,
+                reasoning: revised.reasoning,
+                feedback: null,
+                attribution: null,
+              }
+            : o
+        ),
+      }));
+    },
+    [data]
+  );
+
   const generate = useCallback(() => {
     setError('');
     startGeneration({ travelMode, notes });
@@ -212,6 +239,7 @@ export default function TodayOutfit() {
           onFeedback={sendFeedback}
           onAttribution={sendAttribution}
           onSkipAttribution={skipAttribution}
+          onRefine={sendRefine}
         />
       ))}
     </div>
@@ -230,7 +258,7 @@ function WeatherStrip({ w, usingMyLocation }) {
   );
 }
 
-function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution }) {
+function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, onRefine }) {
   const heading = outfit.label || `Option ${index + 1}`;
   const empty = !outfit.items?.length;
   const offerAttribution = !empty && outfit.history_id && outfit.feedback === -1;
@@ -288,6 +316,70 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution })
           ))}
         </div>
       )}
+      {!empty && outfit.history_id && (
+        <RefineComposer onRefine={(message) => onRefine(index, message)} />
+      )}
+    </div>
+  );
+}
+
+// Multi-turn refinement (#145): a collapsed ghost chip that expands into an
+// inline composer (the attribution-composer precedent — optional follow-ups
+// never open modals). Stays open after a turn so the conversation continues;
+// the card itself re-rendering with new items is the success signal.
+function RefineComposer({ onRefine }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  if (!open) {
+    return (
+      <div className="outfit__refine">
+        <button type="button" className="chip" onClick={() => setOpen(true)}>
+          Refine
+        </button>
+      </div>
+    );
+  }
+
+  async function submit() {
+    setSending(true);
+    setFailed(false);
+    try {
+      await onRefine(message.trim());
+      setMessage('');
+    } catch {
+      setFailed(true);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="outfit__refine">
+      <input
+        type="text"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && message.trim() && !sending) submit();
+        }}
+        placeholder='e.g. "swap the shoes for something more comfortable"'
+        autoFocus
+      />
+      <button type="button" onClick={submit} disabled={!message.trim() || sending}>
+        {sending ? 'Refining…' : 'Refine'}
+      </button>
+      <button
+        type="button"
+        className="ghost"
+        onClick={() => setOpen(false)}
+        disabled={sending}
+      >
+        Close
+      </button>
+      {failed && <span className="error">Couldn't refine — try again.</span>}
     </div>
   );
 }

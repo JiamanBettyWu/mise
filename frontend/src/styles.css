@@ -436,6 +436,15 @@ textarea {
   margin: 0.65rem 0 0.25rem;
 }
 .outfit__attribution input { flex: 1 1 200px; width: auto; }
+/* Refine composer (#145): same inline-row formula as the attribution composer. */
+.outfit__refine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.25rem;
+}
+.outfit__refine input { flex: 1 1 200px; width: auto; }
 .outfit__attribution > .muted { font-size: 0.85rem; }
 .chip--on-attr {
   background: rgba(20, 20, 40, 0.14);

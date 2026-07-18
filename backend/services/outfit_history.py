@@ -148,6 +148,50 @@ def log_outfits(
     return [next(ids, None) if item_ids else None for _, item_ids in mode_items]
 
 
+def update_outfit_items(history_id: str, item_ids: list[str]) -> dict:
+    """Replace a row's items with a refined version (#145; #144 reuses this).
+
+    Final-version-only semantics: the refined outfit overwrites the row's
+    `item_ids` in place — one row per mode per day stays true, and a later
+    👍/👎 applies to what the user actually saw last. Any existing verdict
+    (plus its #60 attribution) is cleared: it judged the old items. The
+    row's `config` cohort label gains `"refined": true` so the diversity
+    report (#141) can separate refined rows from pristine #143 cohorts.
+
+    Raises KeyError when the row doesn't exist.
+    """
+    res = (
+        supabase()
+        .table("outfit_history")
+        .select("config")
+        .eq("id", history_id)
+        .execute()
+    )
+    if not res.data:
+        raise KeyError(history_id)
+    config = res.data[0].get("config") or {}
+    updated = (
+        supabase()
+        .table("outfit_history")
+        .update(
+            {
+                "item_ids": item_ids,
+                "config": {**config, "refined": True},
+                "feedback": None,
+                "feedback_at": None,
+                "feedback_reason": None,
+                "feedback_item_ids": None,
+                "feedback_note": None,
+            }
+        )
+        .eq("id", history_id)
+        .execute()
+    )
+    if not updated.data:
+        raise KeyError(history_id)
+    return updated.data[0]
+
+
 def blocked_combos(rows: list[dict] | None = None) -> set[frozenset[str]]:
     """Item-id sets of combination-attributed 👎 outfits (#63).
 

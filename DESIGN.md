@@ -121,6 +121,8 @@ Append-only. Date each entry. When a decision reverses, *replace* the old entry 
 
 - **2026-07-06** — *`.trip-result__plan-another` retired into plain `.ghost`.* It was the last surviving pre-`.ghost` bespoke ghost-button (smaller font-size and padding than the shared rule), which made "Plan another trip" render visibly shorter than "Save trip" beside it despite both being top-level actions in the same row. Sizing is now unified with every other `.ghost` pill (Rename/Delete on Past Trips, `.nav__avatar`'s retired precursor `.nav__lock`, etc.); only a `flex-shrink: 0` rule remains under the old class name, since `.trip-result__actions` wraps.
 
+- **2026-07-17** — *Outfit refinement (#145) is a collapsed ghost `.chip` ("Refine") under each outfit card that expands into an inline composer — the attribution-composer precedent: optional follow-ups never open modals.* `.outfit__refine` copies `.outfit__attribution`'s flex-row formula (wrap, 0.5rem gap, `flex: 1 1 200px` input) so the two follow-up surfaces under a card read as one vocabulary. The composer stays open after a successful turn with the input cleared — the card re-rendering with new items *is* the success signal, and multi-turn is the point. A refinement resets the card's thumbs/attribution state (the verdict judged the old items; the backend clears it on the row too). Enter submits; ghost "Close" collapses.
+
 ## Maintaining this doc
 
 - **Edit in the same commit as the code change.** Not in a follow-up commit — it'll never happen.
