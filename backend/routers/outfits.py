@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from auth import require_password
 from db.supabase import client as supabase
 from services.outfit_history import AttributionError, record_attribution
+from services.outfit_refine import RefineError, refine
 from services.recommend import recommend
 
 log = logging.getLogger("wardrobe.outfits")
@@ -93,6 +94,23 @@ def record_feedback_attribution(history_id: str, req: AttributionRequest):
     except AttributionError as e:
         raise HTTPException(status_code=e.status, detail=str(e))
     return {"history_id": history_id, "recorded": True}
+
+
+class RefineRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=500)
+
+
+@router.post("/{history_id}/refine")
+def refine_outfit(history_id: str, req: RefineRequest):
+    """One multi-turn refinement turn (#145). history_id doubles as the
+    LangGraph thread_id, so repeat calls continue the same conversation."""
+    try:
+        return refine(history_id, req.message)
+    except RefineError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    except Exception:
+        log.error("Refinement failed:\n%s", traceback.format_exc())
+        raise HTTPException(status_code=502, detail="Refinement failed")
 
 
 @router.post("/recommend")

@@ -72,6 +72,9 @@ export const api = {
   // optional 👎 follow-up (#60); payload = { reason, item_ids, note }
   outfitAttribution: (historyId, payload) =>
     request(`/outfits/${historyId}/attribution`, { method: 'POST', body: payload }),
+  // multi-turn refinement (#145); repeat calls continue the same conversation
+  outfitRefine: (historyId, message) =>
+    request(`/outfits/${historyId}/refine`, { method: 'POST', body: { message } }),
 
   // Node-progress streaming (#124): SSE frames of `event: <name>\ndata: <json>\n\n`.
   // The non-streaming /trips/plan JSON endpoint still exists server-side (used
