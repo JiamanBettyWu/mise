@@ -14,13 +14,12 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-17 (latest session):** **#145 shipped (PR #153)** — multi-turn
-outfit refinement: the checkpointer LangGraph (`MemorySaver`, thread =
-history_id), `POST /outfits/{id}/refine`, an always-visible "Want to change
-something?" composer, and web Generate now returns one outfit. Design of
-record: `docs/outfit-refinement-design.md`; follow-ups filed: #154 (SSE
-progress for refine/generate) and #155 (per-turn outfit snapshots for undo).
-**Not yet driven live** — verify the first real refinement turn (see list).
+**As of 2026-07-17 (latest session):** **#154 shipped (PR #156)** — SSE
+node-progress for generate + refine (the #124 pattern), paced stage labels
+(`stagePacer.js`), refine-prompt `cache_control` split, and a live-truncation
+fix (`daily_outfit` max_tokens → 8192). Generate + refine were both driven
+live through the web UI, which also closes out #145's verification.
+Follow-up filed: #157 (clear/dim the stale outfit card mid-run).
 **Open manual follow-ups:** the `claude-review` workflow's `ANTHROPIC_API_KEY`
 Actions secret is **empty** — workflow disabled (`gh workflow disable`);
 re-set the secret then `gh workflow enable 307678548` (the @claude mention
@@ -34,13 +33,11 @@ the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ## Next time I sit down, pick one
 
-1. **Drive the first live refinement turn (#145 verification).** Generate a
-   web outfit, refine it twice ("swap the shoes…", then a follow-up), and
-   check: the card swaps in place, the row's `item_ids` updated + verdict
-   cleared, `config` gained `refined: true`, and `llm_usage` shows
-   `outfit_refine_route`/`outfit_refine` rows. Also feel out whether refine
-   latency is route+pool (first turn) or every turn — that decides whether
-   #154 is UX or caching first.
+1. **Spot-check the #145/#154 data trail after a refined day** — the flows ran
+   live, but glance once at the row: `item_ids` updated + verdict cleared,
+   `config` gained `refined: true`, `llm_usage` has
+   `outfit_refine_route`/`outfit_refine` rows, and whether turn 2+ shows
+   cache reads on `outfit_refine` (the new `cache_control` split at work).
 2. **Re-run `diversity_report.py --exclude-default --save` (~late July)** and
    git-diff against `backend/evals/reports/diversity/2026-07-09.md` — confirm
    the #135 fix breaks the satin-skirt alternation in production (watch
@@ -86,9 +83,9 @@ spans, not perf),
 [#144](https://github.com/JiamanBettyWu/wardrobe-ai/issues/144) (email
 one-tap refine links — small PR now: reuses #145's
 `update_outfit_items` helper, or canned messages into the refine endpoint),
-[#154](https://github.com/JiamanBettyWu/mise/issues/154) (SSE progress
-indicators for generate/refine, the #124 pattern; + pool `cache_control`
-latency note), [#155](https://github.com/JiamanBettyWu/mise/issues/155)
+[#157](https://github.com/JiamanBettyWu/mise/issues/157) (clear the stale
+outfit card on Regenerate / dim it during refine — run-finished ambiguity,
+frontend-only), [#155](https://github.com/JiamanBettyWu/mise/issues/155)
 (per-turn outfit snapshots in the refine state so "go back to the original
 shoes" works — deferred until a real undo moment),
 [#146](https://github.com/JiamanBettyWu/wardrobe-ai/issues/146) (Insights
