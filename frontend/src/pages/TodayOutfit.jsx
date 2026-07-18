@@ -13,7 +13,9 @@ const STORAGE_KEY = 'today_state';
 
 // #154: node-progress labels (the #124 pattern — a muted swapping stage
 // line, no spinner). Stages name what's running now; fall back to a generic
-// label for any stage not yet seen.
+// label for any stage not yet seen. The fallback must NOT reuse any stage's
+// text: it renders before the first SSE frame (stage still null), and
+// matching the final stage's label made that stage appear to show twice.
 const GENERATE_STAGE_LABELS = {
   weather: 'Checking today’s weather…',
   wardrobe: 'Reading your wardrobe…',
@@ -249,7 +251,7 @@ export default function TodayOutfit() {
 
       {loading && (
         <p className="muted">
-          {GENERATE_STAGE_LABELS[gen.stage] || 'Styling your outfit…'}
+          {GENERATE_STAGE_LABELS[gen.stage] || 'Getting ready…'}
         </p>
       )}
 
@@ -392,7 +394,7 @@ function RefineComposer({ onRefine }) {
     <div className="outfit__refine">
       <span className="muted">
         {sending
-          ? REFINE_STAGE_LABELS[stage] || 'Restyling…'
+          ? REFINE_STAGE_LABELS[stage] || 'On it…'
           : 'Want to change something? Tell us —'}
       </span>
       <input
