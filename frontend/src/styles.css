@@ -527,12 +527,23 @@ textarea {
   font-size: 0.9rem;
   line-height: 1.5;
   color: rgba(20, 20, 40, 0.7);
+  transition: opacity 0.2s ease;
 }
 
 .outfit__items {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 0.7rem;
+  transition: opacity 0.2s ease;
+}
+
+/* #157: a refine turn in flight. The card is the subject of the edit, so it
+   dims (the .glass-card--unavailable weight, 0.55) rather than clears —
+   items + reasoning read as stale until the revised items swap back to full
+   weight. The composer itself stays undimmed: it carries the stage line. */
+.outfit--refining .outfit__items,
+.outfit--refining .outfit__reasoning {
+  opacity: 0.55;
 }
 @media (min-width: 600px) {
   .outfit__items { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.9rem; }

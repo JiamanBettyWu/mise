@@ -195,6 +195,11 @@ export default function TodayOutfit() {
 
   const generate = useCallback(() => {
     setError('');
+    // #157: a regenerate replaces the outfit wholesale, so the old card is a
+    // dead result the moment the run starts — clear it so only the stage
+    // line shows until the new card lands (the trip-planner rule: stage line
+    // and result are mutually exclusive, never stacked).
+    setData(null);
     startGeneration({ travelMode, notes });
   }, [travelMode, notes]);
 
@@ -302,8 +307,13 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, o
   const heading = outfit.label || (solo ? "Today's pick" : `Option ${index + 1}`);
   const empty = !outfit.items?.length;
   const offerAttribution = !empty && outfit.history_id && outfit.feedback === -1;
+  // #157: while a refine turn streams, the card is the *subject* of the edit
+  // — it dims (stale) rather than clears, and restores when items swap in.
+  const [refining, setRefining] = useState(false);
   return (
-    <div className={`outfit ${empty ? 'outfit--empty' : ''}`}>
+    <div
+      className={`outfit ${empty ? 'outfit--empty' : ''} ${refining ? 'outfit--refining' : ''}`}
+    >
       <div className="outfit__header">
         <div className="outfit__header-row">
           <h3>{heading}</h3>
@@ -357,7 +367,10 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, o
         </div>
       )}
       {!empty && outfit.history_id && (
-        <RefineComposer onRefine={(message) => onRefine(index, message)} />
+        <RefineComposer
+          onRefine={(message, onStage) => onRefine(index, message, onStage)}
+          onBusy={setRefining}
+        />
       )}
     </div>
   );
@@ -368,7 +381,7 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, o
 // question, then controls; never a modal). Input clears after a turn so the
 // conversation continues; the card re-rendering with new items is the
 // success signal.
-function RefineComposer({ onRefine }) {
+function RefineComposer({ onRefine, onBusy = () => {} }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [stage, setStage] = useState(null);
@@ -376,6 +389,7 @@ function RefineComposer({ onRefine }) {
 
   async function submit() {
     setSending(true);
+    onBusy(true); // #157: parent dims the card while the turn streams
     setStage(null);
     setFailed(false);
     try {
@@ -385,6 +399,7 @@ function RefineComposer({ onRefine }) {
       setFailed(true);
     } finally {
       setSending(false);
+      onBusy(false);
     }
   }
 
