@@ -94,6 +94,7 @@ def recommend(
     wardrobe: list[dict] | None = None,
     history_rows: list[dict] | None = None,
     today: date | None = None,
+    on_stage=None,
 ) -> dict:
     # persist=False runs the full decision path (weather → gate → sample →
     # Claude pick) but skips the outfit_history write — the read-only mode for
@@ -108,7 +109,14 @@ def recommend(
     # Preferences (#61/#62) still read live, same as the eval_trip Haiku
     # planner. Production callers pass none of them.
     #
+    # on_stage (#154) is the progress seam for the SSE route: called with a
+    # stage name as each phase starts ("weather" → "wardrobe" → "styling").
+    # Deliberately a callback, not a graph rewrite — this pipeline stays
+    # straight-line Python. Cron/eval/test callers pass nothing.
+    #
     # Profile home location is the weather fallback; env vars are the last resort.
+    stage = on_stage or (lambda s: None)
+    stage("weather")
     today = today or date.today()
     if weather is None:
         if lat is None or lon is None:
@@ -118,6 +126,7 @@ def recommend(
         weather = get_today(lat=lat, lon=lon)
     user_prefs, inferred_prefs = _get_active_preferences()
 
+    stage("wardrobe")
     frozen_catalog = wardrobe is not None
     if wardrobe is None:
         q = (
@@ -160,6 +169,7 @@ def recommend(
         if history_rows is not None
         else None
     )
+    stage("styling")
     outfits = recommend_outfits(
         weather=weather,
         wardrobe=candidate_pool,

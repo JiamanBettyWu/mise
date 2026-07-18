@@ -26,14 +26,18 @@ function createObservableStore(initialSnapshot) {
   };
 }
 
-// `run(args)` is the injected async step: it returns `{ result, ...extra }`,
-// where extra fields (e.g. usingMyLocation) are merged into the snapshot
-// alongside the result. Extracted from todayGeneration.js for #105.
+// `run(args, progress)` is the injected async step: it returns
+// `{ result, ...extra }`, where extra fields (e.g. usingMyLocation) are
+// merged into the snapshot alongside the result. Extracted from
+// todayGeneration.js for #105. `progress(patch)` (#154) lets run publish
+// interim snapshot fields (e.g. { stage }) while still in flight — start
+// resets `stage` so a previous run's last stage never leaks into the next.
 export function createRequestStore(run) {
   const { subscribe, getSnapshot, emit } = createObservableStore({
     loading: false,
     error: '',
     result: null,
+    stage: null,
   });
 
   return {
@@ -41,9 +45,9 @@ export function createRequestStore(run) {
     getSnapshot,
     async start(args) {
       if (getSnapshot().loading) return;
-      emit({ loading: true, error: '', result: null });
+      emit({ loading: true, error: '', result: null, stage: null });
       try {
-        const { result, ...extra } = await run(args);
+        const { result, ...extra } = await run(args, emit);
         emit({ loading: false, result, ...extra });
       } catch (e) {
         emit({ loading: false, error: String(e) });

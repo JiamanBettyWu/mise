@@ -10,6 +10,21 @@ import {
 
 const STORAGE_KEY = 'today_state';
 
+// #154: node-progress labels (the #124 pattern — a muted swapping stage
+// line, no spinner). Stages name what's running now; fall back to a generic
+// label for any stage not yet seen.
+const GENERATE_STAGE_LABELS = {
+  weather: 'Checking today’s weather…',
+  wardrobe: 'Reading your wardrobe…',
+  styling: 'Styling your outfit…',
+};
+
+const REFINE_STAGE_LABELS = {
+  context: 'Reading your wardrobe…',
+  routing: 'Deciding how to help…',
+  restyling: 'Restyling…',
+};
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -136,10 +151,19 @@ export default function TodayOutfit() {
   // the card swaps items in place and any verdict resets — it judged the
   // old items, and the backend already cleared it.
   const sendRefine = useCallback(
-    async (index, message) => {
+    async (index, message, onStage) => {
       const outfit = data?.outfits?.[index];
       if (!outfit?.history_id) return;
-      const revised = await api.outfitRefine(outfit.history_id, message);
+      // Streamed (#154): progress frames drive the composer's stage line;
+      // the revised outfit arrives in its own frame.
+      let revised = null;
+      let errDetail = null;
+      await api.outfitRefineStream(outfit.history_id, message, (event, payload) => {
+        if (event === 'progress') onStage?.(payload.stage);
+        else if (event === 'outfit') revised = payload;
+        else if (event === 'error') errDetail = payload.detail;
+      });
+      if (!revised) throw new Error(errDetail || 'Refinement failed');
       setData((d) => ({
         ...d,
         outfits: d.outfits.map((o, i) =>
@@ -214,7 +238,11 @@ export default function TodayOutfit() {
 
       {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
 
-      {loading && <p className="muted">Picking outfits…</p>}
+      {loading && (
+        <p className="muted">
+          {GENERATE_STAGE_LABELS[gen.stage] || 'Styling your outfit…'}
+        </p>
+      )}
 
       {!data && !loading && !error && !gen.error && (
         <p className="muted" style={{ marginTop: '1rem' }}>
@@ -332,13 +360,15 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, o
 function RefineComposer({ onRefine }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [stage, setStage] = useState(null);
   const [failed, setFailed] = useState(false);
 
   async function submit() {
     setSending(true);
+    setStage(null);
     setFailed(false);
     try {
-      await onRefine(message.trim());
+      await onRefine(message.trim(), setStage);
       setMessage('');
     } catch {
       setFailed(true);
@@ -347,9 +377,15 @@ function RefineComposer({ onRefine }) {
     }
   }
 
+  // While a turn streams, the invitation line becomes the stage line (#154)
+  // — same slot, so the composer doesn't grow a new row mid-flight.
   return (
     <div className="outfit__refine">
-      <span className="muted">Want to change something? Tell us —</span>
+      <span className="muted">
+        {sending
+          ? REFINE_STAGE_LABELS[stage] || 'Restyling…'
+          : 'Want to change something? Tell us —'}
+      </span>
       <input
         type="text"
         value={message}

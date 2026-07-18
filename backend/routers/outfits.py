@@ -1,13 +1,18 @@
+import json
 import logging
+import threading
 import traceback
 from datetime import datetime, timezone
+from queue import Queue
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from auth import require_password
 from db.supabase import client as supabase
+from services import outfit_refine
 from services.outfit_history import AttributionError, record_attribution
 from services.outfit_refine import RefineError, refine
 from services.recommend import recommend
@@ -127,3 +132,82 @@ def recommend_endpoint(req: RecommendRequest):
     except Exception as e:
         log.error("Recommendation failed:\n%s", traceback.format_exc())
         raise HTTPException(status_code=502, detail="Recommendation failed")
+
+
+def _sse_frame(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+_SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+
+
+@router.post("/recommend/stream")
+def recommend_stream(req: RecommendRequest) -> StreamingResponse:
+    """SSE twin of /recommend (#154): `progress` frames per stage, then a
+    `result` frame with the full recommend() payload, then `done`.
+
+    recommend() is deliberately straight-line Python (not a graph), so there's
+    no node stream to relay — instead it runs in a worker thread reporting
+    stages through a queue the generator drains. Same error model as
+    /trips/plan/stream: post-headers failures degrade to `error` + `done`
+    frames. A client disconnect leaves the worker to finish (and persist) on
+    its own — same as the blocking endpoint's behavior on abandon.
+    """
+
+    def generate():
+        q: Queue = Queue()
+
+        def worker():
+            try:
+                result = recommend(
+                    travel_mode=req.travel_mode,
+                    notes=req.notes,
+                    n=req.n,
+                    lat=req.lat,
+                    lon=req.lon,
+                    persist=req.persist,
+                    on_stage=lambda s: q.put(("progress", {"stage": s})),
+                )
+                q.put(("result", result))
+            except Exception:
+                log.error("Recommendation stream failed:\n%s", traceback.format_exc())
+                q.put(("error", {"detail": "Recommendation failed"}))
+            finally:
+                q.put(("done", {}))
+
+        threading.Thread(target=worker, daemon=True).start()
+        while True:
+            event, payload = q.get()
+            yield _sse_frame(event, payload)
+            if event == "done":
+                return
+
+    return StreamingResponse(
+        generate(), media_type="text/event-stream", headers=_SSE_HEADERS
+    )
+
+
+@router.post("/{history_id}/refine/stream")
+def refine_outfit_stream(history_id: str, req: RefineRequest) -> StreamingResponse:
+    """SSE twin of /refine (#154): `progress` frames per graph node, then an
+    `outfit` frame with the revised outfit, then `done`. Validation runs
+    eagerly in outfit_refine.stream(), so bad requests still get real HTTP
+    statuses; only post-headers failures degrade to `error` + `done` frames.
+    """
+    try:
+        events = outfit_refine.stream(history_id, req.message)
+    except RefineError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+
+    def generate():
+        try:
+            for event, payload in events:
+                yield _sse_frame(event, payload)
+        except Exception:
+            log.error("Refinement stream failed:\n%s", traceback.format_exc())
+            yield _sse_frame("error", {"detail": "Refinement failed"})
+            yield _sse_frame("done", {})
+
+    return StreamingResponse(
+        generate(), media_type="text/event-stream", headers=_SSE_HEADERS
+    )
