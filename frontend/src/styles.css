@@ -445,6 +445,7 @@ textarea {
   margin: 0.75rem 0 0.25rem;
 }
 .outfit__refine input { flex: 1 1 200px; width: auto; }
+.outfit__refine > .muted { font-size: 0.85rem; }
 .outfit__attribution > .muted { font-size: 0.85rem; }
 .chip--on-attr {
   background: rgba(20, 20, 40, 0.14);

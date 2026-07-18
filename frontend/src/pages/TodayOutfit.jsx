@@ -324,25 +324,15 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, o
   );
 }
 
-// Multi-turn refinement (#145): a collapsed ghost chip that expands into an
-// inline composer (the attribution-composer precedent — optional follow-ups
-// never open modals). Stays open after a turn so the conversation continues;
-// the card itself re-rendering with new items is the success signal.
+// Multi-turn refinement (#145): an always-visible inline composer led by a
+// conversational invitation (the attribution-composer precedent — a muted
+// question, then controls; never a modal). Input clears after a turn so the
+// conversation continues; the card re-rendering with new items is the
+// success signal.
 function RefineComposer({ onRefine }) {
-  const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
-
-  if (!open) {
-    return (
-      <div className="outfit__refine">
-        <button type="button" className="chip" onClick={() => setOpen(true)}>
-          Refine
-        </button>
-      </div>
-    );
-  }
 
   async function submit() {
     setSending(true);
@@ -359,6 +349,7 @@ function RefineComposer({ onRefine }) {
 
   return (
     <div className="outfit__refine">
+      <span className="muted">Want to change something? Tell us —</span>
       <input
         type="text"
         value={message}
@@ -367,18 +358,9 @@ function RefineComposer({ onRefine }) {
           if (e.key === 'Enter' && message.trim() && !sending) submit();
         }}
         placeholder='e.g. "swap the shoes for something more comfortable"'
-        autoFocus
       />
       <button type="button" onClick={submit} disabled={!message.trim() || sending}>
         {sending ? 'Refining…' : 'Refine'}
-      </button>
-      <button
-        type="button"
-        className="ghost"
-        onClick={() => setOpen(false)}
-        disabled={sending}
-      >
-        Close
       </button>
       {failed && <span className="error">Couldn't refine — try again.</span>}
     </div>
