@@ -240,6 +240,7 @@ export default function TodayOutfit() {
           onAttribution={sendAttribution}
           onSkipAttribution={skipAttribution}
           onRefine={sendRefine}
+          solo={data.outfits.length === 1}
         />
       ))}
     </div>
@@ -258,8 +259,8 @@ function WeatherStrip({ w, usingMyLocation }) {
   );
 }
 
-function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, onRefine }) {
-  const heading = outfit.label || `Option ${index + 1}`;
+function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, onRefine, solo }) {
+  const heading = outfit.label || (solo ? "Today's pick" : `Option ${index + 1}`);
   const empty = !outfit.items?.length;
   const offerAttribution = !empty && outfit.history_id && outfit.feedback === -1;
   return (
