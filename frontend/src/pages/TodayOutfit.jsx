@@ -175,20 +175,30 @@ export default function TodayOutfit() {
         pacer.stop();
       }
       if (!revised) throw new Error(errDetail || 'Refinement failed');
-      setData((d) => ({
-        ...d,
-        outfits: d.outfits.map((o, i) =>
-          i === index
-            ? {
-                ...o,
-                items: revised.items,
-                reasoning: revised.reasoning,
-                feedback: null,
-                attribution: null,
-              }
-            : o
-        ),
-      }));
+      // Stale-completion guard (#157 review): Regenerate/Clear stay clickable
+      // while a refine streams, so by the time this resolves `data` may be
+      // null or a *different* generation. Only apply the revision if the card
+      // at this index is still the row we refined (every persisted generation
+      // gets a fresh history_id); otherwise drop it — the row was updated
+      // server-side, but this UI state no longer shows that row.
+      setData((d) =>
+        d?.outfits?.[index]?.history_id === outfit.history_id
+          ? {
+              ...d,
+              outfits: d.outfits.map((o, i) =>
+                i === index
+                  ? {
+                      ...o,
+                      items: revised.items,
+                      reasoning: revised.reasoning,
+                      feedback: null,
+                      attribution: null,
+                    }
+                  : o
+              ),
+            }
+          : d
+      );
     },
     [data]
   );
