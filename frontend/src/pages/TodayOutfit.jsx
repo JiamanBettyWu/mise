@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../services/api.js';
+import { paceStages } from '../services/stagePacer.js';
 import {
   clearError as clearGenError,
   consumeResult,
@@ -9,6 +10,23 @@ import {
 } from '../services/todayGeneration.js';
 
 const STORAGE_KEY = 'today_state';
+
+// #154: node-progress labels (the #124 pattern — a muted swapping stage
+// line, no spinner). Stages name what's running now; fall back to a generic
+// label for any stage not yet seen. The fallback must NOT reuse any stage's
+// text: it renders before the first SSE frame (stage still null), and
+// matching the final stage's label made that stage appear to show twice.
+const GENERATE_STAGE_LABELS = {
+  weather: 'Checking today’s weather…',
+  wardrobe: 'Reading your wardrobe…',
+  styling: 'Styling your outfit…',
+};
+
+const REFINE_STAGE_LABELS = {
+  context: 'Reading your wardrobe…',
+  routing: 'Deciding how to help…',
+  restyling: 'Restyling…',
+};
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -136,10 +154,27 @@ export default function TodayOutfit() {
   // the card swaps items in place and any verdict resets — it judged the
   // old items, and the backend already cleared it.
   const sendRefine = useCallback(
-    async (index, message) => {
+    async (index, message, onStage) => {
       const outfit = data?.outfits?.[index];
       if (!outfit?.history_id) return;
-      const revised = await api.outfitRefine(outfit.history_id, message);
+      // Streamed (#154): progress frames drive the composer's stage line
+      // (paced so early labels don't flicker past); the revised outfit
+      // arrives in its own frame and is never delayed by label dwell.
+      let revised = null;
+      let errDetail = null;
+      const pacer = paceStages((stage) => onStage?.(stage));
+      try {
+        await api.outfitRefineStream(outfit.history_id, message, (event, payload) => {
+          if (event === 'progress') pacer.push(payload.stage);
+          else if (event === 'outfit') {
+            pacer.stop();
+            revised = payload;
+          } else if (event === 'error') errDetail = payload.detail;
+        });
+      } finally {
+        pacer.stop();
+      }
+      if (!revised) throw new Error(errDetail || 'Refinement failed');
       setData((d) => ({
         ...d,
         outfits: d.outfits.map((o, i) =>
@@ -214,7 +249,11 @@ export default function TodayOutfit() {
 
       {data?.weather && <WeatherStrip w={data.weather} usingMyLocation={usingMyLocation} />}
 
-      {loading && <p className="muted">Picking outfits…</p>}
+      {loading && (
+        <p className="muted">
+          {GENERATE_STAGE_LABELS[gen.stage] || 'Getting ready…'}
+        </p>
+      )}
 
       {!data && !loading && !error && !gen.error && (
         <p className="muted" style={{ marginTop: '1rem' }}>
@@ -332,13 +371,15 @@ function Outfit({ index, outfit, onFeedback, onAttribution, onSkipAttribution, o
 function RefineComposer({ onRefine }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [stage, setStage] = useState(null);
   const [failed, setFailed] = useState(false);
 
   async function submit() {
     setSending(true);
+    setStage(null);
     setFailed(false);
     try {
-      await onRefine(message.trim());
+      await onRefine(message.trim(), setStage);
       setMessage('');
     } catch {
       setFailed(true);
@@ -347,9 +388,15 @@ function RefineComposer({ onRefine }) {
     }
   }
 
+  // While a turn streams, the invitation line becomes the stage line (#154)
+  // — same slot, so the composer doesn't grow a new row mid-flight.
   return (
     <div className="outfit__refine">
-      <span className="muted">Want to change something? Tell us —</span>
+      <span className="muted">
+        {sending
+          ? REFINE_STAGE_LABELS[stage] || 'On it…'
+          : 'Want to change something? Tell us —'}
+      </span>
       <input
         type="text"
         value={message}

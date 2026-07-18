@@ -241,6 +241,172 @@ def test_refine_rejects_empty_message():
     assert exc.value.status == 422
 
 
+# ------------------------------------------------------------------ streaming
+
+
+ROW = {
+    "id": "hid",
+    "recommended_on": "2026-01-01",
+    "mode": "Smart casual",
+    "item_ids": ["top1", "bot1", "shoe1"],
+    "weather": WEATHER,
+    "notes": "",
+}
+
+
+def _patch_stream_graph(monkeypatch, route="refine"):
+    # Same rebuild trick as test_graph.py: _APP was compiled at import with
+    # the original node functions, so patch the nodes, then swap in a fresh
+    # build_graph() that picks them up.
+    monkeypatch.setattr(
+        refine_mod, "load_context_node", lambda s: {"candidate_pool": POOL}
+    )
+    monkeypatch.setattr(refine_mod, "route_node", lambda s: {"route": route})
+    monkeypatch.setattr(
+        refine_mod,
+        "refine_outfit_node",
+        lambda s: {
+            "current_item_ids": ["top1", "bot1", "shoe2"],
+            "reasoning": "swapped",
+        },
+    )
+    monkeypatch.setattr(refine_mod, "persist_node", lambda s: {})
+    monkeypatch.setattr(refine_mod, "_APP", refine_mod.build_graph())
+    monkeypatch.setattr(refine_mod, "_load_row", lambda hid, msg: (ROW, msg))
+    monkeypatch.setattr(
+        refine_mod,
+        "_hydrate",
+        lambda hid, row, final: {
+            "history_id": hid,
+            "label": row["mode"],
+            "items": final["current_item_ids"],
+            "reasoning": final.get("reasoning", ""),
+            "route": final.get("route", "refine"),
+        },
+    )
+
+
+def test_stream_yields_stages_then_outfit_then_done(monkeypatch):
+    _patch_stream_graph(monkeypatch)
+    events = list(refine_mod.stream("hid", "swap the shoes"))
+    kinds = [e for e, _ in events]
+
+    # Stages name what's running NEXT (updates-mode reports completions):
+    # context up front, routing after load_context, restyling after route.
+    stages = [p["stage"] for e, p in events if e == "progress"]
+    assert stages == ["context", "routing", "restyling"]
+    assert kinds[-2:] == ["outfit", "done"]
+
+    outfit = events[kinds.index("outfit")][1]
+    assert outfit["items"] == ["top1", "bot1", "shoe2"]
+    assert outfit["route"] == "refine"
+
+
+def test_stream_validation_raises_before_any_event(monkeypatch):
+    # RefineError must escape at call time (→ a real HTTP status), not
+    # surface mid-stream after headers are gone.
+    def bad_row(hid, msg):
+        raise RefineError("outfit not found", 404)
+
+    monkeypatch.setattr(refine_mod, "_load_row", bad_row)
+    with pytest.raises(RefineError):
+        refine_mod.stream("hid", "swap the shoes")
+
+
+def _outfits_stream_client():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from auth import require_password
+    from routers import outfits as outfits_router
+
+    app = FastAPI()
+    app.include_router(outfits_router.router)
+    app.dependency_overrides[require_password] = lambda: None
+    return TestClient(app)
+
+
+def _parse_sse(text):
+    events = []
+    for frame in text.strip().split("\n\n"):
+        event, data = None, None
+        for line in frame.split("\n"):
+            if line.startswith("event: "):
+                event = line[len("event: ") :]
+            elif line.startswith("data: "):
+                data = line[len("data: ") :]
+        if event is not None and data is not None:
+            events.append((event, json.loads(data)))
+    return events
+
+
+def test_refine_stream_route_happy_path(monkeypatch):
+    _patch_stream_graph(monkeypatch)
+    resp = _outfits_stream_client().post(
+        "/outfits/hid/refine/stream", json={"message": "swap the shoes"}
+    )
+    assert resp.status_code == 200
+    kinds = [e for e, _ in _parse_sse(resp.text)]
+    assert kinds[-2:] == ["outfit", "done"]
+
+
+def test_refine_stream_route_validation_is_http_error(monkeypatch):
+    def bad_row(hid, msg):
+        raise RefineError("outfit not found", 404)
+
+    monkeypatch.setattr(refine_mod, "_load_row", bad_row)
+    resp = _outfits_stream_client().post(
+        "/outfits/hid/refine/stream", json={"message": "swap"}
+    )
+    assert resp.status_code == 404
+
+
+def test_refine_stream_route_mid_stream_error_becomes_error_event(monkeypatch):
+    _patch_stream_graph(monkeypatch)
+
+    def boom(s):
+        raise RuntimeError("api down")
+
+    monkeypatch.setattr(refine_mod, "refine_outfit_node", boom)
+    monkeypatch.setattr(refine_mod, "_APP", refine_mod.build_graph())
+
+    resp = _outfits_stream_client().post(
+        "/outfits/hid/refine/stream", json={"message": "swap"}
+    )
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    kinds = [e for e, _ in events]
+    assert "error" in kinds
+    assert kinds[-1] == "done"
+
+
+def test_recommend_stream_route_relays_stages_and_result(monkeypatch):
+    def fake_recommend(*, on_stage=None, **kw):
+        on_stage("weather")
+        on_stage("styling")
+        return {"weather": {}, "outfits": [], "wardrobe_size": 0}
+
+    monkeypatch.setattr("routers.outfits.recommend", fake_recommend)
+    resp = _outfits_stream_client().post("/outfits/recommend/stream", json={})
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    kinds = [e for e, _ in events]
+    assert [p["stage"] for e, p in events if e == "progress"] == ["weather", "styling"]
+    assert kinds[-2:] == ["result", "done"]
+
+
+def test_recommend_stream_route_failure_becomes_error_event(monkeypatch):
+    def fake_recommend(**kw):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("routers.outfits.recommend", fake_recommend)
+    resp = _outfits_stream_client().post("/outfits/recommend/stream", json={})
+    assert resp.status_code == 200
+    kinds = [e for e, _ in _parse_sse(resp.text)]
+    assert "error" in kinds
+    assert kinds[-1] == "done"
+
+
 # ---------------------------------------------------------------------- modes
 
 

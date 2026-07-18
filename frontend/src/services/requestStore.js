@@ -1,3 +1,5 @@
+import { paceStages } from './stagePacer.js';
+
 // Shared pub-sub scaffold for module-scope stores, so an in-flight generation
 // survives SPA navigation (react-router unmounts the page; component state
 // and effects die with it, but the module — and the fetch it started — keep
@@ -26,14 +28,18 @@ function createObservableStore(initialSnapshot) {
   };
 }
 
-// `run(args)` is the injected async step: it returns `{ result, ...extra }`,
-// where extra fields (e.g. usingMyLocation) are merged into the snapshot
-// alongside the result. Extracted from todayGeneration.js for #105.
+// `run(args, progress)` is the injected async step: it returns
+// `{ result, ...extra }`, where extra fields (e.g. usingMyLocation) are
+// merged into the snapshot alongside the result. Extracted from
+// todayGeneration.js for #105. `progress(patch)` (#154) lets run publish
+// interim snapshot fields (e.g. { stage }) while still in flight — start
+// resets `stage` so a previous run's last stage never leaks into the next.
 export function createRequestStore(run) {
   const { subscribe, getSnapshot, emit } = createObservableStore({
     loading: false,
     error: '',
     result: null,
+    stage: null,
   });
 
   return {
@@ -41,9 +47,9 @@ export function createRequestStore(run) {
     getSnapshot,
     async start(args) {
       if (getSnapshot().loading) return;
-      emit({ loading: true, error: '', result: null });
+      emit({ loading: true, error: '', result: null, stage: null });
       try {
-        const { result, ...extra } = await run(args);
+        const { result, ...extra } = await run(args, emit);
         emit({ loading: false, result, ...extra });
       } catch (e) {
         emit({ loading: false, error: String(e) });
@@ -96,6 +102,10 @@ export function createStreamRequestStore(runStream) {
       let sawWeather = false;
       let sawCatalog = false;
       let sawReasoning = false;
+      // Paced (#154 follow-up): the fast fan-out stages resolve ms apart and
+      // flickered; the pacer holds each label ~1.5s. Stopped when the plan
+      // lands — the plan replaces the stage line, so queued labels are moot.
+      const pacer = paceStages((stage) => emit({ stage }));
       try {
         await runStream(args, (event, payload) => {
           if (event === 'progress') {
@@ -105,14 +115,18 @@ export function createStreamRequestStore(runStream) {
 
             const stage =
               !sawReasoning && sawWeather && sawCatalog ? 'reasoning' : payload.stage;
-            if (stage !== getSnapshot().stage) emit({ stage });
-          } else if (event === 'plan') emit({ plan: payload });
-          else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
+            pacer.push(stage);
+          } else if (event === 'plan') {
+            pacer.stop();
+            emit({ plan: payload });
+          } else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
           else if (event === 'error') emit({ error: payload.detail || 'Trip planning failed' });
           else if (event === 'done') emit({ loading: false, done: true });
         });
       } catch (e) {
         emit({ loading: false, error: String(e) });
+      } finally {
+        pacer.stop();
       }
       // The body can close cleanly without a trailing `done` frame (backend
       // worker killed mid-stream, proxy idle-timeout) — reader.read() then

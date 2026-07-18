@@ -84,7 +84,7 @@ No commentary, no markdown fences."""
 
 REFINE_SYSTEM_PROMPT = """You are a personal stylist refining an existing
 outfit per the user's request. You will receive today's weather, the outfit
-mode, the current outfit, the conversation so far, and a wardrobe inventory.
+mode, a wardrobe inventory, the current outfit, and the conversation so far.
 
 Rules:
 - Change ONLY what the user's request requires; keep every other item.
@@ -179,9 +179,18 @@ def refine_outfit_node(state: RefineState) -> dict:
     names_by_id = {item["id"]: item.get("name", "") for item in pool}
     current = [item for item in pool if item["id"] in set(state["current_item_ids"])]
 
-    blocks = [
+    # Prompt is split at the turn-stable boundary (#154): weather, mode, and
+    # the pool are identical across a conversation's turns (the checkpointer
+    # carries the pool unchanged), so a cache breakpoint after them lets turn
+    # 2+ reuse the big inventory JSON instead of re-reading it — the current
+    # outfit and conversation, which change every turn, come after.
+    stable = [
         _weather_line(state["weather"]),
         f"Outfit mode: {state['mode']}",
+        "Wardrobe inventory (JSON):",
+        json.dumps(pool, ensure_ascii=False),
+    ]
+    blocks = [
         "Current outfit (JSON):",
         json.dumps(current, ensure_ascii=False),
     ]
@@ -194,8 +203,6 @@ def refine_outfit_node(state: RefineState) -> dict:
     if state.get("notes"):
         blocks.append(f"User notes from the original request: {state['notes']}")
     blocks.append(f"User's refinement request: {state['user_message']}")
-    blocks.append("Wardrobe inventory (JSON):")
-    blocks.append(json.dumps(pool, ensure_ascii=False))
 
     resp = create_tracked(
         "outfit_refine",
@@ -208,7 +215,19 @@ def refine_outfit_node(state: RefineState) -> dict:
                 "cache_control": {"type": "ephemeral"},
             }
         ],
-        messages=[{"role": "user", "content": "\n\n".join(blocks)}],
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "\n\n".join(stable),
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                    {"type": "text", "text": "\n\n".join(blocks)},
+                ],
+            }
+        ],
     )
     parsed = parse_json(resp)
     item_ids = [iid for iid in parsed.get("item_ids", []) if iid in names_by_id]
@@ -310,11 +329,10 @@ class RefineError(ValueError):
         self.status = status
 
 
-@op  # Weave trace root (#85); the graph's Anthropic calls nest under it.
-def refine(history_id: str, message: str) -> dict:
-    """One refinement turn against today's outfit row. Returns the revised
-    outfit in the same hydrated shape as one recommend() entry, plus the
-    route taken."""
+def _load_row(history_id: str, message: str) -> tuple[dict, str]:
+    """Fetch + validate the target row. Shared by refine() and stream() so
+    both entry points enforce the same guards, and stream() can raise them
+    as HTTP errors BEFORE any SSE bytes go out."""
     message = (message or "").strip()
     if not message:
         raise RefineError("empty refinement message", 422)
@@ -336,20 +354,23 @@ def refine(history_id: str, message: str) -> dict:
         raise RefineError("nothing to refine — this outfit is empty", 409)
     if not row.get("weather"):
         raise RefineError("outfit has no recorded weather context", 409)
+    return row, message
 
-    final = _APP.invoke(
-        {
-            "history_id": history_id,
-            "mode": row["mode"],
-            "weather": row["weather"],
-            "notes": row.get("notes") or "",
-            "current_item_ids": row["item_ids"],
-            "user_message": message,
-            "turns": [message],
-        },
-        config={"configurable": {"thread_id": history_id}},
-    )
 
+def _graph_input(history_id: str, row: dict, message: str) -> dict:
+    return {
+        "history_id": history_id,
+        "mode": row["mode"],
+        "weather": row["weather"],
+        "notes": row.get("notes") or "",
+        "current_item_ids": row["item_ids"],
+        "user_message": message,
+        "turns": [message],
+    }
+
+
+def _hydrate(history_id: str, row: dict, final: dict) -> dict:
+    """Revised outfit in the same hydrated shape as one recommend() entry."""
     full = (
         supabase()
         .table("clothing_items")
@@ -365,3 +386,62 @@ def refine(history_id: str, message: str) -> dict:
         "reasoning": final.get("reasoning", ""),
         "route": final.get("route", "refine"),
     }
+
+
+@op  # Weave trace root (#85); the graph's Anthropic calls nest under it.
+def refine(history_id: str, message: str) -> dict:
+    """One refinement turn against today's outfit row. Returns the revised
+    outfit in the same hydrated shape as one recommend() entry, plus the
+    route taken."""
+    row, message = _load_row(history_id, message)
+    final = _APP.invoke(
+        _graph_input(history_id, row, message),
+        config={"configurable": {"thread_id": history_id}},
+    )
+    return _hydrate(history_id, row, final)
+
+
+# #154: node completion -> the stage that starts NEXT. stream_mode="updates"
+# reports a node only once it finishes, so labeling the finished node would
+# stall the UI on stale text for the whole duration of the slow step; instead
+# each tick names what is now running ("context" is emitted up front, before
+# the graph moves). refine_outfit/regenerate/persist need no entry: after
+# them the `outfit` payload itself is the signal.
+STAGE_AFTER_NODE = {
+    "load_context": "routing",
+    "route": "restyling",
+}
+
+
+def stream(history_id: str, message: str):
+    """Yield (event, payload) tuples as the refine graph advances (#154).
+
+    Same node-progress streaming as trip_planner.stream (#124) — the graph
+    emits structured JSON, so there's nothing to show token-by-token.
+    Validation runs eagerly (RefineError raises here, not in the generator),
+    so the SSE route can still return a real 404/409/422.
+    """
+    row, message = _load_row(history_id, message)
+
+    def generate():
+        # Accumulate partial updates over the invoke input; checkpointer-held
+        # fields we don't return (pool, prior turns) never surface here.
+        final = _graph_input(history_id, row, message)
+        yield "progress", {"stage": "context"}
+        for update in _APP.stream(
+            final.copy(),
+            config={"configurable": {"thread_id": history_id}},
+            stream_mode="updates",
+        ):
+            for node_name, partial in update.items():
+                # A node's empty-dict return (e.g. load_context on turn 2+)
+                # arrives as None rather than {}.
+                if partial:
+                    final.update(partial)
+                stage = STAGE_AFTER_NODE.get(node_name)
+                if stage:
+                    yield "progress", {"stage": stage}
+        yield "outfit", _hydrate(history_id, row, final)
+        yield "done", {}
+
+    return generate()

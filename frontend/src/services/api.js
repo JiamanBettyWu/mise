@@ -35,6 +35,38 @@ async function request(path, opts = {}) {
   return res.json();
 }
 
+// Reads a response body as SSE frames (`event: <name>\ndata: <json>\n\n`),
+// firing onEvent(name, payload) per frame. fetch + reader instead of
+// EventSource — EventSource can't send the X-App-Password header. Shared by
+// the trip (#124), generate, and refine (#154) streams.
+async function readSSE(res, onEvent) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary;
+    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const lines = frame.split('\n');
+      const eventLine = lines.find((l) => l.startsWith('event: '));
+      const dataLine = lines.find((l) => l.startsWith('data: '));
+      if (eventLine && dataLine) {
+        onEvent(eventLine.slice('event: '.length), JSON.parse(dataLine.slice('data: '.length)));
+      }
+    }
+  }
+}
+
+async function streamRequest(path, body, onEvent, { signal } = {}) {
+  const res = await rawRequest(path, { method: 'POST', body, signal });
+  await readSSE(res, onEvent);
+}
+
 export const api = {
   health: () => request('/health', { auth: false }),
   healthAuth: () => request('/health/auth'),
@@ -61,58 +93,39 @@ export const api = {
   patchClothing: (id, patch) => request(`/clothes/${id}`, { method: 'PATCH', body: patch }),
   deleteClothing: (id) => request(`/clothes/${id}`, { method: 'DELETE' }),
 
-  recommend: ({ travel_mode = false, notes = '', n = 3, lat = null, lon = null } = {}) =>
-    request('/outfits/recommend', {
-      method: 'POST',
-      body: { travel_mode, notes, n, lat, lon },
-    }),
+  // SSE (#154): `progress` {stage} frames, then `result` with the full
+  // payload, then `done`. The blocking /outfits/recommend endpoint still
+  // exists server-side (cron/eval/tests) but has no frontend caller now.
+  recommendStream: (
+    { travel_mode = false, notes = '', n = 3, lat = null, lon = null } = {},
+    onEvent
+  ) => streamRequest('/outfits/recommend/stream', { travel_mode, notes, n, lat, lon }, onEvent),
   // verdict: 1 = thumbs up, -1 = thumbs down, 0 = clear
   outfitFeedback: (historyId, verdict) =>
     request(`/outfits/${historyId}/feedback`, { method: 'POST', body: { verdict } }),
   // optional 👎 follow-up (#60); payload = { reason, item_ids, note }
   outfitAttribution: (historyId, payload) =>
     request(`/outfits/${historyId}/attribution`, { method: 'POST', body: payload }),
-  // multi-turn refinement (#145); repeat calls continue the same conversation
-  outfitRefine: (historyId, message) =>
-    request(`/outfits/${historyId}/refine`, { method: 'POST', body: { message } }),
+  // Multi-turn refinement (#145), streamed (#154): `progress` {stage} frames
+  // per graph node, then `outfit` with the revised outfit, then `done`.
+  // Repeat calls continue the same conversation (thread = history_id).
+  outfitRefineStream: (historyId, message, onEvent) =>
+    streamRequest(`/outfits/${historyId}/refine/stream`, { message }, onEvent),
 
-  // Node-progress streaming (#124): SSE frames of `event: <name>\ndata: <json>\n\n`.
-  // The non-streaming /trips/plan JSON endpoint still exists server-side (used
-  // by tests/eval) but has no frontend caller now that this replaced it.
-  // fetch + reader instead of EventSource — EventSource can't send the
-  // X-App-Password header. onEvent(name, payload) fires per frame.
-  planTripStream: async (
+  // Node-progress streaming (#124): the non-streaming /trips/plan JSON
+  // endpoint still exists server-side (used by tests/eval) but has no
+  // frontend caller now that this replaced it.
+  planTripStream: (
     { destination, start_date, end_date, additional_notes = '', lat = null, lon = null },
     onEvent,
     { signal } = {}
-  ) => {
-    const res = await rawRequest('/trips/plan/stream', {
-      method: 'POST',
-      body: { destination, start_date, end_date, additional_notes, lat, lon },
-      signal,
-    });
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      let boundary;
-      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-        const frame = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
-        const lines = frame.split('\n');
-        const eventLine = lines.find((l) => l.startsWith('event: '));
-        const dataLine = lines.find((l) => l.startsWith('data: '));
-        if (eventLine && dataLine) {
-          onEvent(eventLine.slice('event: '.length), JSON.parse(dataLine.slice('data: '.length)));
-        }
-      }
-    }
-  },
+  ) =>
+    streamRequest(
+      '/trips/plan/stream',
+      { destination, start_date, end_date, additional_notes, lat, lon },
+      onEvent,
+      { signal }
+    ),
 
   searchGeo: (q, limit = 5) =>
     request(`/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`),
