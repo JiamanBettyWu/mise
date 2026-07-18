@@ -42,7 +42,7 @@ uv --project backend run python backend/evals/diversity_report.py --exclude-defa
 
 ## Architecture: the AI pipelines worth knowing
 
-The backend has **three distinct AI flows**. Reading the relevant one before changing it saves time. Two are LangGraphs (trip planner, preference inference); the daily recommender is plain straight-line Python.
+The backend has **four distinct AI flows**. Reading the relevant one before changing it saves time. Three are LangGraphs (trip planner, preference inference, outfit refinement); the daily recommender is plain straight-line Python.
 
 **1. Daily outfit recommender** — [`services/recommend.py`](backend/services/recommend.py)
 A straight-line Python function: pull weather → load catalog → extremes gate ([`services/weather_gate.py`](backend/services/weather_gate.py), drops warmth-absurd items, #18) → weighted sampling ([`services/outfit_history.py`](backend/services/outfit_history.py); weight = recency (#15/#44) × feedback multiplier from thumbs verdicts (#42), pool topped up to per-category floors (#16)) → ask the model to pick outfits for one or more "modes" (smart casual / athleisure / elevated). Used by `POST /outfits/today` and by the cron job. The cron job's modes are calendar-driven when the optional `CALENDAR_ICS_URL` Actions secret is set ([`services/calendar.py`](backend/services/calendar.py), #64): no events today → Smart casual only, otherwise a Haiku call maps events to modes (floor mode always included; any failure → all three modes). Secret unset = toggle off, hardcoded three modes. Verdicts arrive via emailed 👍/👎 links (#39) or the web thumbs on TodayOutfit (#41) — same `outfit_history.feedback` column either way. Every persisted row carries a `config` cohort label (`recommend.RECOMMEND_CONFIG`: prompt sha + sampler constants + model, #143); new prompt hashes must be registered in [`backend/evals/prompt_versions.md`](backend/evals/prompt_versions.md) — a CI test enforces it. **Not a LangGraph.** Full algorithm reference with formulas, constants, and worked examples: [docs/recommendation-algorithm.md](docs/recommendation-algorithm.md).
@@ -65,7 +65,20 @@ START ─┬→ get_weather → infer_weather_if_needed ─┐
 - `search_purchases_node` is best-effort and **concurrent** (per-gap searches run in a thread pool, #107): any per-query failure or empty result keeps that gap visible with `results=[]`, so the packing plan still renders.
 - `generate_output` runs **right after `reason_and_select`**, before the has_gaps/no_gaps fork (#124) — it's pure Python (<50ms) categorizing `candidate_items` and never needed purchase results. `POST /trips/plan/stream` (SSE, node-progress streaming) relies on this ordering to render the full packing list before purchase suggestions land; `POST /trips/plan` (blocking JSON) is unaffected either way.
 
-**3. Weekly preference inference** — [`services/preference_inference.py`](backend/services/preference_inference.py)
+**3. Multi-turn outfit refinement** — [`services/outfit_refine.py`](backend/services/outfit_refine.py)
+A LangGraph `StateGraph` behind `POST /outfits/{history_id}/refine` (#145) — the checkpointer rep. Design of record: [docs/outfit-refinement-design.md](docs/outfit-refinement-design.md).
+
+```
+START → load_context → route ──(refine)────→ refine_outfit ──→ persist → END
+                              └─(regenerate)→ regenerate ────↗
+```
+
+- **In-memory `MemorySaver`, `thread_id = history_id`** — repeat calls continue the conversation (pool built once, turns accumulate via `operator.add`). The `outfit_history` row stays the source of truth for the *current* outfit; the checkpointer carries only the candidate pool + turn texts. A Render restart drops in-flight conversations by design (cost: one rebuilt pool).
+- `route` is a Haiku classifier (refine vs regenerate) that **fails open to refine**; `refine_outfit` (Sonnet) still passes the deterministic guards — `blocked_combos` (#60), `recent_combos` (#17, current set exempt), structural validation.
+- `persist` = `outfit_history.update_outfit_items`: **final-version-only** — row's `item_ids` replaced in place, verdict + attribution cleared, `config` stamped `"refined": true` (cohort hygiene for #143/#141). #144 (email canned refine links) reuses this helper.
+- Generation deliberately stays **outside** the graph: the email cron generates on the Actions runner while refinement runs on Render — the row is the only cross-machine handoff — and the refine prompt stays decoupled from the versioned `OUTFIT_SYSTEM_PROMPT`. Server-side scope guard: today's non-empty rows only. Metered as `outfit_refine_route` + `outfit_refine`.
+
+**4. Weekly preference inference** — [`services/preference_inference.py`](backend/services/preference_inference.py)
 A LangGraph `StateGraph` over an `InferenceState` TypedDict, run from a weekly GitHub Actions cron ([`jobs/infer_preferences.py`](jobs/infer_preferences.py), [`.github/workflows/infer-preferences.yml`](.github/workflows/infer-preferences.yml)):
 
 ```
