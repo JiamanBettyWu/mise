@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../services/api.js';
+import { paceStages } from '../services/stagePacer.js';
 import {
   clearError as clearGenError,
   consumeResult,
@@ -154,15 +155,23 @@ export default function TodayOutfit() {
     async (index, message, onStage) => {
       const outfit = data?.outfits?.[index];
       if (!outfit?.history_id) return;
-      // Streamed (#154): progress frames drive the composer's stage line;
-      // the revised outfit arrives in its own frame.
+      // Streamed (#154): progress frames drive the composer's stage line
+      // (paced so early labels don't flicker past); the revised outfit
+      // arrives in its own frame and is never delayed by label dwell.
       let revised = null;
       let errDetail = null;
-      await api.outfitRefineStream(outfit.history_id, message, (event, payload) => {
-        if (event === 'progress') onStage?.(payload.stage);
-        else if (event === 'outfit') revised = payload;
-        else if (event === 'error') errDetail = payload.detail;
-      });
+      const pacer = paceStages((stage) => onStage?.(stage));
+      try {
+        await api.outfitRefineStream(outfit.history_id, message, (event, payload) => {
+          if (event === 'progress') pacer.push(payload.stage);
+          else if (event === 'outfit') {
+            pacer.stop();
+            revised = payload;
+          } else if (event === 'error') errDetail = payload.detail;
+        });
+      } finally {
+        pacer.stop();
+      }
       if (!revised) throw new Error(errDetail || 'Refinement failed');
       setData((d) => ({
         ...d,

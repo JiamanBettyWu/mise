@@ -1,3 +1,5 @@
+import { paceStages } from './stagePacer.js';
+
 // Shared pub-sub scaffold for module-scope stores, so an in-flight generation
 // survives SPA navigation (react-router unmounts the page; component state
 // and effects die with it, but the module — and the fetch it started — keep
@@ -100,6 +102,10 @@ export function createStreamRequestStore(runStream) {
       let sawWeather = false;
       let sawCatalog = false;
       let sawReasoning = false;
+      // Paced (#154 follow-up): the fast fan-out stages resolve ms apart and
+      // flickered; the pacer holds each label ~1.5s. Stopped when the plan
+      // lands — the plan replaces the stage line, so queued labels are moot.
+      const pacer = paceStages((stage) => emit({ stage }));
       try {
         await runStream(args, (event, payload) => {
           if (event === 'progress') {
@@ -109,14 +115,18 @@ export function createStreamRequestStore(runStream) {
 
             const stage =
               !sawReasoning && sawWeather && sawCatalog ? 'reasoning' : payload.stage;
-            if (stage !== getSnapshot().stage) emit({ stage });
-          } else if (event === 'plan') emit({ plan: payload });
-          else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
+            pacer.push(stage);
+          } else if (event === 'plan') {
+            pacer.stop();
+            emit({ plan: payload });
+          } else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
           else if (event === 'error') emit({ error: payload.detail || 'Trip planning failed' });
           else if (event === 'done') emit({ loading: false, done: true });
         });
       } catch (e) {
         emit({ loading: false, error: String(e) });
+      } finally {
+        pacer.stop();
       }
       // The body can close cleanly without a trailing `done` frame (backend
       // worker killed mid-stream, proxy idle-timeout) — reader.read() then
