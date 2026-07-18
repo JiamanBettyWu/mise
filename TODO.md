@@ -14,12 +14,11 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-17 (latest session):** **#154 shipped (PR #156)** — SSE
-node-progress for generate + refine (the #124 pattern), paced stage labels
-(`stagePacer.js`), refine-prompt `cache_control` split, and a live-truncation
-fix (`daily_outfit` max_tokens → 8192). Generate + refine were both driven
-live through the web UI, which also closes out #145's verification.
-Follow-up filed: #157 (clear/dim the stale outfit card mid-run).
+**As of 2026-07-18 (latest session):** **#157 shipped (PR #158)** — the stale
+outfit card now clears on Regenerate and dims during refine turns; also fixed
+a #156 leftover (refine stage labels never updated) and a review-caught race
+(refine completion vs Regenerate/Clear, solved with a history_id identity
+guard). The #154/#145 streaming + refinement stack is now fully live-verified.
 **Open manual follow-ups:** the `claude-review` workflow's `ANTHROPIC_API_KEY`
 Actions secret is **empty** — workflow disabled (`gh workflow disable`);
 re-set the secret then `gh workflow enable 307678548` (the @claude mention
@@ -83,9 +82,7 @@ spans, not perf),
 [#144](https://github.com/JiamanBettyWu/wardrobe-ai/issues/144) (email
 one-tap refine links — small PR now: reuses #145's
 `update_outfit_items` helper, or canned messages into the refine endpoint),
-[#157](https://github.com/JiamanBettyWu/mise/issues/157) (clear the stale
-outfit card on Regenerate / dim it during refine — run-finished ambiguity,
-frontend-only), [#155](https://github.com/JiamanBettyWu/mise/issues/155)
+[#155](https://github.com/JiamanBettyWu/mise/issues/155)
 (per-turn outfit snapshots in the refine state so "go back to the original
 shoes" works — deferred until a real undo moment),
 [#146](https://github.com/JiamanBettyWu/wardrobe-ai/issues/146) (Insights
