@@ -517,8 +517,11 @@ def recommend_outfits(
         "daily_outfit",
         model=MODEL,
         # 3 candidates per entry ≈ 3× the old payload; headroom keeps
-        # parse_json's stop_reason=max_tokens diagnostics a rarity.
-        max_tokens=4096,
+        # parse_json's stop_reason=max_tokens diagnostics a rarity. 8192
+        # after a live n=1 run still truncated mid-reasoning at 4096 (a
+        # verbose/looping response) — this is a cap, not a cost; only
+        # generated tokens are billed.
+        max_tokens=8192,
         system=[
             {
                 "type": "text",
