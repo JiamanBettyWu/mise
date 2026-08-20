@@ -14,11 +14,11 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-07-18 (latest session):** **#157 shipped (PR #158)** — the stale
-outfit card now clears on Regenerate and dims during refine turns; also fixed
-a #156 leftover (refine stage labels never updated) and a review-caught race
-(refine completion vs Regenerate/Clear, solved with a history_id identity
-guard). The #154/#145 streaming + refinement stack is now fully live-verified.
+**As of 2026-08-19 (latest session):** **#159 shipped (PR #160)** — newly
+added items (≤14d) are now named in the outfit prompt as a tiebreak; the
+diagnosis inverted the ask, since new items already carried the *maximum*
+sampling weight and were losing on choice, not pool membership. The
+sampler-side `NEW_ITEM_BOOST` is deliberately unbuilt pending that experiment.
 **Open manual follow-ups:** the `claude-review` workflow's `ANTHROPIC_API_KEY`
 Actions secret is **empty** — workflow disabled (`gh workflow disable`);
 re-set the secret then `gh workflow enable 307678548` (the @claude mention
@@ -32,40 +32,50 @@ the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ## Next time I sit down, pick one
 
-1. **Spot-check the #145/#154 data trail after a refined day** — the flows ran
+1. **Watch whether a newly added item actually gets picked (#159).** Add
+   something and glance at the next few mornings. If a fresh piece shows up
+   within a week, the prompt lever was enough and the deferred
+   `NEW_ITEM_BOOST` multiplier stays unbuilt; if it doesn't, that's the
+   trigger to build it (~1.5× decaying over 14 days, spec in
+   [#159](https://github.com/JiamanBettyWu/mise/issues/159)). Caveat when
+   reading it: every existing item has a real `created_at`, so a recent bulk
+   add would name several items at once and dilute the nudge — the Actions
+   log shows the block's contents near the candidate-pool line.
+2. **Spot-check the #145/#154 data trail after a refined day** — the flows ran
    live, but glance once at the row: `item_ids` updated + verdict cleared,
    `config` gained `refined: true`, `llm_usage` has
    `outfit_refine_route`/`outfit_refine` rows, and whether turn 2+ shows
    cache reads on `outfit_refine` (the new `cache_control` split at work).
-2. **Re-run `diversity_report.py --exclude-default --save` (~late July)** and
+3. **Re-run `diversity_report.py --exclude-default --save` (overdue — was
+   planned for late July)** and
    git-diff against `backend/evals/reports/diversity/2026-07-09.md` — confirm
    the #135 fix breaks the satin-skirt alternation in production (watch
    bottoms entropy 0.902, median gap 3d, % repeats ≤3d 61%).
-3. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
+4. **Let the weekly inference job (#62) accumulate, and curate it.** The Sunday
    cron (`20 1 * * 1`) re-derives inferred prefs from the whole verdict history
    each week — keep clicking/tagging thumbs; volume is the whole game. Each week
    glance at Profile → *Learned from your feedback*: dismiss any statement that
    doesn't ring true (that **tombstones** it — the job won't re-emit it), or
    "Edit & own" to promote it to a hard pref. The "reviewed N days ago"
    heartbeat flags if the cron ever stops.
-4. **Confirm inferred prefs actually shift generation** — they ride the prompt as
+5. **Confirm inferred prefs actually shift generation** — they ride the prompt as
    *soft* "Learned preferences", so watch whether athleisure picks drift toward
    open footwear over the next several days. Lever if too weak/strong: the
    "Learned preferences" bullet in `claude.py`.
-5. **Check the first real-event morning for #64's events path** — the empty-day
+6. **Check the first real-event morning for #64's events path** — the empty-day
    path is verified live; on a morning with calendar events the Actions log
    should show `calendar: N event(s) → modes: …` and the email should carry the
    📅 explanation line.
-6. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
+7. **The sport-sandal experiment** (decided 2026-06-12): the footwear floor
    works; the model just keeps *choosing* the sandal. Plan: tag the sandal with a
    `specific_items` 👎 when it's a bad pick and let the multiplier suppress it.
    If it still dominates after a few tagged verdicts, the principled fix is
    `SMALL_CATEGORY_MAX` 5→4 in `outfit_history.py`. NB: the first #62 run *liked*
    the sandal in athleisure — keep the experiment scoped to Elevated/dressy.
-7. **Spot-check inferred warmth values in the catalog UI** — open a handful of
+8. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-8. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+9. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
