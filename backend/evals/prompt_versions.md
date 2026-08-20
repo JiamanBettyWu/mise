@@ -12,3 +12,4 @@ Rows with `config IS NULL` predate versioning (before 2026-07-09).
 | prompt_sha | date registered | PR | description |
 |------------|-----------------|----|-------------|
 | `5e98927e` | 2026-07-09 | #143 (initial registry) | Prompt as of #135: recent-picks variety block, candidates shape, warmth/gate rules. |
+| `f6bb422e` | 2026-08-19 | #160 (closes #159) | Adds the "Recently added to the wardrobe" bullet — prefer new pieces when they fit as well as an older one; never force one. |

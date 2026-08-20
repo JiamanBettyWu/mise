@@ -43,7 +43,7 @@ from services.outfit_history import (
     sample_wardrobe,
     update_outfit_items,
 )
-from services.recommend import WARDROBE_FIELDS, recommend
+from services.recommend import WARDROBE_FIELDS, inventory_view, recommend
 from services.validation import drop_extras, validate_outfit
 from services.weather_gate import gate_extremes
 
@@ -130,7 +130,10 @@ def load_context_node(state: RefineState) -> dict:
         if iid not in pooled and iid in by_id:
             pool += [item for item in wardrobe if item["id"] == iid]
     log.info("refine pool for %s: %d items", state["history_id"], len(pool))
-    return {"candidate_pool": pool}
+    # inventory_view strips `created_at` (#159): it is fetched for the daily
+    # recommender's new-item block and has no job here — and the pool JSON is
+    # this prompt's cached prefix, so it stays as lean as it was.
+    return {"candidate_pool": inventory_view(pool)}
 
 
 def route_node(state: RefineState) -> dict:

@@ -32,6 +32,7 @@ def test_config_shape():
         "daily_decay",
         "sample_fraction",
         "small_category_max",
+        "new_item_window_days",
         "model",
     }
     assert (
