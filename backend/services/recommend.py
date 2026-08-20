@@ -9,10 +9,12 @@ from observability import op
 from services.claude import MODEL, OUTFIT_SYSTEM_PROMPT, recommend_outfits
 from services.outfit_history import (
     DAILY_DECAY,
+    NEW_ITEM_WINDOW_DAYS,
     SAMPLE_FRACTION,
     SMALL_CATEGORY_MAX,
     blocked_combos,
     log_outfits,
+    recent_additions,
     recent_combos,
     recent_feedback_outfits,
     recent_picks,
@@ -33,6 +35,7 @@ RECOMMEND_CONFIG = {
     "daily_decay": DAILY_DECAY,
     "sample_fraction": SAMPLE_FRACTION,
     "small_category_max": SMALL_CATEGORY_MAX,
+    "new_item_window_days": NEW_ITEM_WINDOW_DAYS,
     "model": MODEL,
 }
 
@@ -76,8 +79,12 @@ def _get_active_preferences() -> tuple[list[str], list[str]]:
         return [], []
 
 
+# `created_at` rides along only to date the new-item prompt block (#159); it
+# is stripped before the inventory JSON so the model gets one clean signal
+# instead of a raw timestamp on every row.
 WARDROBE_FIELDS = (
-    "id, name, type, color, formality, season, fabric, warmth, brand, description"
+    "id, name, type, color, formality, season, fabric, warmth, brand,"
+    " description, created_at"
 )
 
 
@@ -169,10 +176,14 @@ def recommend(
         if history_rows is not None
         else None
     )
+    # Choice-level novelty signal (#159), computed over the pool so nothing
+    # outside today's inventory is ever advertised. Pure — no extra query.
+    additions = recent_additions(candidate_pool, today=today)
+
     stage("styling")
     outfits = recommend_outfits(
         weather=weather,
-        wardrobe=candidate_pool,
+        wardrobe=inventory_view(candidate_pool),
         n=n,
         notes=notes,
         modes=modes,
@@ -189,6 +200,7 @@ def recommend(
         recent_picks=recent_picks(
             today=today, rows=history_rows, names_by_id=frozen_names
         ),
+        recent_additions=additions,
     )
 
     history_ids = (
@@ -235,6 +247,16 @@ def recommend(
     ]
 
     return {"weather": weather, "outfits": hydrated, "wardrobe_size": wardrobe_size}
+
+
+def inventory_view(pool: list[dict]) -> list[dict]:
+    """Pure: the pool as the model should see it — `created_at` removed (#159).
+
+    The timestamp is fetched only so recent_additions can date the new-item
+    block; leaving it on every inventory row would spend tokens on a second,
+    raw version of a signal the block already states in words.
+    """
+    return [{k: v for k, v in item.items() if k != "created_at"} for item in pool]
 
 
 def _is_skip(reasoning: str) -> bool:

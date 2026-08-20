@@ -402,6 +402,14 @@ Each outfit should:
   recent items (e.g. two satin skirts); reach for a genuinely different piece.
   Weather-appropriateness, mode fit, and coherence still win: a recently-worn
   item that is clearly the only right choice beats an ill-fitting fresh one.
+- The user message may include a "Recently added to the wardrobe" section
+  listing pieces the user acquired in the last two weeks. She likes wearing new
+  things, so give these a deliberate look: when a new item would work about as
+  well as an older one, pick the new item. This does NOT outrank
+  weather-appropriateness, mode fit, or coherence — never force a new piece
+  into an outfit it doesn't suit, and don't build every mode around the same
+  new item. A new item that is also on the "Recently recommended" list has
+  already had its turn; treat it as a normal item.
 - The user message may include a "Recent outfit feedback" section listing
   outfits the user recently disliked or liked. Avoid recombining assemblies
   similar to a disliked outfit. Liked outfits are style direction ONLY — do
@@ -473,6 +481,7 @@ def recommend_outfits(
     preferences: list[str] | None = None,
     inferred_preferences: list[str] | None = None,
     recent_picks: list[dict] | None = None,
+    recent_additions: list[dict] | None = None,
 ) -> list[dict]:
     """Ask Claude for outfit suggestions. Returns list of {label, item_ids, reasoning}.
 
@@ -504,6 +513,8 @@ def recommend_outfits(
         user_blocks.append(f"User notes for today: {notes.strip()}")
     if recent_picks:
         user_blocks.append(_recent_picks_block(recent_picks))
+    if recent_additions:
+        user_blocks.append(_recent_additions_block(recent_additions))
     if feedback_entries:
         user_blocks.append(_feedback_block(feedback_entries))
     if preferences:
@@ -699,6 +710,26 @@ def _recent_picks_block(picks: list[dict]) -> str:
         days = p["days_ago"]
         when = "today" if days == 0 else f"{days}d ago"
         lines.append(f"- {p['name']} ({when})")
+    return "\n".join(lines)
+
+
+def _recent_additions_block(additions: list[dict]) -> str:
+    """Pure: render newly added wardrobe pieces (#159) as the prompt section
+    the system prompt's new-items bullet refers to.
+
+    The counterpart to _recent_picks_block, and the whole of #159's first
+    pass: a new item already carries the maximum sampling weight (no history
+    -> recency factor 1.0, neutral feedback multiplier), so it reaches the
+    pool fine and then loses on taste. Naming it in the prompt is the lever
+    that actually applies. Empty -> empty string.
+    """
+    if not additions:
+        return ""
+    lines = ["Recently added to the wardrobe (she enjoys wearing new pieces):"]
+    for a in additions:
+        days = a["days_ago"]
+        when = "today" if days == 0 else f"added {days}d ago"
+        lines.append(f"- {a['name']} ({when})")
     return "\n".join(lines)
 
 

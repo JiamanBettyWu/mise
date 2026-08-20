@@ -14,6 +14,7 @@ Tunables:
   FEEDBACK_FLOOR       multiplier at like-rate 0 — exploration guarantee (#42)
   FEEDBACK_CEILING     multiplier at like-rate 1 — anti-repetition guard (#42)
   CATEGORY_FLOORS      minimum per-category presence in the sampled pool (#16)
+  NEW_ITEM_WINDOW_DAYS how long an item reads as "newly added" in the prompt (#159)
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from __future__ import annotations
 import math
 import random
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from db.supabase import client as supabase
 from observability import op
@@ -34,6 +35,11 @@ SMALL_CATEGORY_MAX = 5
 FEEDBACK_FLOOR = 0.6
 FEEDBACK_CEILING = 1.4
 FEEDBACK_CONTEXT_MAX_PER_VERDICT = 5
+# Issue #159: how long a newly added item counts as "new" in the prompt.
+# Longer than HISTORY_WINDOW_DAYS on purpose — the episodic rotation horizon
+# is about what she just wore; this is about what she just bought, which she
+# stays excited about for longer than a week.
+NEW_ITEM_WINDOW_DAYS = 14
 
 # Issue #60: optional 👎 attribution — what the thumbs-down was really about.
 # Single-choice; 'specific_items' carries the named culprits alongside.
@@ -323,6 +329,62 @@ def recent_picks(
     ]
     picks.sort(key=lambda p: (p["days_ago"], p["name"]))
     return picks
+
+
+def recent_additions(
+    wardrobe: list[dict],
+    today: date | None = None,
+) -> list[dict]:
+    """Items added to the wardrobe in the last NEW_ITEM_WINDOW_DAYS, for prompt
+    context (#159).
+
+    The mirror image of recent_picks: that one says "you already wore this,
+    reach elsewhere"; this one says "this just arrived, reach for it". Both
+    are choice-level signals, because pool membership isn't the problem — a
+    brand-new item has no history, so it already gets the maximum recency
+    factor (1.0) and a neutral feedback multiplier, i.e. the best weight in
+    the wardrobe. It makes the pool and the model simply doesn't pick it.
+
+    Pure by construction: reads `created_at` off the rows it is handed (the
+    candidate pool, so nothing outside today's inventory is ever advertised)
+    rather than querying. Items without a usable `created_at` — the frozen
+    eval catalogs (#118), captured before the column joined WARDROBE_FIELDS —
+    are skipped, so the eval path degrades to "no new items" rather than
+    crashing or dating everything from the snapshot.
+
+    Returns [{name, days_ago}] newest-first.
+    """
+    today = today or date.today()
+    additions: list[dict] = []
+    for item in wardrobe:
+        added = _added_on(item.get("created_at"))
+        if added is None or not item.get("name"):
+            continue
+        days_ago = (today - added).days
+        if 0 <= days_ago <= NEW_ITEM_WINDOW_DAYS:
+            additions.append({"name": item["name"], "days_ago": days_ago})
+    additions.sort(key=lambda a: (a["days_ago"], a["name"]))
+    return additions
+
+
+def _added_on(created_at) -> date | None:
+    """Pure: the date part of a Supabase timestamptz, or None if unusable.
+
+    Supabase hands back ISO strings like "2026-08-05T12:34:56.789+00:00"; the
+    time and zone are noise at day granularity, so we slice the date out
+    rather than fight offset parsing. Anything else (None, a datetime, junk)
+    returns None and the caller skips the item.
+    """
+    if isinstance(created_at, str):
+        try:
+            return date.fromisoformat(created_at[:10])
+        except ValueError:
+            return None
+    if isinstance(created_at, datetime):
+        return created_at.date()
+    if isinstance(created_at, date):
+        return created_at
+    return None
 
 
 class AttributionError(ValueError):

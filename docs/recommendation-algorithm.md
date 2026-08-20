@@ -296,6 +296,21 @@ Prompt rules that interact with the sampler:
   `specific_items` ones name just the culprits, and `combination` /
   `occasion` ones carry a reason tag plus any free-text note — a
   high-confidence avoid entry instead of a guess.
+- **Recently added items** (#159): the user message also carries a
+  "Recently added to the wardrobe" list — pool items whose `created_at` is
+  within `NEW_ITEM_WINDOW_DAYS = 14` (`recent_additions` in
+  `outfit_history.py`, rendered by `_recent_additions_block`). The mirror of
+  #135's recent-picks block, on the same channel and with the same
+  reasoning: a brand-new item has no history, so it already gets the maximum
+  recency factor (1.0) and a neutral multiplier — it *is* in the pool, and
+  loses on taste. Only a prompt-level signal can reach that. Framed as a
+  tiebreak ("when a new item works about as well as an older one, pick the
+  new one"), explicitly subordinate to weather/mode/coherence, and voided
+  once the item shows up on the recent-picks list — after which normal
+  recency downweighting takes over, so the boost can't spiral. The
+  sampler-side counterpart (a `NEW_ITEM_BOOST` novelty multiplier in the
+  weight product) is deliberately deferred: new items already carry max
+  weight, so the prompt block is the clean experiment.
 - **Structural validation** (#46): pure `validate_outfit` (≤1 bottoms, ≤1
   footwear, no dupe/unknown ids; no minimums — omission stays valid) → up to
   `MAX_REPAIR_ATTEMPTS = 2` *targeted* repair calls quoting the violations
@@ -337,6 +352,7 @@ tunable on evidence once an eval harness (#30) exists.
 | `SMALL_CATEGORY_MAX` | 5 | ≤ this many available ⇒ recency-exempt (calibrated: footwear is exactly 5) |
 | `FEEDBACK_FLOOR` / `FEEDBACK_CEILING` | 0.6 / 1.4 | explore-guarantee / anti-repetition guard |
 | `CATEGORY_FLOORS` | 3/3/2/1 | tops / bottoms+dresses / footwear / outerwear |
+| `NEW_ITEM_WINDOW_DAYS` | 14 | how long a newly added item is named in the prompt (#159) |
 | `HOT_GATE_LOW_C` / `COLD_GATE_HIGH_C` | 25 / −5 | (weather_gate.py) extremes thresholds |
 
 Backstop interaction worth remembering: `SAMPLE_FRACTION = 0.7` keeps 70% of
@@ -387,6 +403,7 @@ Decided against *for now*, with the trigger that would revisit each:
 | Pipeline orchestration | `backend/services/recommend.py` | (e2e via `RUN_E2E=1`) |
 | Sampling: recency, feedback, draw, floors | `backend/services/outfit_history.py` | `tests/test_sampling.py` |
 | Recent-feedback prompt context (#59) | `outfit_history.py` (fetch/shape) + `claude.py` (render) | `tests/test_feedback_context.py` |
+| New-item prompt context (#159) | `outfit_history.py` (`recent_additions`) + `claude.py` (`_recent_additions_block`) + `recommend.py` (`_inventory_view`) | `tests/test_recent_additions.py` |
 | Extremes gate | `backend/services/weather_gate.py` | `tests/test_weather_gate.py` |
 | type→category map | `backend/services/categories.py` | (covered via sampling/validation tests) |
 | Outfit prompt, validation, repair | `backend/services/claude.py` | `tests/test_validation.py` |
