@@ -14,18 +14,15 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-09-08 (latest session):** **#161 shipped (PR #162)** — RLS is
-now enabled (no policies) on the five tables Supabase's Security Advisor
-flagged, and the SQL has been applied in the Supabase SQL Editor; the root
-cause was that RLS is per-table and every post-setup migration omitted the
-line, while AGENTS.md's "RLS disabled" wording made the gap easy to dismiss
-from memory. **#163 shipped too (PR #164)** — `tests/test_sql_rls.py` now fails CI if a
-migration creates a table without enabling RLS, so the convention has teeth;
-the review caught that the guard's first revision had a false pass on quoted
-and `unlogged` table forms.
-Applied in the Supabase SQL Editor and verified the same day: Advisor reads
-**0 errors / 6 info** (one `RLS Enabled No Policy` notice per table — the
-expected end state), and the app was checked live.
+**As of 2026-09-08 (latest session):** **#161 → PR #162** enabled RLS (no
+policies) on the five tables Supabase's Security Advisor flagged; applied in
+the SQL Editor and verified the same day — **0 errors / 6 info**, one `RLS
+Enabled No Policy` notice per table, which is the expected end state, and the
+app was checked live. The root cause was that RLS is per-table and every
+post-setup migration omitted the line, while AGENTS.md's "RLS disabled"
+wording made the gap easy to dismiss from memory. **#163 → PR #164** gave the
+convention teeth: `tests/test_sql_rls.py` fails CI if a migration creates a
+table without enabling RLS.
 **Open manual follow-ups:** the `claude-review`
 workflow's `ANTHROPIC_API_KEY` Actions secret is **empty** — workflow
 disabled (`gh workflow disable`); re-set the secret then
