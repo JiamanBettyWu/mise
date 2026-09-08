@@ -14,17 +14,21 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-08-19 (latest session):** **#159 shipped (PR #160)** — newly
-added items (≤14d) are now named in the outfit prompt as a tiebreak; the
-diagnosis inverted the ask, since new items already carried the *maximum*
-sampling weight and were losing on choice, not pool membership. The
-sampler-side `NEW_ITEM_BOOST` is deliberately unbuilt pending that experiment.
-**Open manual follow-ups:** the `claude-review` workflow's `ANTHROPIC_API_KEY`
-Actions secret is **empty** — workflow disabled (`gh workflow disable`);
-re-set the secret then `gh workflow enable 307678548` (the @claude mention
-workflow shares the secret and is still active); SerpAPI quota was exhausted
-(429) — re-run the two `mcp_server` demos for real products once it resets;
-re-run `diversity_report.py --exclude-default --save` in a few weeks and diff
+**As of 2026-09-08 (latest session):** **#161 shipped (PR #162)** — RLS is
+now enabled (no policies) on the five tables Supabase's Security Advisor
+flagged, and the SQL has been applied in the Supabase SQL Editor; the root
+cause was that RLS is per-table and every post-setup migration omitted the
+line, while AGENTS.md's "RLS disabled" wording made the gap easy to dismiss
+from memory. Enforcement is filed as #163, not built.
+**Open manual follow-ups:** confirm Security Advisor now reads 0 errors (5
+`RLS Enabled No Policy` *info* notices are the expected end state, not a
+regression) and glance at the Info tab's 1 suggestion; the `claude-review`
+workflow's `ANTHROPIC_API_KEY` Actions secret is **empty** — workflow
+disabled (`gh workflow disable`); re-set the secret then
+`gh workflow enable 307678548` (the @claude mention workflow shares the
+secret and is still active); SerpAPI quota was exhausted (429) — re-run the
+two `mcp_server` demos for real products once it resets; re-run
+`diversity_report.py --exclude-default --save` in a few weeks and diff
 against the 2026-07-09 report; #125: verify Render/Vercel dashboards track
 the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
 
@@ -80,7 +84,9 @@ the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
    planner for Oaxaca).
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
-(catalog by categories), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
+(catalog by categories), [#163](https://github.com/JiamanBettyWu/mise/issues/163)
+(CI test enforcing `enable row level security` on every table-creating
+migration — the #161 convention currently has no teeth), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
 (mise rename: only Render/Vercel dashboard verification left),
 [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
 (local Python → 3.11 parity; largely defanged by CI),
