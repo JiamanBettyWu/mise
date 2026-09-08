@@ -19,7 +19,10 @@ now enabled (no policies) on the five tables Supabase's Security Advisor
 flagged, and the SQL has been applied in the Supabase SQL Editor; the root
 cause was that RLS is per-table and every post-setup migration omitted the
 line, while AGENTS.md's "RLS disabled" wording made the gap easy to dismiss
-from memory. Enforcement is filed as #163, not built.
+from memory. **#163 shipped too (PR #164)** — `tests/test_sql_rls.py` now fails CI if a
+migration creates a table without enabling RLS, so the convention has teeth;
+the review caught that the guard's first revision had a false pass on quoted
+and `unlogged` table forms.
 Applied in the Supabase SQL Editor and verified the same day: Advisor reads
 **0 errors / 6 info** (one `RLS Enabled No Policy` notice per table — the
 expected end state), and the app was checked live.
@@ -85,9 +88,7 @@ the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
    planner for Oaxaca).
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
-(catalog by categories), [#163](https://github.com/JiamanBettyWu/mise/issues/163)
-(CI test enforcing `enable row level security` on every table-creating
-migration — the #161 convention currently has no teeth), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
+(catalog by categories), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
 (mise rename: only Render/Vercel dashboard verification left),
 [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
 (local Python → 3.11 parity; largely defanged by CI),
