@@ -59,7 +59,8 @@ using ( bucket_id = 'clothes-photos' );
 > **Any new table needs its own `alter table public.<t> enable row level
 > security;`** — RLS is per-table and does not propagate to tables created
 > later. See [`backend/sql/2026-09-08_enable_rls.sql`](../backend/sql/2026-09-08_enable_rls.sql),
-> which backfilled five tables that shipped without it (#161).
+> which backfilled five tables that shipped without it (#161). `tests/test_sql_rls.py`
+> fails CI if a new migration forgets the line.
 >
 > Two migrations landing the same day carry an `a`/`b` suffix
 > (`2026-07-05a_…`, `2026-07-05b_…`) when one depends on the other — plain
