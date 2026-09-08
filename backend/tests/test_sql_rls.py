@@ -21,9 +21,16 @@ SQL_DIR = Path(__file__).resolve().parents[1] / "sql"
 # created by the setup SQL in docs/deploy.md step 1, which enables RLS inline.
 EXTERNALLY_CREATED = {"clothing_items"}
 
-_COMMENT = re.compile(r"--[^\n]*")
+_LINE_COMMENT = re.compile(r"--[^\n]*")
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+# The modifier slot matters: `create unlogged table foo` and `create temp table
+# foo` are `create table` statements the naive pattern silently skips, and a
+# skipped table is a false PASS in exactly the case this guard exists to catch.
+_TABLE_MODIFIERS = r"(?:(?:global|local)\s+)?(?:temp(?:orary)?|unlogged)?\s*"
 _CREATE = re.compile(
-    r"\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?([\w.]+)", re.IGNORECASE
+    rf"\bcreate\s+{_TABLE_MODIFIERS}table\s+(?:if\s+not\s+exists\s+)?([\w.]+)",
+    re.IGNORECASE,
 )
 _ENABLE_RLS = re.compile(
     r"\balter\s+table\s+(?:if\s+exists\s+)?([\w.]+)\s+enable\s+row\s+level\s+security",
@@ -32,10 +39,17 @@ _ENABLE_RLS = re.compile(
 
 
 def _statements() -> str:
-    """All migration SQL, comments stripped so prose can't match a pattern."""
-    return "\n".join(
-        _COMMENT.sub("", f.read_text()) for f in sorted(SQL_DIR.glob("*.sql"))
-    )
+    """All migration SQL, normalized so the patterns above see bare identifiers.
+
+    Both comment forms are stripped (prose must not match a pattern), and double
+    quotes are dropped so a quoted identifier — `create table "audit_log"` — is
+    still seen. Quoted identifiers are case-sensitive in Postgres while bare ones
+    fold to lower; we lower everything in _bare(), which is right for this repo's
+    all-lowercase names and would only ever over-match, never under-match.
+    """
+    sql = "\n".join(f.read_text() for f in sorted(SQL_DIR.glob("*.sql")))
+    sql = _BLOCK_COMMENT.sub("", _LINE_COMMENT.sub("", sql))
+    return sql.replace('"', "")
 
 
 def _bare(name: str) -> str:
@@ -60,7 +74,13 @@ def test_every_created_table_enables_rls():
 
 
 def test_rls_statements_name_real_tables():
-    """A typo'd table name would pass the check above while securing nothing."""
+    """Catch an RLS statement that points at nothing.
+
+    Not the typo case — `alter table fooo` leaves `foo` unsecured, so the check
+    above already fails. This one catches a *stale or extra* statement: a table
+    since dropped or renamed, or one created outside backend/sql/. Those error
+    in the SQL Editor and secure nothing, while leaving the check above green.
+    """
     sql = _statements()
     created = {_bare(m) for m in _CREATE.findall(sql)}
     secured = {_bare(m) for m in _ENABLE_RLS.findall(sql)}
@@ -68,7 +88,8 @@ def test_rls_statements_name_real_tables():
     unknown = sorted(secured - created - EXTERNALLY_CREATED)
     assert not unknown, (
         f"RLS is enabled on tables that no migration creates: {', '.join(unknown)}. "
-        "Either a typo (the statement would error in the SQL Editor and secure "
-        "nothing), or a table created outside backend/sql/ — if the latter, add "
-        "it to EXTERNALLY_CREATED with a comment saying where it comes from."
+        "Either the table was dropped/renamed and this statement is stale (it "
+        "would error in the SQL Editor and secure nothing), or it is created "
+        "outside backend/sql/ — if the latter, add it to EXTERNALLY_CREATED "
+        "with a comment saying where it comes from."
     )
