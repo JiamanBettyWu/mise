@@ -23,7 +23,7 @@ The mechanism: **RLS is per-table and does not propagate.** `grep -l "row level 
 
 **The convention now has a stated rule but no enforcement** — `AGENTS.md` says every table-creating migration MUST carry the RLS line, yet nothing fails if it doesn't, which is the #161 mode all over again. Filed **[#163](https://github.com/JiamanBettyWu/mise/issues/163)** for a CI test in the mold of `test_config_fingerprint.py`: parse `backend/sql/*.sql`, pair every `create table <name>` with an `enable row level security` on that name, assert directory-wide so the backfill legitimately covers the older files. Docs-and-SQL only; no code, no test-suite change.
 
-**Applied manually in the Supabase SQL Editor the same day** (the repo doesn't run migrations — merging alone fixes nothing). Expect Advisor to swap the 5 errors for 5 `RLS Enabled No Policy` **info** notices; that's the intended end state for a service_role-only app, not a regression.
+**Applied manually in the Supabase SQL Editor the same day** (the repo doesn't run migrations — merging alone fixes nothing). **Verified the same day: 0 errors / 6 info**, one `RLS Enabled No Policy` notice per table — the intended end state for a service_role-only app, not a regression (a policy names *which rows which user* may touch, and there is no per-user concept to write a rule about). The Info tab's pre-existing "1 suggestion" turned out to be that same notice on `clothing_items`, so 1 → 6 accounts for itself with no separate loose end. App checked live. Unplanned side benefit: `docs/multi-user-plan.md` step 6 ("flip on RLS **last**") is now half-done — that step shrinks to writing `auth.uid() = user_id` policies.
 
 ## 2026-08-19 (new-item honeymoon, #159 — and the diagnosis that inverted the ask)
 

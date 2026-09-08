@@ -20,9 +20,10 @@ flagged, and the SQL has been applied in the Supabase SQL Editor; the root
 cause was that RLS is per-table and every post-setup migration omitted the
 line, while AGENTS.md's "RLS disabled" wording made the gap easy to dismiss
 from memory. Enforcement is filed as #163, not built.
-**Open manual follow-ups:** confirm Security Advisor now reads 0 errors (5
-`RLS Enabled No Policy` *info* notices are the expected end state, not a
-regression) and glance at the Info tab's 1 suggestion; the `claude-review`
+Applied in the Supabase SQL Editor and verified the same day: Advisor reads
+**0 errors / 6 info** (one `RLS Enabled No Policy` notice per table — the
+expected end state), and the app was checked live.
+**Open manual follow-ups:** the `claude-review`
 workflow's `ANTHROPIC_API_KEY` Actions secret is **empty** — workflow
 disabled (`gh workflow disable`); re-set the secret then
 `gh workflow enable 307678548` (the @claude mention workflow shares the
