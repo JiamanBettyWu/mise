@@ -17,8 +17,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.10"
-      # Render still owns the Python version (uv does not set it). Pin uv
-      # itself so a future default can't reject the lock's format revision.
+      # NOT the interpreter uv builds with — uv does not read PYTHON_VERSION.
+      # `backend/.python-version` is what pins that to 3.11; without it uv
+      # picks the newest interpreter satisfying requires-python (">=3.11"),
+      # which would put prod on 3.14 and invert the parity guard (#13).
+      # UV_VERSION pins uv itself so a future default can't reject the lock.
       - key: UV_VERSION
         value: "0.11.11"
       - key: SUPABASE_URL
