@@ -28,9 +28,6 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 **Open manual follow-ups:**
 
-- **`claude-review` workflow is disabled** — its `ANTHROPIC_API_KEY` Actions
-  secret is empty. Re-set the secret, then `gh workflow enable 307678548`.
-  (The @claude mention workflow shares that secret and is still active.)
 - **SerpAPI quota exhausted (429)** — re-run the two `mcp_server` demos for real
   products once it resets.
 - **Re-run `diversity_report.py --exclude-default --save`** and diff against the
