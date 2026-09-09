@@ -87,7 +87,11 @@ live in [AGENTS.md](AGENTS.md), not here.
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
-Other tracked-but-not-urgent: [#167](https://github.com/JiamanBettyWu/mise/issues/167)
+Other tracked-but-not-urgent: [#168](https://github.com/JiamanBettyWu/mise/issues/168)
+(trip planner shows an error over the *previous* plan with nothing marking it
+stale — same bug class as #157, which fixed it for outfits only; a second,
+reverse case exists where a late failure surfaces an error over a plan that
+actually succeeded), [#167](https://github.com/JiamanBettyWu/mise/issues/167)
 (stale-doc sweep — verify *claims* in the living docs, not links; three bugs
 this year traced to a doc that quietly stopped being true, recon in the issue
 body; archives explicitly out of scope), [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
