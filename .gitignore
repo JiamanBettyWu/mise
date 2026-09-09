@@ -4,7 +4,11 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-.python-version
+# NOT .python-version — backend/.python-version is TRACKED on purpose (#165).
+# It is the only thing pinning the interpreter uv builds with, in every
+# environment: local, Render's build, and the cron workflows. Ignoring it
+# would leave prod free to pick the newest Python matching requires-python
+# while CI stayed on 3.11 — the #13 parity bug, inverted.
 
 # uv
 .uv/

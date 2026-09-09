@@ -4,11 +4,26 @@ services:
     runtime: python
     rootDir: backend
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # uv, not pip — the lock file is the single source of dependency truth.
+    # `--frozen` installs backend/uv.lock exactly (no re-resolution), which is
+    # what stops prod from silently drifting ahead of local and CI. `--no-dev`
+    # is what keeps weave / mcp / pytest off Render; it replaces the old
+    # "absent from requirements.txt" guardrail.
+    buildCommand: uv sync --frozen --no-dev && uv cache prune --ci
+    # `--no-sync` is REQUIRED: a bare `uv run` re-syncs the environment on
+    # every boot, which re-installs the dev group we just excluded (verified:
+    # it pulls 51 packages) and makes startup depend on PyPI being reachable.
+    startCommand: uv run --no-sync uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.10"
+      # NOT the interpreter uv builds with — uv does not read PYTHON_VERSION.
+      # `backend/.python-version` is what pins that to 3.11; without it uv
+      # picks the newest interpreter satisfying requires-python (">=3.11"),
+      # which would put prod on 3.14 and invert the parity guard (#13).
+      # UV_VERSION pins uv itself so a future default can't reject the lock.
+      - key: UV_VERSION
+        value: "0.11.11"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
@@ -47,8 +62,8 @@ services:
 #    rootDir: backend
 #    plan: starter
 #    schedule: "0 14 * * *"   # 7am Pacific (PDT). Adjust per timezone.
-#    buildCommand: pip install -r requirements.txt
-#    startCommand: python ../jobs/daily_outfit.py
+#    buildCommand: uv sync --frozen --no-dev && uv cache prune --ci
+#    startCommand: uv run --no-sync python ../jobs/daily_outfit.py
 #    envVars:
 #      - fromService: { name: wardrobe-ai-backend, type: web, envVarKey: SUPABASE_URL }
 #        key: SUPABASE_URL
