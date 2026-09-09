@@ -29,10 +29,9 @@ disabled (`gh workflow disable`); re-set the secret then
 secret and is still active); SerpAPI quota was exhausted (429) — re-run the
 two `mcp_server` demos for real products once it resets; re-run
 `diversity_report.py --exclude-default --save` in a few weeks and diff
-against the 2026-07-09 report; #125: verify Render/Vercel dashboards track
-the renamed repo (note: the Render service is **dashboard-managed**, so
-`render.yaml` edits do not reach it). Full detail lives in
-[SESSIONS.md](SESSIONS.md).
+against the 2026-07-09 report. Worth knowing rather than doing: the Render
+service is **dashboard-managed**, so `render.yaml` edits do not reach it.
+Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -86,9 +85,7 @@ the renamed repo (note: the Render service is **dashboard-managed**, so
    planner for Oaxaca).
 
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
-(catalog by categories), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
-(mise rename: only Render/Vercel dashboard verification left),
-[#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
+(catalog by categories), [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
 [#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
 `Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
