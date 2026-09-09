@@ -32,9 +32,10 @@ dev = [
     "langchain-mcp-adapters>=0.3.0",
     "mcp[cli]>=1.28.1",
     "pytest>=9.0.3",
-    # Weave observability (#85) — trace-only, never shipped to Render. It is
-    # deliberately NOT in requirements.txt (Render's prod dep list) nor in
-    # [project.dependencies], keeping it off the request/cron hot path.
+    # Weave observability (#85) — trace-only, never shipped to Render. Living
+    # in this dev group (and NOT in [project.dependencies]) is what keeps it
+    # off the request/cron hot path: Render and both crons build with
+    # `uv sync --no-dev`, so the group is never installed there.
     "weave>=0.53",
 ]
 

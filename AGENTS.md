@@ -112,6 +112,16 @@ Things that bite if you don't know them (full rationale in D8 of [docs/feedback-
 ## Deploy surface
 
 - **Backend** → Render (auto-deploy from `main`). Service config in [`render.yaml`](render.yaml).
+- **One dependency source of truth: `backend/uv.lock`.** Render, both crons, the
+  photo sweep, and CI all install from it — `--frozen` (install it exactly) on
+  Render and the crons, `--locked` (plus fail if it's stale) in CI. There is no
+  `requirements.txt` any more (deleted in #165; its unpinned `anthropic>=0.39`
+  let Render drift onto a major version local never saw). Two more flags carry
+  weight: **`--no-dev`** (prod and crons, never CI) is what keeps
+  `weave`/`mcp`/`pytest` off Render — it replaced "absent from
+  `requirements.txt`" as that guardrail; and start commands need
+  **`uv run --no-sync`**, because a bare `uv run` re-syncs on boot and silently
+  re-installs the dev group the build just excluded.
 - **Frontend** → Vercel (auto-deploy from `main`, root = `frontend/`). Config in [`frontend/vercel.json`](frontend/vercel.json).
 - **CI** → GitHub Actions runs the offline pytest suite on every PR and push to `main` ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)). Pinned to **Python 3.11 to match Render** — it's the guard against the 3.14/3.11 annotation gotcha below. No secrets needed; the `RUN_E2E` test self-skips.
 - **Daily outfit cron** → **GitHub Actions** (NOT Render Cron — Render Cron requires a paid plan). Workflow: [`.github/workflows/daily-outfit.yml`](.github/workflows/daily-outfit.yml). Note: GitHub's scheduled runs are best-effort and routinely delayed 1–3h, which is why the workflow schedules at `20 8 * * *` UTC (offset early to compensate) with no exact-hour guard. See PR #7's commit for the diagnosis.

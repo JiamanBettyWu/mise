@@ -22,9 +22,14 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 
+      # `--locked` = fail if uv.lock is stale w.r.t. pyproject.toml, rather
+      # than silently re-resolving. Render and the crons install that same lock
+      # with `--frozen`, so without this CI could pass on a resolution prod
+      # never gets. Dev group included here (pytest/black/isort) — prod is the
+      # only place that passes --no-dev.
       - name: Install backend deps (incl. dev group)
         working-directory: backend
-        run: uv sync
+        run: uv sync --locked
 
       - name: Check backend formatting
         working-directory: backend

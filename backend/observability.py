@@ -14,8 +14,8 @@ import os
 log = logging.getLogger("wardrobe.weave")
 
 # `op` is the decorator the pipeline files use (`from observability import op`).
-# On Render, `weave` is NOT installed (it's dev-only, absent from
-# requirements.txt), so a bare `import weave` in a hot-path module would crash
+# On Render, `weave` is NOT installed (it's dev-only, and Render builds with
+# `uv sync --no-dev`), so a bare `import weave` in a hot-path module would crash
 # the backend at import time. This shim resolves to the real `weave.op` when
 # weave is present and to an identity decorator when it isn't — so the same
 # `@op` works in prod (no-op), locally without init (inert, see #85 check), and
