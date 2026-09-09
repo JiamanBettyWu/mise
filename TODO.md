@@ -15,14 +15,13 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 ## Current state
 
 **As of 2026-09-08 (latest session):** **#161 → PR #162** enabled RLS (no
-policies) on the five tables Supabase's Security Advisor flagged; applied in
-the SQL Editor and verified the same day — **0 errors / 6 info**, one `RLS
-Enabled No Policy` notice per table, which is the expected end state, and the
-app was checked live. The root cause was that RLS is per-table and every
-post-setup migration omitted the line, while AGENTS.md's "RLS disabled"
-wording made the gap easy to dismiss from memory. **#163 → PR #164** gave the
-convention teeth: `tests/test_sql_rls.py` fails CI if a migration creates a
-table without enabling RLS.
+policies) on the five tables Supabase's Security Advisor flagged, and **#163 →
+PR #164** gave that convention teeth with `tests/test_sql_rls.py`. Then trip
+planning broke in prod: Render's unpinned `pip install -r requirements.txt`
+pulled anthropic 1.x, which removed `temperature` from `messages.create()` —
+**#165 → PR #166** put Render and all three Actions jobs on `uv sync --frozen`,
+deleted `requirements.txt`, and pinned the interpreter via
+`backend/.python-version`, which also **closes #13**.
 **Open manual follow-ups:** the `claude-review`
 workflow's `ANTHROPIC_API_KEY` Actions secret is **empty** — workflow
 disabled (`gh workflow disable`); re-set the secret then
@@ -31,7 +30,9 @@ secret and is still active); SerpAPI quota was exhausted (429) — re-run the
 two `mcp_server` demos for real products once it resets; re-run
 `diversity_report.py --exclude-default --save` in a few weeks and diff
 against the 2026-07-09 report; #125: verify Render/Vercel dashboards track
-the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
+the renamed repo (note: the Render service is **dashboard-managed**, so
+`render.yaml` edits do not reach it). Full detail lives in
+[SESSIONS.md](SESSIONS.md).
 
 ---
 
@@ -87,8 +88,6 @@ the renamed repo. Full detail lives in [SESSIONS.md](SESSIONS.md).
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
 (catalog by categories), [#125](https://github.com/JiamanBettyWu/mise/issues/125)
 (mise rename: only Render/Vercel dashboard verification left),
-[#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)
-(local Python → 3.11 parity; largely defanged by CI),
 [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
 [#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
@@ -111,6 +110,15 @@ dashboard: drift trends + usage, multi-user-ready). See the
 Things I might do but aren't worth an issue yet. Move up to Issues when they
 firm up.
 
+- **Deliberate `anthropic` 0.x → 1.x upgrade.** `backend/pyproject.toml` now
+  bounds it at `<1` (#165), so this is a conscious edit rather than something
+  `uv lock --upgrade` can do by accident. The one blocker is
+  `trip_planner.py:307`'s `temperature=0.2` (#120), which 1.x removed from
+  `messages.create()` — it moves to `extra_body={"temperature": 0.2}`, same
+  bytes on the wire. Caveat worth a comment there: the day `MODEL` leaves
+  `claude-sonnet-4-6`, `extra_body` turns that into a server-side 400 instead
+  of a local `TypeError`. There's a `/claude-api upgrade` guide for the rest
+  of the 1.x breaking changes. File as an issue if pursued.
 - **Option A multi-photo upload** (select N photos, one item per photo) — sibling
   of [#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)'s B-lite path.
   File separately if pursued.
