@@ -14,23 +14,36 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**As of 2026-09-08 (latest session):** **#161 → PR #162** enabled RLS (no
-policies) on the five tables Supabase's Security Advisor flagged, and **#163 →
-PR #164** gave that convention teeth with `tests/test_sql_rls.py`. Then trip
-planning broke in prod: Render's unpinned `pip install -r requirements.txt`
-pulled anthropic 1.x, which removed `temperature` from `messages.create()` —
-**#165 → PR #166** put Render and all three Actions jobs on `uv sync --frozen`,
-deleted `requirements.txt`, and pinned the interpreter via
-`backend/.python-version`, which also **closes #13**.
-**Open manual follow-ups:** the `claude-review`
-workflow's `ANTHROPIC_API_KEY` Actions secret is **empty** — workflow
-disabled (`gh workflow disable`); re-set the secret then
-`gh workflow enable 307678548` (the @claude mention workflow shares the
-secret and is still active); SerpAPI quota was exhausted (429) — re-run the
-two `mcp_server` demos for real products once it resets; re-run
-`diversity_report.py --exclude-default --save` in a few weeks and diff
-against the 2026-07-09 report. Worth knowing rather than doing: the Render
-service is **dashboard-managed**, so `render.yaml` edits do not reach it.
+**Shipped 2026-09-08 (latest session):**
+
+- **[#161](https://github.com/JiamanBettyWu/mise/issues/161) → PR #162** — RLS
+  enabled (no policies) on the five tables Supabase's Security Advisor flagged.
+- **[#163](https://github.com/JiamanBettyWu/mise/issues/163) → PR #164** —
+  `tests/test_sql_rls.py` gives that convention teeth in CI.
+- **[#165](https://github.com/JiamanBettyWu/mise/issues/165) → PR #166** — trip
+  planning broke in prod: Render's unpinned `pip install` pulled anthropic 1.x,
+  which removed `temperature` from `messages.create()`. Render + all three
+  Actions jobs now install from `uv.lock`, `requirements.txt` is gone, and the
+  interpreter is pinned by `backend/.python-version` — which also **closed #13**.
+
+**Open manual follow-ups:**
+
+- **`claude-review` workflow is disabled** — its `ANTHROPIC_API_KEY` Actions
+  secret is empty. Re-set the secret, then `gh workflow enable 307678548`.
+  (The @claude mention workflow shares that secret and is still active.)
+- **SerpAPI quota exhausted (429)** — re-run the two `mcp_server` demos for real
+  products once it resets.
+- **Re-run `diversity_report.py --exclude-default --save`** and diff against the
+  2026-07-09 report.
+
+**Standing facts, so they don't get rediscovered the hard way:**
+
+- The Render service is **dashboard-managed** — `render.yaml` edits do *not*
+  reach it. Change Build/Start commands in the Render UI.
+- `backend/.python-version` is the only thing pinning the interpreter, and it
+  had to be un-ignored from `.gitignore`. Removing it puts prod on a newer
+  Python than CI.
+
 Full detail lives in [SESSIONS.md](SESSIONS.md).
 
 ---
