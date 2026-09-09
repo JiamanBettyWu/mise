@@ -36,15 +36,8 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 - **Re-run `diversity_report.py --exclude-default --save`** and diff against the
   2026-07-09 report.
 
-**Standing facts, so they don't get rediscovered the hard way:**
-
-- The Render service is **dashboard-managed** — `render.yaml` edits do *not*
-  reach it. Change Build/Start commands in the Render UI.
-- `backend/.python-version` is the only thing pinning the interpreter, and it
-  had to be un-ignored from `.gitignore`. Removing it puts prod on a newer
-  Python than CI.
-
-Full detail lives in [SESSIONS.md](SESSIONS.md).
+Full detail lives in [SESSIONS.md](SESSIONS.md); durable environment facts
+live in [AGENTS.md](AGENTS.md), not here.
 
 ---
 
