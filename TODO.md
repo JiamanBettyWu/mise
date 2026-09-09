@@ -84,7 +84,10 @@ Full detail lives in [SESSIONS.md](SESSIONS.md).
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
-Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
+Other tracked-but-not-urgent: [#167](https://github.com/JiamanBettyWu/mise/issues/167)
+(stale-doc sweep — verify *claims* in the living docs, not links; three bugs
+this year traced to a doc that quietly stopped being true, recon in the issue
+body; archives explicitly out of scope), [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
 (catalog by categories), [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
 [#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
