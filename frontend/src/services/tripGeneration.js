@@ -7,7 +7,7 @@ import { createStreamRequestStore } from './requestStore.js';
 // catalog → reasoning → gap queries → SerpAPI) runs long enough that tabbing
 // away mid-plan is tempting, and #124 streams node progress so the plan
 // renders as soon as reasoning finishes instead of staring at one spinner
-// for the whole pipeline. Snapshot: { loading, stage, plan, purchases, error }.
+// for the whole pipeline. Snapshot: { loading, stage, plan, purchases, error, warning, done }.
 
 const store = createStreamRequestStore((payload, onEvent) => api.planTripStream(payload, onEvent));
 

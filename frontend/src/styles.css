@@ -662,6 +662,9 @@ textarea {
 
 .trip-result { margin-top: 1.5rem; }
 
+/* Previous plan stays present at the #157 inactive weight; its error stays full-strength. */
+.trip-result__content--stale { opacity: 0.55; }
+
 .trip-result__header {
   margin-top: 1.5rem;
   display: flex;
@@ -735,7 +738,7 @@ textarea {
   line-height: 1.45;
 }
 
-/* Inline gap callouts: warm-toned glass instead of solid yellow box. */
+/* Inline gap and partial-result callouts share warm-toned glass. */
 .trip-inline-gaps {
   list-style: none;
   padding: 0;
@@ -744,7 +747,8 @@ textarea {
   flex-direction: column;
   gap: 0.4rem;
 }
-.trip-inline-gaps li {
+.trip-inline-gaps li,
+.trip-result__purchase-warning {
   display: flex;
   gap: 0.55rem;
   align-items: flex-start;

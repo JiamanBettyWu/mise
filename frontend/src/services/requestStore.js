@@ -68,9 +68,9 @@ export function createRequestStore(run) {
 }
 
 // Streaming variant (#124): snapshot shape is { loading, stage, plan,
-// purchases, error } instead of { loading, error, result } — a generation
+// purchases, error, warning, done } instead of { loading, error, result } — a generation
 // arrives as a sequence of SSE events, not one resolved promise, so the page
-// consumes the plan the moment it lands rather than waiting for `done`.
+// renders the plan immediately and adopts it when the run finishes.
 // `loading` stays true until `done` (or a thrown error), matching the old
 // result-based store's contract for disabling the submit button mid-request.
 //
@@ -80,6 +80,7 @@ export function createStreamRequestStore(runStream) {
   const { subscribe, getSnapshot, emit } = createObservableStore({
     loading: false,
     error: '',
+    warning: '',
     stage: null,
     plan: null,
     purchases: null,
@@ -91,7 +92,17 @@ export function createStreamRequestStore(runStream) {
     getSnapshot,
     async start(args) {
       if (getSnapshot().loading) return;
-      emit({ loading: true, error: '', stage: null, plan: null, purchases: null, done: false });
+      emit({ loading: true, error: '', warning: '', stage: null, plan: null, purchases: null, done: false });
+      // Keep run history independent of consumePlan(), which clears the payload.
+      let sawPlan = false;
+      let sawDone = false;
+      const recordFailure = (detail) => {
+        if (sawPlan) {
+          emit({ error: '', warning: 'Your packing plan is ready, but shopping suggestions couldn’t be loaded.' });
+        } else {
+          emit({ error: getSnapshot().error || detail, warning: '' });
+        }
+      };
       // LangGraph's `stream_mode="updates"` reports a node's completion, not
       // its start — so the real "reasoning" tick only fires once the Sonnet
       // call is already done, which for a multi-second call means the label
@@ -118,13 +129,17 @@ export function createStreamRequestStore(runStream) {
             pacer.push(stage);
           } else if (event === 'plan') {
             pacer.stop();
+            sawPlan = true;
             emit({ plan: payload });
           } else if (event === 'purchases') emit({ purchases: payload.purchase_suggestions });
-          else if (event === 'error') emit({ error: payload.detail || 'Trip planning failed' });
-          else if (event === 'done') emit({ loading: false, done: true });
+          else if (event === 'error') recordFailure(payload.detail || 'Trip planning failed');
+          else if (event === 'done') {
+            sawDone = true;
+            emit({ loading: false, done: true });
+          }
         });
       } catch (e) {
-        emit({ loading: false, error: String(e) });
+        if (!sawDone) recordFailure(String(e));
       } finally {
         pacer.stop();
       }
@@ -134,18 +149,19 @@ export function createStreamRequestStore(runStream) {
       // normally. Without this, `loading` would stay true forever and the
       // `if (getSnapshot().loading) return` guard above would block every
       // retry until a full page reload.
-      if (getSnapshot().loading) {
-        emit({ loading: false, error: getSnapshot().error || 'Connection lost' });
+      if (!sawDone) {
+        recordFailure('Connection lost');
+        emit({ loading: false, done: true });
       }
     },
     // The page takes ownership of plan+purchases (into its own state +
     // localStorage) once `done` fires; clearing them here keeps a later
-    // remount from re-applying a stale generation.
+    // remount from re-applying a stale generation. Notices survive adoption.
     consumePlan() {
       emit({ plan: null, purchases: null, done: false });
     },
     clearError() {
-      emit({ error: '' });
+      emit({ error: '', warning: '' });
     },
   };
 }
