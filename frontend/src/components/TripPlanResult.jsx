@@ -49,6 +49,8 @@ export default function TripPlanResult({
   plan,
   onPlanAnother,
   purchasesPending = false,
+  staleError = '',
+  purchaseWarning = '',
   // #128 draft (unsaved) controls — presence of onSave enables the Save
   // button; presence of onRemoveItem enables the pre-save ✕ on tiles.
   onSave,
@@ -95,146 +97,156 @@ export default function TripPlanResult({
 
   return (
     <div className="trip-result">
-      <WeatherStrip weather={plan.weather} />
-
-      <div className="trip-result__header">
-        <div className="trip-result__title">
-          <h2>{plan.destination}</h2>
-          <p className="muted">
-            {plan.start_date} → {plan.end_date} · {plan.duration_days} day
-            {plan.duration_days === 1 ? '' : 's'}
-          </p>
-        </div>
-        <div className="trip-result__actions">
-          {onSave && (
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saving || purchasesPending}
-              title={purchasesPending ? 'Wait for shopping suggestions to finish loading' : undefined}
-            >
-              {saving ? 'Saving…' : 'Save trip'}
-            </button>
-          )}
-          <Flash flash={saveFlash}>Saved</Flash>
-          {onMarkAllPacked && unpackedLiveItems.length > 0 && (
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => onMarkAllPacked(unpackedLiveItems)}
-            >
-              Mark all as packed
-            </button>
-          )}
-          {onPlanAnother && (
-            <button
-              type="button"
-              className="ghost trip-result__plan-another"
-              onClick={onPlanAnother}
-            >
-              Plan another trip
-            </button>
-          )}
-        </div>
-      </div>
-
-      {plan.reasoning && <p className="trip-result__reasoning">{plan.reasoning}</p>}
-
-      <h3>Packing list</h3>
-      {sortedList.length === 0 && gapOnlyCategories.length === 0 ? (
-        <p className="muted">No items selected from the catalog.</p>
-      ) : (
-        <>
-          {sortedList.map((section) => (
-            <CategorySection
-              key={section.category}
-              category={section.category}
-              items={section.items}
-              gaps={gapsByCategory.get(section.category) || []}
-              onRemoveItem={onRemoveItem}
-              catalogById={catalogById}
-              onTogglePacked={onTogglePacked}
-            />
-          ))}
-          {gapOnlyCategories.map((cat) => (
-            <CategorySection
-              key={cat}
-              category={cat}
-              items={[]}
-              gaps={gapsByCategory.get(cat) || []}
-            />
-          ))}
-        </>
+      {staleError && (
+        <p className="error" role="alert">
+          {staleError} — The new attempt failed. Showing your previous plan for {plan.destination}.
+        </p>
       )}
+      <div className={staleError ? 'trip-result__content--stale' : undefined}>
+        <WeatherStrip weather={plan.weather} />
 
-      {uncategorizedGaps.length > 0 && (
-        <section className="trip-section">
-          <h3>Other gaps</h3>
-          <ul className="trip-gaps">
-            {uncategorizedGaps.map((g, i) => (
-              <li key={i}>
-                <strong>{g.item}</strong>
-                {g.rationale && <span className="muted"> — {g.rationale}</span>}
-              </li>
+        <div className="trip-result__header">
+          <div className="trip-result__title">
+            <h2>{plan.destination}</h2>
+            <p className="muted">
+              {plan.start_date} → {plan.end_date} · {plan.duration_days} day
+              {plan.duration_days === 1 ? '' : 's'}
+            </p>
+          </div>
+          <div className="trip-result__actions">
+            {onSave && (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={saving || purchasesPending}
+                title={purchasesPending ? 'Wait for shopping suggestions to finish loading' : undefined}
+              >
+                {saving ? 'Saving…' : 'Save trip'}
+              </button>
+            )}
+            <Flash flash={saveFlash}>Saved</Flash>
+            {onMarkAllPacked && unpackedLiveItems.length > 0 && (
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => onMarkAllPacked(unpackedLiveItems)}
+              >
+                Mark all as packed
+              </button>
+            )}
+            {onPlanAnother && (
+              <button
+                type="button"
+                className="ghost trip-result__plan-another"
+                onClick={onPlanAnother}
+              >
+                Plan another trip
+              </button>
+            )}
+          </div>
+        </div>
+
+        {plan.reasoning && <p className="trip-result__reasoning">{plan.reasoning}</p>}
+
+        <h3>Packing list</h3>
+        {sortedList.length === 0 && gapOnlyCategories.length === 0 ? (
+          <p className="muted">No items selected from the catalog.</p>
+        ) : (
+          <>
+            {sortedList.map((section) => (
+              <CategorySection
+                key={section.category}
+                category={section.category}
+                items={section.items}
+                gaps={gapsByCategory.get(section.category) || []}
+                onRemoveItem={onRemoveItem}
+                catalogById={catalogById}
+                onTogglePacked={onTogglePacked}
+              />
             ))}
-          </ul>
-        </section>
-      )}
+            {gapOnlyCategories.map((cat) => (
+              <CategorySection
+                key={cat}
+                category={cat}
+                items={[]}
+                gaps={gapsByCategory.get(cat) || []}
+              />
+            ))}
+          </>
+        )}
 
-      {plan.essentials?.length > 0 && (
-        <section className="trip-section">
-          <h3>Don't forget</h3>
-          <ul className="trip-essentials">
-            {plan.essentials.map((e, i) => <li key={i}>{e}</li>)}
-          </ul>
-        </section>
-      )}
+        {uncategorizedGaps.length > 0 && (
+          <section className="trip-section">
+            <h3>Other gaps</h3>
+            <ul className="trip-gaps">
+              {uncategorizedGaps.map((g, i) => (
+                <li key={i}>
+                  <strong>{g.item}</strong>
+                  {g.rationale && <span className="muted"> — {g.rationale}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-      {(purchasesPending || plan.purchase_suggestions?.length > 0) && (
-        <section className="trip-section">
-          <h3>Purchase suggestions</h3>
-          {purchasesPending ? (
-            <p className="muted">Finding shopping suggestions…</p>
-          ) : (
-            plan.purchase_suggestions.map((s, i) => {
-              const gap = normalizeGap(s.gap);
-              return (
-                <div key={i} className="purchase-block">
-                  <div className="purchase-block__header">
-                    <strong>{gap.item}</strong>
-                    {gap.rationale && (
-                      <p className="muted purchase-block__rationale">{gap.rationale}</p>
-                    )}
-                  </div>
-                  <div className="purchase-grid">
-                    {s.results.map((r, j) => (
-                      <a
-                        key={j}
-                        className="purchase-card"
-                        href={r.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {r.image_url && (
-                          <img src={r.image_url} alt={r.title} className="purchase-card__img" />
-                        )}
-                        <div className="purchase-card__body">
-                          <div className="purchase-card__title">{r.title}</div>
-                          <div className="muted purchase-card__meta">
-                            {r.retailer}
-                            {r.retailer && r.price ? ' · ' : ''}
-                            {r.price}
+        {plan.essentials?.length > 0 && (
+          <section className="trip-section">
+            <h3>Don't forget</h3>
+            <ul className="trip-essentials">
+              {plan.essentials.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </section>
+        )}
+
+        {(purchaseWarning || purchasesPending || plan.purchase_suggestions?.length > 0) && (
+          <section className="trip-section">
+            <h3>Purchase suggestions</h3>
+            {purchaseWarning && (
+              <p className="trip-result__purchase-warning" role="status">{purchaseWarning}</p>
+            )}
+            {purchasesPending && !purchaseWarning ? (
+              <p className="muted">Finding shopping suggestions…</p>
+            ) : (
+              (plan.purchase_suggestions ?? []).map((s, i) => {
+                const gap = normalizeGap(s.gap);
+                return (
+                  <div key={i} className="purchase-block">
+                    <div className="purchase-block__header">
+                      <strong>{gap.item}</strong>
+                      {gap.rationale && (
+                        <p className="muted purchase-block__rationale">{gap.rationale}</p>
+                      )}
+                    </div>
+                    <div className="purchase-grid">
+                      {s.results.map((r, j) => (
+                        <a
+                          key={j}
+                          className="purchase-card"
+                          href={r.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {r.image_url && (
+                            <img src={r.image_url} alt={r.title} className="purchase-card__img" />
+                          )}
+                          <div className="purchase-card__body">
+                            <div className="purchase-card__title">{r.title}</div>
+                            <div className="muted purchase-card__meta">
+                              {r.retailer}
+                              {r.retailer && r.price ? ' · ' : ''}
+                              {r.price}
+                            </div>
                           </div>
-                        </div>
-                      </a>
-                    ))}
+                        </a>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </section>
-      )}
+                );
+              })
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }

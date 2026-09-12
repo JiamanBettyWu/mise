@@ -95,7 +95,13 @@ export default function TripPlan() {
   // `plan`/localStorage are only ever replaced by a plan that actually landed.
   const displayPlan = streamingPlan ?? (loading ? null : plan);
   const purchasesPending =
-    !!streamingPlan && !gen.done && (streamingPlan.gaps?.length ?? 0) > 0 && gen.purchases == null;
+    !!streamingPlan && !gen.warning && !gen.done && (streamingPlan.gaps?.length ?? 0) > 0 && gen.purchases == null;
+
+  // Fatal errors only belong to runs that never delivered a plan; this
+  // remains true after consumePlan() clears the stream payload.
+  const staleError = gen.error && !streamingPlan && displayPlan === plan && plan
+    ? gen.error : '';
+  const formError = error || (staleError ? '' : gen.error);
 
   // What Save actually persists — displayPlan with pre-save ✕ removals
   // applied. Kept separate from `plan`/localStorage (see above).
@@ -259,14 +265,7 @@ export default function TripPlan() {
           </button>
         </div>
 
-        {/* Gated on streamingPlan (this generation's plan), not displayPlan
-            (which can be the stale last-good plan reappearing on failure) —
-            otherwise a failed regenerate with an old plan on screen would
-            silently fall back to that old plan with no indication the new
-            attempt failed. Only suppressed when THIS generation's plan
-            actually rendered (e.g. a late purchase-search failure shouldn't
-            read as "everything failed" over a plan that already succeeded). */}
-        {(gen.error || error) && !streamingPlan && <p className="error">{gen.error || error}</p>}
+        {formError && <p className="error">{formError}</p>}
         </form>
       </div>
 
@@ -280,6 +279,8 @@ export default function TripPlan() {
             plan={prunedPlan}
             onPlanAnother={planAnotherTrip}
             purchasesPending={purchasesPending}
+            staleError={staleError}
+            purchaseWarning={gen.warning}
             onSave={handleSave}
             saving={saving}
             saveFlash={saveFlash}
