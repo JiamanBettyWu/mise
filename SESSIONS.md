@@ -11,6 +11,16 @@ non-obvious gotchas see [LEARNINGS.md](LEARNINGS.md).
 
 ---
 
+## 2026-09-12 (trip failures distinguish previous plans from partial shopping results, #168)
+
+Shipped **[#168](https://github.com/JiamanBettyWu/mise/issues/168) → [PR #169](https://github.com/JiamanBettyWu/mise/pull/169)**. A failed trip generation had two misleading outcomes: failure before a `plan` frame restored the last-good plan without marking it as previous, while failure after a `plan` frame could become a top-level error once `consumePlan()` cleared the streamed payload.
+
+The streaming store now classifies failures using whether the current run delivered a plan, independently of payload consumption. Pre-plan failures preserve the previous plan with one full-opacity error directly above content dimmed to the existing 0.55 inactive weight. Post-plan failures keep the new packing plan usable and show a warm-gold warning inside Purchase suggestions. Thrown transport errors and premature closure finalize delivered plans, and retries clear both notices. DESIGN.md records the rule and shared warning vocabulary. TodayOutfit's regenerate/refine paths were inspected and left unchanged; the backend SSE contract needed no change.
+
+**Validation:** 12 dependency-free Node tests passed (`npm test`), frontend production build passed, and the offline backend suite finished with 288 passed / 1 skipped. Chrome checks against local Vite with mocked SSE covered good-plan retention, pre-plan and post-plan failures, successful retry, first-ever failure, and premature closure. Verified notice placement, computed opacity, enabled Save, no stuck shopping message, and no page errors; inspected screenshots of both failure states. No live model calls or production fault injection. PR merge verified on 2026-09-12.
+
+---
+
 ## 2026-09-08 (evening — "Trip planning failed" was a dependency drift, not a code bug: uv.lock everywhere, #165)
 
 Trip planning died in prod right after the #164 merge. Render's log had `TypeError: Messages.create() got an unexpected keyword argument 'temperature'` pointing at `trip_planner.py:307`. **That file hadn't changed, and the shape of the error was the whole diagnosis:** a Python `TypeError` means the request never left the box — a *signature* problem, not an API rejection. A model refusing the value would have been an HTTP 400.
@@ -316,6 +326,7 @@ Two redesign follow-ups shipped back-to-back.
 A compressed index of what shipped, grouped by session (newest first). Full
 narrative for each is in the dated entries above.
 
+- **2026-09-12:** [#168](https://github.com/JiamanBettyWu/mise/issues/168) (pre-plan failures visibly qualify the retained previous plan; post-plan failures become inline shopping warnings, with transport/EOF finalization and retry reset → [PR #169](https://github.com/JiamanBettyWu/mise/pull/169)).
 - **2026-09-08 (evening):** [#165](https://github.com/JiamanBettyWu/mise/issues/165) (dependency drift broke trip planning in prod — Render's unpinned `pip install -r requirements.txt` pulled anthropic 1.x, which removed `temperature` from `messages.create()`; Render + all three Actions jobs moved to `uv sync --frozen --no-dev`, `requirements.txt` deleted, `tests.yml` → `uv sync --locked`, start/run commands → `uv run --no-sync`; review caught that uv picks its own interpreter → `backend/.python-version` = 3.11, un-ignored from `.gitignore`, which **closes [#13](https://github.com/JiamanBettyWu/wardrobe-ai/issues/13)**; `anthropic>=0.39,<1` → [PR #166](https://github.com/JiamanBettyWu/mise/pull/166)).
 - **2026-09-08:** [#163](https://github.com/JiamanBettyWu/mise/issues/163) (`tests/test_sql_rls.py` enforces the #161 convention in CI — pairs every `create table` in `backend/sql/` with an `enable row level security`, directory-wide; second test catches stale RLS statements; review caught the guard's own false pass on quoted/`unlogged` table forms, and every assertion was watched to fail against a probe migration → [PR #164](https://github.com/JiamanBettyWu/mise/pull/164)).
 - **2026-09-08:** [#161](https://github.com/JiamanBettyWu/mise/issues/161) (RLS enabled on the five tables Security Advisor flagged — RLS is per-table and every post-setup migration omitted the line; `backend/sql/2026-09-08_enable_rls.sql`, no policies, service_role's `BYPASSRLS` means no code change; AGENTS.md's "RLS disabled" wording corrected — it was the source of the false memory; same-day migration ordering fixed with an `a`/`b` suffix after the plain rename proved locale-dependent → [PR #162](https://github.com/JiamanBettyWu/mise/pull/162); follow-up filed: [#163](https://github.com/JiamanBettyWu/mise/issues/163) CI test enforcing the RLS line on new table migrations).

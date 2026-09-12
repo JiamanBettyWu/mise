@@ -14,17 +14,10 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**Shipped 2026-09-08 (latest session):**
+**Shipped 2026-09-12 (latest session):**
 
-- **[#161](https://github.com/JiamanBettyWu/mise/issues/161) → PR #162** — RLS
-  enabled (no policies) on the five tables Supabase's Security Advisor flagged.
-- **[#163](https://github.com/JiamanBettyWu/mise/issues/163) → PR #164** —
-  `tests/test_sql_rls.py` gives that convention teeth in CI.
-- **[#165](https://github.com/JiamanBettyWu/mise/issues/165) → PR #166** — trip
-  planning broke in prod: Render's unpinned `pip install` pulled anthropic 1.x,
-  which removed `temperature` from `messages.create()`. Render + all three
-  Actions jobs now install from `uv.lock`, `requirements.txt` is gone, and the
-  interpreter is pinned by `backend/.python-version` — which also **closed #13**.
+- **[#168](https://github.com/JiamanBettyWu/mise/issues/168) → [PR #169](https://github.com/JiamanBettyWu/mise/pull/169)** — failed trip retries label and dim the previous plan;
+  failures after a new plan arrives show only an inline shopping warning.
 
 **Open manual follow-ups:**
 
@@ -87,11 +80,7 @@ live in [AGENTS.md](AGENTS.md), not here.
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
-Other tracked-but-not-urgent: [#168](https://github.com/JiamanBettyWu/mise/issues/168)
-(trip planner shows an error over the *previous* plan with nothing marking it
-stale — same bug class as #157, which fixed it for outfits only; a second,
-reverse case exists where a late failure surfaces an error over a plan that
-actually succeeded), [#167](https://github.com/JiamanBettyWu/mise/issues/167)
+Other tracked-but-not-urgent: [#167](https://github.com/JiamanBettyWu/mise/issues/167)
 (stale-doc sweep — verify *claims* in the living docs, not links; three bugs
 this year traced to a doc that quietly stopped being true, recon in the issue
 body; archives explicitly out of scope), [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
