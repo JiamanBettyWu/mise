@@ -14,10 +14,9 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**Shipped 2026-09-12 (latest session):**
+**Shipped 2026-09-22 (latest session):**
 
-- **[#168](https://github.com/JiamanBettyWu/mise/issues/168) → [PR #169](https://github.com/JiamanBettyWu/mise/pull/169)** — failed trip retries label and dim the previous plan;
-  failures after a new plan arrives show only an inline shopping warning.
+- **[#150](https://github.com/JiamanBettyWu/mise/issues/150) → [PR #170](https://github.com/JiamanBettyWu/mise/pull/170)** — HTTP failures now keep URL-carried credentials out of direct logs and outer tracebacks; offline tests cover SerpAPI, OpenWeatherMap, and the secret calendar feed.
 
 **Open manual follow-ups:**
 
