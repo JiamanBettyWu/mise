@@ -7,10 +7,12 @@ import time
 import httpx
 
 from schemas import PurchaseResult
+from services.http_errors import describe_http_error
 
 logger = logging.getLogger(__name__)
 # #88: the SerpAPI key rides in the request URL's query string, and httpx logs
-# full URLs at INFO — silence its request logger so the key never hits the logs.
+# full URLs at INFO. Silence that request logger; the exception path below is
+# sanitized separately because HTTPStatusError also stringifies the URL.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 SERPAPI_URL = "https://serpapi.com/search"
@@ -46,12 +48,10 @@ def _fetch_search_results(query: str) -> list[dict]:
     except httpx.HTTPError as e:
         # Don't log `e` itself — HTTPStatusError's message embeds the full
         # request URL, api_key query param included (#88's sibling leak).
-        status = getattr(getattr(e, "response", None), "status_code", None)
         logger.error(
-            "SerpAPI search failed for %r: %s (status=%s)",
+            "SerpAPI search failed for %r: %s",
             query,
-            type(e).__name__,
-            status,
+            describe_http_error(e),
         )
         return []
 

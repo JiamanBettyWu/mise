@@ -11,6 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth import require_password
+from services.http_errors import describe_http_error
 
 log = logging.getLogger("wardrobe.geo")
 
@@ -37,7 +38,8 @@ def search(
         )
         resp.raise_for_status()
     except httpx.HTTPError as e:
-        log.warning("OWM geocoding failed for %r: %s", q, e)
+        # HTTPStatusError stringifies the request URL, including `appid`.
+        log.warning("OWM geocoding failed for %r: %s", q, describe_http_error(e))
         raise HTTPException(status_code=502, detail="Geocoding upstream failed")
 
     return [
