@@ -21,6 +21,10 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 **Open manual follow-ups:**
 
+- **After #150's secret-safe logging fix deploys, rotate URL-carried
+  credentials** in every configured location: SerpAPI, OpenWeatherMap, and the
+  Google Calendar secret ICS URL. Deploy first so the replacements cannot be
+  written straight back into logs.
 - **SerpAPI quota exhausted (429)** — re-run the two `mcp_server` demos for real
   products once it resets.
 - **Re-run `diversity_report.py --exclude-default --save`** and diff against the

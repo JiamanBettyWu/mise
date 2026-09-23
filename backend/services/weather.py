@@ -5,14 +5,16 @@ import os
 import time
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import httpx
 
 from schemas import TripWeather, TripWeatherDay
+from services.http_errors import sanitized_http_error
 
 # #88: the OWM key rides in the request URL's query string, and httpx logs full
-# URLs at INFO — silence its request logger so the key never hits the logs.
+# URLs at INFO. Silence that request logger; _owm_get_json separately replaces
+# URL-bearing exceptions before outer handlers can log their tracebacks.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 OWM_URL = "https://api.openweathermap.org/data/2.5/forecast"
@@ -38,6 +40,19 @@ class DestinationNotFound(ValueError):
 _cache: dict[tuple[float, float], tuple[float, TodayWeather]] = {}
 
 
+def _owm_get_json(url: str, params: dict, timeout: float) -> Any:
+    """Fetch OWM JSON without letting a URL-bearing exception escape upward."""
+
+    try:
+        resp = httpx.get(url, params=params, timeout=timeout)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        # Outer request handlers log tracebacks. Suppress the original context
+        # so the `appid` in httpx's request URL cannot appear there.
+        raise sanitized_http_error("OpenWeatherMap", exc) from None
+    return resp.json()
+
+
 def get_today(lat: float | None = None, lon: float | None = None) -> TodayWeather:
     if lat is None or lon is None:
         lat = float(os.environ["WEATHER_LAT"])
@@ -49,13 +64,11 @@ def get_today(lat: float | None = None, lon: float | None = None) -> TodayWeathe
         return cached[1]
 
     api_key = os.environ["OPENWEATHERMAP_API_KEY"]
-    resp = httpx.get(
+    data = _owm_get_json(
         OWM_URL,
-        params={"lat": lat, "lon": lon, "units": "metric", "appid": api_key},
+        {"lat": lat, "lon": lon, "units": "metric", "appid": api_key},
         timeout=10,
     )
-    resp.raise_for_status()
-    data = resp.json()
 
     today_utc_date = datetime.now(timezone.utc).date()
     todays = [e for e in data["list"] if _entry_local_date(e, data) == today_utc_date]
@@ -89,13 +102,11 @@ def _destination_to_coords(destination: str) -> tuple[float, float]:
     """Convert a user-friendly location (e.g. "Paris, France") to lat/lon."""
 
     api_key = os.environ["OPENWEATHERMAP_API_KEY"]
-    resp = httpx.get(
+    data = _owm_get_json(
         OWM_GEO_URL,
-        params={"q": destination, "limit": 1, "appid": api_key},
+        {"q": destination, "limit": 1, "appid": api_key},
         timeout=10,
     )
-    resp.raise_for_status()
-    data = resp.json()
 
     if not data:
         raise DestinationNotFound(f"No location found for {destination!r}")
@@ -127,13 +138,11 @@ def _fetch_forecast(lat: float, lon: float) -> dict:
         return cached[1]
 
     api_key = os.environ["OPENWEATHERMAP_API_KEY"]
-    resp = httpx.get(
+    data = _owm_get_json(
         OWM_URL,
-        params={"lat": lat, "lon": lon, "units": "metric", "appid": api_key},
+        {"lat": lat, "lon": lon, "units": "metric", "appid": api_key},
         timeout=10,
     )
-    resp.raise_for_status()
-    data = resp.json()
     _FORECAST_CACHE[key] = (now, data)
     return data
 

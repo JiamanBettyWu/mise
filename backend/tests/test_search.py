@@ -76,7 +76,26 @@ def test_missing_key_returns_empty(monkeypatch):
     assert search_products("rain jacket") == []
 
 
-def test_http_error_returns_empty(monkeypatch):
+def test_http_error_returns_empty_without_logging_api_key(monkeypatch, caplog):
+    api_key = "super-secret-serpapi-key"
+    monkeypatch.setenv("SERPAPI_API_KEY", api_key)
+
+    def _boom(*args, **kwargs):
+        return httpx.Response(
+            429,
+            request=httpx.Request(
+                "GET", f"https://serpapi.com/search?api_key={api_key}&q=rain+jacket"
+            ),
+        )
+
+    monkeypatch.setattr(search.httpx, "get", _boom)
+
+    assert search_products("rain jacket") == []
+    assert "HTTPStatusError (status=429)" in caplog.text
+    assert api_key not in caplog.text
+
+
+def test_network_error_returns_empty(monkeypatch):
     monkeypatch.setenv("SERPAPI_API_KEY", "dummy")
 
     def _boom(*args, **kwargs):

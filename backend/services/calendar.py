@@ -26,6 +26,7 @@ import recurring_ical_events
 from icalendar import Calendar
 
 from services.claude import classify_modes
+from services.http_errors import sanitized_http_error
 
 log = logging.getLogger("wardrobe.calendar")
 
@@ -95,8 +96,13 @@ def calendar_modes(
 
 def todays_events(ics_url: str, tz: tzinfo, now: datetime | None = None) -> list[dict]:
     """Fetch the ICS feed and return today's events as [{"title", "time"}]."""
-    resp = httpx.get(ics_url, follow_redirects=True, timeout=30)
-    resp.raise_for_status()
+    try:
+        resp = httpx.get(ics_url, follow_redirects=True, timeout=30)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        # CALENDAR_ICS_URL is itself a credential. The caller logs tracebacks,
+        # so do not let httpx's URL-bearing exception escape this boundary.
+        raise sanitized_http_error("Calendar", exc) from None
     return _events_from_ics(resp.content, tz, now=now)
 
 
