@@ -116,10 +116,14 @@ the dashboard (see AGENTS.md → Deploy surface).
    - `ANTHROPIC_API_KEY`
    - `APP_PASSWORD` (your chosen password)
    - `ALLOWED_ORIGINS` — for now: `http://localhost:5173` (we'll add the Vercel URL after step 5)
-4. Other vars (`OPENWEATHERMAP_API_KEY` + `WEATHER_LAT`/`WEATHER_LON`, the
-   Gmail trio, `SERPAPI_API_KEY`, `FEEDBACK_SECRET`) can be filled in as you
-   enable those features — the backend boots without them (each one is read
-   when its feature runs, not at startup).
+4. Other vars (`OPENWEATHERMAP_API_KEY` + `WEATHER_LAT`/`WEATHER_LON`,
+   `SERPAPI_API_KEY`, `FEEDBACK_SECRET`) can be filled in as you enable those
+   features — the backend boots without them (each one is read when its
+   feature runs, not at startup). Without `SERPAPI_API_KEY`, trip plans still
+   render but every purchase suggestion comes back empty.
+   **Don't** put the Gmail vars (`GMAIL_SENDER`, `GMAIL_APP_PASSWORD`,
+   `EMAIL_RECIPIENT`) on Render: nothing there sends mail. Only the daily job
+   does, on GitHub Actions (step 8).
    `FEEDBACK_SECRET` must match the value in GitHub Actions (see step 8).
 5. Note the service URL once the first deploy finishes: `https://<service-name>.onrender.com`.
 6. Test: `curl https://<your-render-url>/health` → should return `{"ok": true, "supabase": true, ...}`.

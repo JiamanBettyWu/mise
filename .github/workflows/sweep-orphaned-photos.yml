@@ -17,10 +17,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v5
+        # No `python-version:` input: it would set UV_PYTHON and override
+        # backend/.python-version (see tests.yml). uv reads the file instead.
         with:
-          # Match backend/.python-version (3.11) — same reason as tests.yml
-          # (PEP 649 lazy annotations hide NameErrors, #13).
-          python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 

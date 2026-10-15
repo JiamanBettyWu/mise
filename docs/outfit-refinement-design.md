@@ -44,6 +44,7 @@ State (TypedDict), keyed by `thread_id = history_id`:
 - `current_items` (item_ids) + `reasoning` — the outfit being refined
   *(shipped: `current_item_ids`; `mode` is the row's mode name)*
 - `candidate_pool` — assembled once on the first turn, reused on later ones
+  *(shipped: until a regenerate turn empties it — see `regenerate` below)*
 - `turns` — the user's refinement messages so far (for prompt context)
 - *(shipped, also: `notes` from the row, the turn's `user_message`, and the
   classifier's `route`)*
@@ -51,7 +52,8 @@ State (TypedDict), keyed by `thread_id = history_id`:
 Nodes:
 
 - **`load_context`** — first turn only (checkpointer makes later turns skip
-  the work: pool already in state). Rebuilds context from the history row:
+  the work: pool already in state). *(shipped: it runs whenever the pool is
+  empty — the first turn, and the turn after any regenerate.)* Rebuilds context from the history row:
   re-runs weather + gate + sampling, then **force-includes the row's current
   `item_ids` in the pool** so the outfit under refinement is always
   addressable. Decision: rebuild rather than persist the original pool at
@@ -71,7 +73,10 @@ Nodes:
   👎-attributed or recently-repeated combination.
 - **`regenerate`** — re-runs the full pipeline for this one mode with the
   accumulated turn messages appended as `notes` (the #135 seam), then
-  refreshes `candidate_pool` in state.
+  refreshes `candidate_pool` in state. *(shipped: it resets `candidate_pool`
+  to empty instead, so the next turn's `load_context` re-samples against the
+  new premise. A refine → regenerate → refine conversation therefore samples
+  twice, and turn 3 can't reuse turn 1's cached pool prefix.)*
 - **`persist`** — updates the **existing** `outfit_history` row in place:
   `item_ids` ← the new set, and **clears any existing verdict** (the verdict
   was about the old items — same answer as #144's open question). This

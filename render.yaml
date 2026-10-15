@@ -41,13 +41,12 @@ services:
         sync: false
       - key: WEATHER_LON
         sync: false
-      # Phase 4
-      - key: GMAIL_SENDER
+      # Trip purchase search (services/search.py). Unset = every gap
+      # renders with results=[] — the plan still works, silently shopless.
+      - key: SERPAPI_API_KEY
         sync: false
-      - key: GMAIL_APP_PASSWORD
-        sync: false
-      - key: EMAIL_RECIPIENT
-        sync: false
+      # No GMAIL_* / EMAIL_RECIPIENT here: only jobs/daily_outfit.py sends
+      # mail, and it runs on GitHub Actions. They belong in Actions secrets.
       # Feedback links (#39) — must equal the GitHub Actions FEEDBACK_SECRET.
       - key: FEEDBACK_SECRET
         sync: false

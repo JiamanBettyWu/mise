@@ -124,9 +124,11 @@ uv --project backend run python backend/evals/eval_trip.py
 
 Cheap was a constraint: this is a single-user personal app whose running cost
 is almost entirely model usage — by estimate **on the order of $1–2 a month**.
-The app meters every model call in its own `llm_usage` ledger (Profile → *Your
-stats* shows an estimated cost), but that estimate hasn't been re-checked
-against this README's figure.
+The app meters its model calls in its own `llm_usage` ledger (Profile → *Your
+stats* shows an estimated cost) — every call the web app and the crons make,
+but not one-off scripts (the warmth backfill, the bbox experiment) or the
+MCP learning-track demos. That estimate hasn't been re-checked against this
+README's figure.
 
 - **Backend** → Render (auto-deploy from `main`). The service is configured in
   the Render dashboard; [render.yaml](render.yaml) is documentation of those
