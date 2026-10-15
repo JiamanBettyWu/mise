@@ -18,6 +18,12 @@ weekly inference job, #62. #63 also shipped: 3 candidates per mode + a
 deterministic filter that hard-blocks combination-attributed 👎 combos —
 the enforcement layer the D2 addendum routes that signal to. **#62 shipped:
 the weekly preference-inference job — D8 below.**)
+**Last checked against the code:** 2026-10-15 ([#167](https://github.com/JiamanBettyWu/mise/issues/167)).
+This is a decision record, so the issue map, the "Order" line and the
+pre-implementation phrasing in D1–D7 are kept as written on purpose. Where a
+claim stopped being true it is now marked inline with *(now: …)* rather than
+rewritten. The constants, thresholds and mechanisms cited were re-verified.
+For the current mechanics, read [recommendation-algorithm.md](recommendation-algorithm.md).
 
 Decision record from the scoping session for recommendation-quality work:
 thumbs up/down feedback, an inferred warmth attribute, and how both (plus a
@@ -80,7 +86,9 @@ Mechanics that matter:
   job needs `BACKEND_PUBLIC_URL` to build links. Forgetting one of the three
   is the classic silent failure.
 - `recommend()` must return `outfit_history` row ids (today `log_outfits()`
-  returns nothing) — prerequisite shared with the web UI.
+  returns nothing) — prerequisite shared with the web UI. *(now: done in #39 —
+  `log_outfits()` returns the inserted row ids and each outfit carries its
+  `history_id`.)*
 - Endpoint sits **outside** `require_password`; the token is the auth.
   Idempotent — re-clicking overwrites, so you can change your mind.
 - Known impurity: a GET that mutates state. Corporate scanners (Outlook
@@ -138,7 +146,8 @@ outfits injected into the outfit prompt's user message) **and #63 the
 enforcement version** (combination-attributed 👎s become a deterministic
 candidate blocklist; statistical pair estimation still out of scope); joint estimation
 (regression of verdicts on item indicators — months of data before it beats
-smoothed counting; revisit after the eval harness, #30); feedback time-decay
+smoothed counting; revisit after the eval harness, #30 *(now: the
+recommender's eval harness is #118's `eval_recommend.py`)*); feedback time-decay
 (taste is slow-moving; a ~90-day half-life drops in later without schema
 changes if old verdicts feel stale).
 
@@ -169,7 +178,8 @@ Three jobs:
 
 0.6/1.4 are educated defaults with the same epistemic status as
 `DAILY_DECAY = 0.85` — named constants in `outfit_history.py`, tunable on
-evidence once the eval harness (#30) exists. Backstop: `SAMPLE_FRACTION =
+evidence once the eval harness (#30) exists. *(now: it exists — #118's
+`eval_recommend.py` — and the values haven't been retuned yet.)* Backstop: `SAMPLE_FRACTION =
 0.7` keeps 70% of the wardrobe daily, so even floor-weight items appear
 regularly.
 
@@ -228,7 +238,8 @@ include shoes" with only sporty options in view, and complied.
 **`type` is already the category vocabulary — no inference needed.** The
 tagging prompt constrains `type` to a closed list of 22 values
 (`claude.py`); category is a static code-level mapping (footwear = shoes /
-boots / sneakers / sandals, etc.), a constant dict in `outfit_history.py`.
+boots / sneakers / sandals, etc.), a constant dict — *(now: `TYPE_CATEGORIES`
+in `services/categories.py`, shared with structural validation.)*
 No schema change, no backfill — issue C stays warmth-only.
 
 Three compounding mechanisms, three fixes:
@@ -330,7 +341,10 @@ then delete exactly the prior ids captured in `fetch_node`. A mid-run crash
 then leaves a stale-but-present (or briefly duplicated, self-healing next week)
 set — never empty. That leaves the one genuine wipe — call succeeded, model
 returned `[]` — as correct re-derivation, logged loudly because nonempty→empty
-on *more* data is a red flag, not routine.
+on *more* data is a red flag, not routine. *(now: "logged" means a
+`log.warning` in the Actions run log only. The heartbeat below still stamps
+fresh on that run, so the Profile UI can't tell a healthy run from one that
+wiped everything — open as #149.)*
 
 **Heartbeat, not failure log.** The job stamps `profile.preferences_reviewed_at
 = now()` as the last action of a *successful* run (`run()` reaches that line

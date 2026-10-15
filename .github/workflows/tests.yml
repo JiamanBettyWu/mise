@@ -13,12 +13,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v5
+        # No `python-version:` input on purpose. That input sets UV_PYTHON,
+        # which OVERRIDES backend/.python-version — it would make this a
+        # second, independent pin. Without it, `uv sync` reads the file, so
+        # CI, the crons, Render and local all follow the one pin (#13, #167).
         with:
-          # Pin to Render's Python, NOT the local 3.14 — PEP 649 lazy
-          # annotations on 3.14 silently hide NameErrors that bite on Render
-          # at import time (the PR #12 class-order bug, tracked in #13).
-          # Running CI on 3.11 makes this workflow the guard for those.
-          python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 

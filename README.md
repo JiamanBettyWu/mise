@@ -40,9 +40,9 @@ what lets it lean on randomness and learning instead of chasing correctness.
 > instance, but you can't "join" a hosted one. Multi-user support is on the
 > long-term roadmap.
 
-## Three AIs, one principle
+## Four AIs, one principle
 
-"The AI" turned out to be three systems, because the three jobs have different
+"The AI" turned out to be four systems, because the four jobs have different
 shapes:
 
 1. **The daily recommender** — deliberately the least fancy: straight-line
@@ -53,6 +53,10 @@ shapes:
 3. **The style learner** — a second LangGraph doing the opposite job: not
    generating, but distilling feedback into preferences, with guardrails
    because a system that rewrites its own behavior can go quietly wrong.
+4. **The outfit refiner** — a third LangGraph, behind the "Want to change
+   something?" box under each outfit. It keeps a short conversation per outfit
+   ("swap the shoes", "actually I'm biking today") so a near-miss gets edited
+   instead of regenerated from scratch.
 
 They share one design principle:
 
@@ -65,7 +69,7 @@ recommended on a hot day one time in twenty is the worst kind of bug:
 unreproducible. Mixing the two up gives you either that, or an app so rigid it
 suggests the same safe outfit forever.
 
-The full architecture (the three pipelines, auth, image handling, deploy
+The full architecture (the four pipelines, auth, image handling, deploy
 surface) is documented in **[AGENTS.md](AGENTS.md)** — start there if you're
 working on the code.
 
@@ -118,11 +122,17 @@ uv --project backend run python backend/evals/eval_trip.py
 
 ## Deployment
 
-Cheap was a constraint: this is a single-user personal app that costs **$1–2 a
-month** to run, almost entirely model usage (metered by the app itself in a
-small ledger table).
+Cheap was a constraint: this is a single-user personal app whose running cost
+is almost entirely model usage — by estimate **on the order of $1–2 a month**.
+The app meters its model calls in its own `llm_usage` ledger (Profile → *Your
+stats* shows an estimated cost) — every call the web app and the crons make,
+but not one-off scripts (the warmth backfill, the bbox experiment) or the
+MCP learning-track demos. That estimate hasn't been re-checked against this
+README's figure.
 
-- **Backend** → Render (auto-deploy from `main`; config in [render.yaml](render.yaml)).
+- **Backend** → Render (auto-deploy from `main`). The service is configured in
+  the Render dashboard; [render.yaml](render.yaml) is documentation of those
+  settings that Render does *not* read — see AGENTS.md → Deploy surface.
 - **Frontend** → Vercel (auto-deploy from `main`, root = `frontend/`; config in
   [frontend/vercel.json](frontend/vercel.json)).
 - **Daily outfit email** → **GitHub Actions** cron
@@ -131,6 +141,8 @@ small ledger table).
   only use for tests makes a fine free scheduler. See [docs/daily-email.md](docs/daily-email.md).
 - **Weekly preference inference** → GitHub Actions cron
   ([.github/workflows/infer-preferences.yml](.github/workflows/infer-preferences.yml)).
+- **Nightly orphaned-photo sweep** → GitHub Actions cron
+  ([.github/workflows/sweep-orphaned-photos.yml](.github/workflows/sweep-orphaned-photos.yml)).
 
 First-time setup and the env-var checklist live in [docs/deploy.md](docs/deploy.md).
 
@@ -144,7 +156,7 @@ backend/    FastAPI app + services
   mcp_server/ MCP shopping server (learning track; off the production path)
   tests/      offline pytest suite
 frontend/   React + Vite UI
-jobs/       standalone scripts (daily email, weekly inference, backfills)
+jobs/       standalone scripts (daily email, weekly inference, photo sweep, backfills, trace runs)
 docs/       setup notes + design records
   history/    superseded planning docs, kept for the record
 ```
@@ -155,6 +167,8 @@ docs/       setup notes + design records
 - **[DESIGN.md](DESIGN.md)** — frontend design system (read before any UI change).
 - **[docs/recommendation-algorithm.md](docs/recommendation-algorithm.md)** — how the daily recommender works.
 - **[docs/feedback-loop-design.md](docs/feedback-loop-design.md)** — why the feedback loop is built the way it is.
+- **[docs/outfit-refinement-design.md](docs/outfit-refinement-design.md)** — how multi-turn outfit refinement works.
+- **[docs/deploy.md](docs/deploy.md)** / **[docs/daily-email.md](docs/daily-email.md)** — first-time setup.
 - **[LEARNINGS.md](LEARNINGS.md)** — running log of non-obvious gotchas.
 - **[TODO.md](TODO.md)** — concise "what's next" (GitHub Issues are the real tracker).
 - **[SESSIONS.md](SESSIONS.md)** — dated journal of what got done each session.

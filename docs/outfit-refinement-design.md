@@ -1,7 +1,13 @@
 # Multi-turn outfit refinement — design (#145)
 
-Scoped 2026-07-17. Sibling: #144 (email one-tap refine links) — same feature,
-two front doors; #145 ships first and #144 reuses its persistence helper.
+Scoped 2026-07-17; shipped in #145, then streaming in #154. Sibling: #144
+(email one-tap refine links, still open) — same feature, two front doors; #144
+reuses #145's persistence helper.
+
+**Last checked against the code:** 2026-10-15 ([#167](https://github.com/JiamanBettyWu/mise/issues/167)).
+Graph shape, guards, metering names and the persist semantics match
+`services/outfit_refine.py`. Where the shipped version differs from this plan,
+it's marked inline with *(shipped: …)*.
 
 ## Problem
 
@@ -36,13 +42,18 @@ State (TypedDict), keyed by `thread_id = history_id`:
 
 - `history_id`, `mode` (label + description), `weather`
 - `current_items` (item_ids) + `reasoning` — the outfit being refined
+  *(shipped: `current_item_ids`; `mode` is the row's mode name)*
 - `candidate_pool` — assembled once on the first turn, reused on later ones
+  *(shipped: until a regenerate turn empties it — see `regenerate` below)*
 - `turns` — the user's refinement messages so far (for prompt context)
+- *(shipped, also: `notes` from the row, the turn's `user_message`, and the
+  classifier's `route`)*
 
 Nodes:
 
 - **`load_context`** — first turn only (checkpointer makes later turns skip
-  the work: pool already in state). Rebuilds context from the history row:
+  the work: pool already in state). *(shipped: it runs whenever the pool is
+  empty — the first turn, and the turn after any regenerate.)* Rebuilds context from the history row:
   re-runs weather + gate + sampling, then **force-includes the row's current
   `item_ids` in the pool** so the outfit under refinement is always
   addressable. Decision: rebuild rather than persist the original pool at
@@ -62,7 +73,10 @@ Nodes:
   👎-attributed or recently-repeated combination.
 - **`regenerate`** — re-runs the full pipeline for this one mode with the
   accumulated turn messages appended as `notes` (the #135 seam), then
-  refreshes `candidate_pool` in state.
+  refreshes `candidate_pool` in state. *(shipped: it resets `candidate_pool`
+  to empty instead, so the next turn's `load_context` re-samples against the
+  new premise. A refine → regenerate → refine conversation therefore samples
+  twice, and turn 3 can't reuse turn 1's cached pool prefix.)*
 - **`persist`** — updates the **existing** `outfit_history` row in place:
   `item_ids` ← the new set, and **clears any existing verdict** (the verdict
   was about the old items — same answer as #144's open question). This
@@ -95,13 +109,15 @@ saver's memory if threads ever accumulate).
 
 `POST /outfits/{history_id}/refine  {"message": "..."}` → same response shape
 as one hydrated outfit from `recommend()` (items + reasoning + history_id),
-plus the route taken (`refined` | `regenerated`) for the UI.
+plus the route taken for the UI *(shipped: `route` is `refine` | `regenerate`)*.
 
 - `history_id` doubles as the LangGraph `thread_id` — no session plumbing.
 - **Scope guard, server-side:** 404/409 unless the row's date is today.
   Refinement is for today's generated outfits only, never historical ones.
 - Blocking JSON for v1 — a single-mode refine is one Sonnet call, not a
-  pipeline; no SSE.
+  pipeline; no SSE. *(shipped later: #154 added `POST
+  /outfits/{history_id}/refine/stream`, which the web UI now calls; the
+  blocking route remains alongside it.)*
 
 ## Metering
 
@@ -112,7 +128,9 @@ calls keep their existing `call_type` since they run the normal pipeline.
 ## Frontend
 
 Per-outfit-card "Refine" affordance on TodayOutfit opening a small chat input
-under that card — refinement is per mode/row, not global. Each turn swaps that
+under that card — refinement is per mode/row, not global. *(shipped: an
+always-visible inline composer, not a collapsed affordance — see DESIGN.md's
+2026-07-17 entries.)* Each turn swaps that
 card's items in place; existing thumbs UI keeps working against the same
 `history_id` (and reflects the verdict reset). Design-system details per
 DESIGN.md at implementation time.
@@ -122,5 +140,5 @@ DESIGN.md at implementation time.
 - Persistent (DB-backed) checkpointing.
 - Refining historical days.
 - Keeping the refinement trail.
-- SSE/streaming.
+- SSE/streaming. *(shipped in #154.)*
 - #144's email links — separate PR on top of the shared persist helper.

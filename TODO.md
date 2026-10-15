@@ -1,7 +1,7 @@
 # TODO
 
-The concise "what's next" for mise. **GitHub Issues** + the
-**[Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/issues)** are the
+The concise "what's next" for mise. **[GitHub Issues](https://github.com/JiamanBettyWu/mise/issues)** + the
+**Projects board** are the
 source of truth for tracked work; this file is the forward-looking scratchpad.
 
 - **Session history** (what got done, when) lives in **[SESSIONS.md](SESSIONS.md)**.
@@ -79,28 +79,28 @@ live in [AGENTS.md](AGENTS.md), not here.
 8. **Spot-check inferred warmth values in the catalog UI** — open a handful of
    items and correct any rating that looks off (corrections stick; backfill never
    overwrites non-null). The prompt reasons over these numbers daily (#18).
-9. **[#4](https://github.com/JiamanBettyWu/wardrobe-ai/issues/4)** — tune trip
+9. **[#4](https://github.com/JiamanBettyWu/mise/issues/4)** — tune trip
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
 Other tracked-but-not-urgent: [#167](https://github.com/JiamanBettyWu/mise/issues/167)
 (stale-doc sweep — verify *claims* in the living docs, not links; three bugs
 this year traced to a doc that quietly stopped being true, recon in the issue
-body; archives explicitly out of scope), [#1](https://github.com/JiamanBettyWu/wardrobe-ai/issues/1)
-(catalog by categories), [#136](https://github.com/JiamanBettyWu/wardrobe-ai/issues/136) (cross-family
+body; archives explicitly out of scope), [#1](https://github.com/JiamanBettyWu/mise/issues/1)
+(catalog by categories), [#136](https://github.com/JiamanBettyWu/mise/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
-[#111](https://github.com/JiamanBettyWu/wardrobe-ai/issues/111) (LangGraph rep:
+[#111](https://github.com/JiamanBettyWu/mise/issues/111) (LangGraph rep:
 `Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
 spans, not perf),
-[#144](https://github.com/JiamanBettyWu/wardrobe-ai/issues/144) (email
+[#144](https://github.com/JiamanBettyWu/mise/issues/144) (email
 one-tap refine links — small PR now: reuses #145's
 `update_outfit_items` helper, or canned messages into the refine endpoint),
 [#155](https://github.com/JiamanBettyWu/mise/issues/155)
 (per-turn outfit snapshots in the refine state so "go back to the original
 shoes" works — deferred until a real undo moment),
-[#146](https://github.com/JiamanBettyWu/wardrobe-ai/issues/146) (Insights
+[#146](https://github.com/JiamanBettyWu/mise/issues/146) (Insights
 dashboard: drift trends + usage, multi-user-ready). See the
-[Projects board](https://github.com/JiamanBettyWu/wardrobe-ai/issues) for status.
+[issue list](https://github.com/JiamanBettyWu/mise/issues) for status.
 
 ---
 
@@ -119,7 +119,7 @@ firm up.
   of a local `TypeError`. There's a `/claude-api upgrade` guide for the rest
   of the 1.x breaking changes. File as an issue if pursued.
 - **Option A multi-photo upload** (select N photos, one item per photo) — sibling
-  of [#24](https://github.com/JiamanBettyWu/wardrobe-ai/issues/24)'s B-lite path.
+  of [#24](https://github.com/JiamanBettyWu/mise/issues/24)'s B-lite path.
   File separately if pursued.
 - V2 ideas (deferred from trip planner spec): day-by-day outfits,
   multi-destination.

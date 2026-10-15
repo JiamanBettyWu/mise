@@ -1,12 +1,16 @@
 # Phase 4 — daily email setup
 
+**Last checked against the repo:** 2026-10-15 ([#167](https://github.com/JiamanBettyWu/mise/issues/167)) —
+secret names, cron lines and log output verified against the workflows and
+`jobs/daily_outfit.py`; the Google/GitHub settings click-paths were not re-walked.
+
 ## 1. Get a Gmail App Password
 
 A regular Gmail password won't work for SMTP. You need a one-off "app password".
 
 1. Google Account → **Security** → enable **2-Step Verification** if not already on.
 2. Visit [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
-3. Create one named "Wardrobe AI". Copy the 16-character password.
+3. Create one (any name, e.g. "mise"). Copy the 16-character password.
 
 ## 2. Add GitHub repo secrets
 
@@ -38,8 +42,12 @@ here in Actions). The job *signs* tokens on the Actions runner; Render only
 
 Go to your GitHub repo → **Actions** tab → **Daily outfit email** workflow → **Run workflow** (top right).
 
-- Leave "Force" checked → it bypasses the time check and sends immediately.
-- Watch the run; the final step should print `[done] sent 3 outfits to ...`.
+- The workflow takes no inputs — a manual run sends the email immediately
+  (there is no time check to bypass).
+- Watch the run; the final step should print `[run] modes: …` and then
+  `[done] sent N outfits to ...` — one per mode: 3 with `CALENDAR_ICS_URL`
+  unset; with it set, the day's calendar decides (Smart casual only on an
+  empty day).
 - Check your inbox.
 
 ## 4. Wait for the scheduled run
@@ -60,4 +68,5 @@ Once manual works, the schedule kicks in automatically:
   [.github/workflows/daily-outfit.yml](../.github/workflows/daily-outfit.yml)
   (remember it's UTC, and pad early for the delay).
 - If the email lands in spam: open it, "Mark as not spam", and Gmail will trust the sender for future messages (since you're sending to yourself, this should stick fast).
+- The **nightly orphaned-photo sweep** ([.github/workflows/sweep-orphaned-photos.yml](../.github/workflows/sweep-orphaned-photos.yml), `40 5 * * *` UTC) needs only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the table above.
 - A second cron, **Weekly preference inference** ([.github/workflows/infer-preferences.yml](../.github/workflows/infer-preferences.yml), #62), runs Sunday nights and needs **no new secrets** — it reuses `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ANTHROPIC_API_KEY` from the table above. Trigger it the same way (Actions tab → Run workflow) to test.

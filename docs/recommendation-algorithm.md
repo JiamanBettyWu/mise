@@ -1,6 +1,10 @@
 # The daily outfit recommendation algorithm
 
-**As of 2026-06-12** (post #59 — recent thumbed outfits as prompt context —
+**Last checked against the code: 2026-10-15** ([#167](https://github.com/JiamanBettyWu/mise/issues/167)) —
+every constant, file/function name and endpoint below was re-verified, and the
+later additions are folded in: the recent-picks block (#135), new-item block
+(#159), `config` cohort stamping (#143) and the streaming twin (#154). The
+original framing, kept for provenance: **as of 2026-06-12** (post #59 — recent thumbed outfits as prompt context —
 post #60 — optional 👎 attribution de-noises the multiplier and the
 avoid-list, and `outfit_history` records weather + notes at recommendation
 time — and post #63 — the model proposes 3 candidates per mode and a
@@ -17,8 +21,10 @@ code wins: [`services/recommend.py`](../backend/services/recommend.py) is the
 entry point, [`services/outfit_history.py`](../backend/services/outfit_history.py)
 is where almost all the math lives.
 
-Used by `POST /outfits/recommend` (web) and `jobs/daily_outfit.py` (the morning
-email, GitHub Actions cron). Same code path; the job passes named modes
+Used by `POST /outfits/recommend` and its SSE twin `POST /outfits/recommend/stream`
+(the one the web Generate button calls — same `recommend()`, plus an `on_stage`
+progress callback) and `jobs/daily_outfit.py` (the morning email, GitHub
+Actions cron). Same code path; the job passes named modes
 (Smart casual / Athleisure / Elevated), the web UI passes none.
 
 Two profile inputs (#61) feed the pipeline before any stage runs: when no
@@ -100,7 +106,7 @@ Why footwear-only on the cold side: a warmth-1 tee on a 3°C day is the base
 layer under the sweater — item-level weather scoring is *anti-correlated*
 with usefulness for layering pieces. Footwear is the one category that can't
 layer. Items with `warmth NULL` (bags, belts) are never gated. Drops are
-logged by name. In SF this gate is a no-op almost every day — the prompt's
+logged by name. In a mild climate this gate is a no-op almost every day — the prompt's
 warmth guidance (Stage 5) is the part doing daily work.
 
 ## Stage 2 — Recency score (the anti-repetition force)
@@ -254,8 +260,9 @@ beats a repeat); all candidates blocked or repeats → serve a repeat (annoying
 but wearable beats an empty slot); *every* candidate a 👎-blocked combo →
 the entry becomes a mode skip (serving a known-bad combo would defeat the
 filter). An **LLM reranker is deliberately absent**: it would grade homework
-it just wrote, at 2× cost inside the cron path — deferred until #30 can
-measure it.
+it just wrote, at 2× cost inside the cron path — deferred until it can be
+measured (the recommender eval, `backend/evals/eval_recommend.py` from #118,
+now exists to do that; no one has run that comparison yet).
 
 Prompt rules that interact with the sampler:
 
@@ -296,6 +303,14 @@ Prompt rules that interact with the sampler:
   `specific_items` ones name just the culprits, and `combination` /
   `occasion` ones carry a reason tag plus any free-text note — a
   high-confidence avoid entry instead of a guess.
+- **Recently picked items** (#135): the user message carries a "Recently
+  recommended items (prefer pieces NOT on this list)" list — every distinct
+  item recommended in the last `HISTORY_WINDOW_DAYS = 7`, across all modes,
+  with how many days ago (`recent_picks` in `outfit_history.py`, rendered by
+  `_recent_picks_block`). The choice-level anti-repetition signal: the sampler
+  downweights recent items but rarely removes them, and the exact-set dedup
+  (#17) can't see two similar favorites alternating across different
+  assemblies — only the prompt reaches *which pool item the model picks*.
 - **Recently added items** (#159): the user message also carries a
   "Recently added to the wardrobe" list — pool items whose `created_at` is
   within `NEW_ITEM_WINDOW_DAYS = 14` (`recent_additions` in
@@ -341,8 +356,16 @@ taste only wins through accumulation. The first real verdicts (2026-06-10,
 
 ## Constants (and their epistemic status)
 
-All in `outfit_history.py` next to each other; all are **educated defaults**,
-tunable on evidence once an eval harness (#30) exists.
+All in `outfit_history.py` next to each other (except where noted); all are
+**educated defaults**. The tooling to tune them on evidence now exists — the
+offline recommender eval (`eval_recommend.py`, #118) and the live diversity
+report (`diversity_report.py`, #118) — but every value in the table still
+is the by-inspection value it shipped with.
+Every persisted row's `config` cohort label (`recommend.RECOMMEND_CONFIG`,
+#143) records four of these — `DAILY_DECAY`, `SAMPLE_FRACTION`,
+`SMALL_CATEGORY_MAX`, `NEW_ITEM_WINDOW_DAYS` — plus the prompt sha and model,
+so retuning one of those shows up as a new cohort in the diversity report.
+The rest aren't stamped; add them to `RECOMMEND_CONFIG` before tuning them.
 
 | Constant | Value | Meaning |
 |---|---|---|
@@ -354,6 +377,8 @@ tunable on evidence once an eval harness (#30) exists.
 | `CATEGORY_FLOORS` | 3/3/2/1 | tops / bottoms+dresses / footwear / outerwear |
 | `NEW_ITEM_WINDOW_DAYS` | 14 | how long a newly added item is named in the prompt (#159) |
 | `HOT_GATE_LOW_C` / `COLD_GATE_HIGH_C` | 25 / −5 | (weather_gate.py) extremes thresholds |
+| `CANDIDATES_PER_OUTFIT` | 3 | (claude.py) candidates the model proposes per mode (#63) |
+| `MAX_REPAIR_ATTEMPTS` | 2 | (claude.py) targeted structural-repair calls before `drop_extras` (#46) |
 
 Backstop interaction worth remembering: `SAMPLE_FRACTION = 0.7` keeps 70% of
 the wardrobe daily, so even floor-weight (0.6×) items appear regularly
@@ -378,10 +403,10 @@ Decided against *for now*, with the trigger that would revisit each:
   near-misses actually show up in practice.
 - **LLM reranking of candidates** — no information advantage over the
   generator (same context), 2× cost, new failure point in the cron path;
-  revisit only when #30 can measure whether it improves picks.
+  revisit only with an `eval_recommend.py` run showing it improves picks.
 - **Joint estimation** (regression of verdicts on item indicators, instead of
   smoothed counting) — needs months of verdicts before it beats the smoothed
-  counts; revisit after the eval harness (#30).
+  counts; the eval harness to judge that exists now (#118).
 - **Feedback time-decay** (~90-day half-life) — taste is slow-moving; drops
   in later without schema changes if old verdicts feel stale.
 - **Soft weather-fit multiplier** — deliberately *deleted*, not deferred (see
@@ -391,7 +416,8 @@ Decided against *for now*, with the trigger that would revisit each:
   suppressed base layer is unrecoverable downstream).
 - **Rain-appropriate floor** — needs a rain attribute on items first.
 - **Constant tuning** — every number above is by-inspection; the principled
-  path is #30 (eval harness) → measure → tune.
+  path is measure (`eval_recommend.py --trials 3`, `diversity_report.py`) →
+  tune → compare cohorts.
 - **Mode-relevant scarcity** — floors and the #44 exemption see *category*
   scarcity, not *mode* scarcity (they can't know only 1 of 5 footwear suits
   Elevated). #43's slot omission is the current coverage for that gap.
@@ -403,7 +429,8 @@ Decided against *for now*, with the trigger that would revisit each:
 | Pipeline orchestration | `backend/services/recommend.py` | (e2e via `RUN_E2E=1`) |
 | Sampling: recency, feedback, draw, floors | `backend/services/outfit_history.py` | `tests/test_sampling.py` |
 | Recent-feedback prompt context (#59) | `outfit_history.py` (fetch/shape) + `claude.py` (render) | `tests/test_feedback_context.py` |
-| New-item prompt context (#159) | `outfit_history.py` (`recent_additions`) + `claude.py` (`_recent_additions_block`) + `recommend.py` (`_inventory_view`) | `tests/test_recent_additions.py` |
+| Recent-picks prompt context (#135) | `outfit_history.py` (`recent_picks`) + `claude.py` (`_recent_picks_block`) | `tests/test_recent_picks.py` |
+| New-item prompt context (#159) | `outfit_history.py` (`recent_additions`) + `claude.py` (`_recent_additions_block`) + `recommend.py` (`inventory_view`) | `tests/test_recent_additions.py` |
 | Extremes gate | `backend/services/weather_gate.py` | `tests/test_weather_gate.py` |
 | type→category map | `backend/services/categories.py` | (covered via sampling/validation tests) |
 | Outfit prompt, validation, repair | `backend/services/claude.py` | `tests/test_validation.py` |
@@ -415,4 +442,5 @@ Decided against *for now*, with the trigger that would revisit each:
 | Daily job + modes | `jobs/daily_outfit.py` | — |
 | Calendar → modes (#64) | `backend/services/calendar.py` + `claude.py` (`classify_modes`) | `tests/test_calendar.py` |
 | Profile prefs + home location (#61) | `backend/routers/profile.py` (CRUD + #62 contracts) + `recommend.py` (reads, source-split) + `claude.py` (`_preferences_block` hard / `_inferred_preferences_block` soft) | `tests/test_preferences.py` |
+| `config` cohort label + prompt-sha registry (#143) | `recommend.py` (`RECOMMEND_CONFIG`) + `backend/evals/prompt_versions.md` | `tests/test_config_fingerprint.py` |
 | Weekly preference inference (#62) | `backend/services/preference_inference.py` (LangGraph) + `jobs/infer_preferences.py` + `.github/workflows/infer-preferences.yml` | `tests/test_preference_inference.py` |

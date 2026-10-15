@@ -1,8 +1,13 @@
 # Deploy & first-time setup checklist
 
 This doc walks through standing the app up from scratch. It originated as the
-Phase-1 skeleton guide; the steps below still work, but the database schema has
-grown since — see the note at the end of step 1.
+Phase-1 skeleton guide; the database schema has grown since — see the note at
+the end of step 1.
+
+**Last checked against the repo:** 2026-10-15 ([#167](https://github.com/JiamanBettyWu/mise/issues/167)).
+The commands, env-var names and file paths below were verified against the
+code. The Render/Vercel/Supabase dashboard click-paths were *not* re-walked —
+vendor UIs move, so treat those labels as approximate.
 
 ## 1. Supabase — create the table and storage bucket
 
@@ -51,7 +56,8 @@ using ( bucket_id = 'clothes-photos' );
 
 > **The schema above is the original Phase-1 table.** The live schema has since
 > grown several columns (warmth, feedback attribution, etc.) plus the
-> `outfit_history`, `profile`, and `preferences` tables. After creating the base
+> `outfit_history`, `profile`, `preferences`, `llm_usage` and `trip_plans`
+> tables. After creating the base
 > table, run every file in [`backend/sql/`](../backend/sql/) in date order in the
 > SQL Editor — each is dated and idempotent. That directory is the source of
 > truth for the current schema.
@@ -77,35 +83,54 @@ Project Settings → API:
 ## 3. Push the repo to GitHub
 
 ```bash
-cd ~/dev/wardrobe-ai
+cd ~/dev/mise
 git init
 git add .
 git commit -m "initial scaffold"
 git branch -M main
-git remote add origin git@github.com:<your-username>/wardrobe-ai.git
+git remote add origin git@github.com:<your-username>/mise.git
 git push -u origin main
 ```
 
 ## 4. Deploy backend to Render
 
-1. Render dashboard → **New** → **Blueprint** → pick the `wardrobe-ai` repo.
-2. Render reads `render.yaml` and creates the web service. (There is no Render
-   cron — the daily email runs on GitHub Actions; see step 8.)
+The live service is **dashboard-managed, not Blueprint-managed**: Render does
+*not* read [`render.yaml`](../render.yaml). That file is documentation of the
+settings below — copy values *from* it, and keep it in step when you change
+the dashboard (see AGENTS.md → Deploy surface).
+
+1. Render dashboard → **New** → **Web Service** → connect the repo.
+2. Settings, matching `render.yaml`:
+   - **Root Directory**: `backend`
+   - **Runtime**: Python, **plan**: free
+   - **Build Command**: `uv sync --frozen --no-dev && uv cache prune --ci`
+   - **Start Command**: `uv run --no-sync uvicorn main:app --host 0.0.0.0 --port $PORT`
+     (`--no-sync` is required — a bare `uv run` re-installs the dev group on boot)
+   - Env var `UV_VERSION` = the value in `render.yaml` (pins uv itself).
+     The Python interpreter is pinned by `backend/.python-version`, **not** by
+     Render's `PYTHON_VERSION` env var — uv doesn't read that one.
+   (There is no Render cron — the recurring jobs run on GitHub Actions; see step 8.)
 3. In the web service env vars, paste:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `ANTHROPIC_API_KEY`
    - `APP_PASSWORD` (your chosen password)
    - `ALLOWED_ORIGINS` — for now: `http://localhost:5173` (we'll add the Vercel URL after step 5)
-4. Other vars (OWM, Gmail, `SERPAPI_API_KEY`, `FEEDBACK_SECRET`) can be filled
-   in as you enable those features — the backend boots fine without them.
+4. Other vars (`OPENWEATHERMAP_API_KEY` + `WEATHER_LAT`/`WEATHER_LON`,
+   `SERPAPI_API_KEY`, `FEEDBACK_SECRET`) can be filled in as you enable those
+   features — the backend boots without them (each one is read when its
+   feature runs, not at startup). Without `SERPAPI_API_KEY`, trip plans still
+   render but every purchase suggestion comes back empty.
+   **Don't** put the Gmail vars (`GMAIL_SENDER`, `GMAIL_APP_PASSWORD`,
+   `EMAIL_RECIPIENT`) on Render: nothing there sends mail. Only the daily job
+   does, on GitHub Actions (step 8).
    `FEEDBACK_SECRET` must match the value in GitHub Actions (see step 8).
-5. First deploy will take ~3 min. Note the URL: `https://wardrobe-ai-backend.onrender.com` (or similar).
+5. Note the service URL once the first deploy finishes: `https://<service-name>.onrender.com`.
 6. Test: `curl https://<your-render-url>/health` → should return `{"ok": true, "supabase": true, ...}`.
 
 ## 5. Deploy frontend to Vercel
 
-1. Vercel → **Add New** → **Project** → import `wardrobe-ai` repo.
+1. Vercel → **Add New** → **Project** → import the `mise` repo.
 2. Set **Root Directory** = `frontend/`.
 3. Framework preset: Vite (auto-detected).
 4. Env vars:
@@ -123,16 +148,20 @@ Render will auto-redeploy.
 ## 7. End-to-end test
 
 - Visit your Vercel URL.
-- Enter `APP_PASSWORD`. Should show "Connected ✅" and a JSON blob with `supabase: true`.
-- Wrong password should show "Wrong password."
+- Enter `APP_PASSWORD` → the password gate should give way to the app (nav:
+  Catalog · Today · Trip · Add). The gate checks it against `GET /health/auth`.
+- Wrong password should show "Wrong password." "Could not reach the server"
+  means the frontend can't reach the backend — usually `VITE_API_BASE_URL` or
+  CORS (step 6).
 
 ## 8. Daily email + weekly inference (GitHub Actions)
 
 The recurring jobs run on **GitHub Actions**, not Render Cron (Render Cron needs
-a paid plan). Add the Actions secrets and test the workflows following
+a paid plan): the daily email, the weekly preference inference, and a nightly
+orphaned-photo sweep. Add the Actions secrets and test the workflows following
 [docs/daily-email.md](daily-email.md).
 
 ## Render free-tier note
-Free web services sleep after 15 min idle and take ~30s to wake on first
-request. That's fine for a personal app — and it doesn't affect the daily email,
+Free web services spin down when idle and take a while (tens of seconds) to wake
+on the first request — Render's exact numbers change, so check their docs. That's fine for a personal app — and it doesn't affect the daily email,
 which runs on GitHub Actions, not Render.
