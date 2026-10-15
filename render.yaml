@@ -52,9 +52,10 @@ services:
       - key: FEEDBACK_SECRET
         sync: false
 
-# Phase 4 — daily email cron. Re-enable when we ship jobs/daily_outfit.py.
-# Render cron services don't support the free plan, so this is commented out
-# until we're ready to pay (~$1/mo) for the cron worker.
+# Render cron is NOT used. jobs/daily_outfit.py shipped long ago and runs on
+# GitHub Actions (.github/workflows/daily-outfit.yml), because Render cron
+# services need a paid plan. The block below is the unused Render-cron
+# alternative, kept for reference only.
 #
 #  - type: cron
 #    name: wardrobe-ai-daily-email

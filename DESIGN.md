@@ -42,7 +42,7 @@ Each glass surface tunes three knobs (codified as CSS variables on cards and mod
 | Surface         | Tint        | Blur  | Radius | File |
 |-----------------|-------------|-------|--------|------|
 | Card            | 0.30        | 90px  | 22px   | [ClothingCardGlass.css](frontend/src/components/ClothingCardGlass.css) |
-| Modal           | 0.55–0.80   | 60px  | 24px   | [ItemDetailModal.css](frontend/src/components/ItemDetailModal.css) |
+| Modal           | 0.80        | 60px  | 24px   | [ItemDetailModal.css](frontend/src/components/ItemDetailModal.css) |
 | Modal backdrop  | (n/a — tint 0.18, just blurs) | 10px | — | same |
 | Nav             | 0.55        | 20px  | 999px  | [styles.css](frontend/src/styles.css) `.nav` |
 | Button          | 0.50        | 8px   | 999px  | [styles.css](frontend/src/styles.css) `button` |

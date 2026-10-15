@@ -14,10 +14,10 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
         with:
-          # Pin to Render's Python, NOT the local 3.14 — PEP 649 lazy
-          # annotations on 3.14 silently hide NameErrors that bite on Render
-          # at import time (the PR #12 class-order bug, tracked in #13).
-          # Running CI on 3.11 makes this workflow the guard for those.
+          # Match backend/.python-version (3.11), which pins local uv and
+          # Render to the same interpreter. Never let this drift newer: PEP 649
+          # lazy annotations on 3.14 silently hide NameErrors that bite at
+          # import time on 3.11 (the PR #12 class-order bug, tracked in #13).
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock

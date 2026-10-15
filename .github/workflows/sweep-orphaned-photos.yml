@@ -18,8 +18,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
         with:
-          # Pin to Render's Python, NOT the local 3.14 — same reason as
-          # tests.yml (PEP 649 lazy annotations hide NameErrors, #13).
+          # Match backend/.python-version (3.11) — same reason as tests.yml
+          # (PEP 649 lazy annotations hide NameErrors, #13).
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock

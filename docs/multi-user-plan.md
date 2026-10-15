@@ -113,13 +113,13 @@ out of the way.
   preferences (one optional free-text box in Settings for the motivated).
 - **Step 2 — Wardrobe upload**, framed as the activation goal ("add items to
   unlock your first recommendation"), leaning on multi-item tagging (#24).
-- **Step 3 — First recommendation, same session.** Fire `POST /outfits/today`
+- **Step 3 — First recommendation, same session.** Fire `POST /outfits/recommend`
   the moment the guardrail below clears — don't make them wait for tomorrow's
   cron. First impressions of an AI product are set by the first output.
 
 ### Catalog-readiness guardrail
 
-Recommendations (both `POST /outfits/today` and the daily email) are **gated on
+Recommendations (both `POST /outfits/recommend` and the daily email) are **gated on
 minimum per-category counts — at least N tops and M bottoms** (exact floors
 TBD at implementation; start around 5 tops / 4 bottoms / 2 shoes and tune).
 Below the floor, the API returns a structured "catalog not ready" response and
