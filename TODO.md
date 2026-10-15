@@ -14,12 +14,18 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**Shipped 2026-09-22 (latest session):**
+**Shipped 2026-10-15 (latest session):**
 
-- **[#150](https://github.com/JiamanBettyWu/mise/issues/150) → [PR #170](https://github.com/JiamanBettyWu/mise/pull/170)** — HTTP failures now keep URL-carried credentials out of direct logs and outer tracebacks; offline tests cover SerpAPI, OpenWeatherMap, and the secret calendar feed.
+- **[#167](https://github.com/JiamanBettyWu/mise/issues/167) → [PR #171](https://github.com/JiamanBettyWu/mise/pull/171)** — living docs checked claim by claim against the code; CI + crons now take Python from `backend/.python-version` (no more `setup-uv` override).
 
 **Open manual follow-ups:**
 
+- **Render dashboard cleanup (#167):** delete `GMAIL_SENDER`,
+  `GMAIL_APP_PASSWORD`, `EMAIL_RECIPIENT` if set (nothing on Render reads
+  them); confirm `SERPAPI_API_KEY` is set.
+- **Glance at the next scheduled cron log** — the install step should say
+  `Using CPython 3.11.17` (first scheduled run since #171 changed how the
+  crons pick Python).
 - **After #150's secret-safe logging fix deploys, rotate URL-carried
   credentials** in every configured location: SerpAPI, OpenWeatherMap, and the
   Google Calendar secret ICS URL. Deploy first so the replacements cannot be
@@ -83,10 +89,7 @@ live in [AGENTS.md](AGENTS.md), not here.
    planner prompts after a real trip (best done *after* actually using the
    planner for Oaxaca).
 
-Other tracked-but-not-urgent: [#167](https://github.com/JiamanBettyWu/mise/issues/167)
-(stale-doc sweep — verify *claims* in the living docs, not links; three bugs
-this year traced to a doc that quietly stopped being true, recon in the issue
-body; archives explicitly out of scope), [#1](https://github.com/JiamanBettyWu/mise/issues/1)
+Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/mise/issues/1)
 (catalog by categories), [#136](https://github.com/JiamanBettyWu/mise/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
 [#111](https://github.com/JiamanBettyWu/mise/issues/111) (LangGraph rep:
