@@ -14,11 +14,14 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**Shipped 2026-10-15 (latest session):**
+**Shipped 2026-11-04 (latest session):**
 
-- **[#167](https://github.com/JiamanBettyWu/mise/issues/167) → [PR #171](https://github.com/JiamanBettyWu/mise/pull/171)** — living docs checked claim by claim against the code; CI + crons now take Python from `backend/.python-version` (no more `setup-uv` override).
+- **[#144](https://github.com/JiamanBettyWu/mise/issues/144) → [PR #173](https://github.com/JiamanBettyWu/mise/pull/173)** — one-tap canned refine links in the daily email (swap shoes / more casual / too cold / too warm), riding the #39 tokens into the #145 refine pipeline.
 
 **Open manual follow-ups:**
+
+- **Click a refine chip in the next daily email (#144)** — confirm the landing
+  page shows the revised outfit and the row's `config` gained `refined: true`.
 
 - **Render dashboard cleanup (#167):** delete `GMAIL_SENDER`,
   `GMAIL_APP_PASSWORD`, `EMAIL_RECIPIENT` if set (nothing on Render reads
@@ -95,9 +98,6 @@ LLM judge + thumbs calibration, split from the now-shipped #118; learning-track)
 [#111](https://github.com/JiamanBettyWu/mise/issues/111) (LangGraph rep:
 `Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
 spans, not perf),
-[#144](https://github.com/JiamanBettyWu/mise/issues/144) (email
-one-tap refine links — small PR now: reuses #145's
-`update_outfit_items` helper, or canned messages into the refine endpoint),
 [#155](https://github.com/JiamanBettyWu/mise/issues/155)
 (per-turn outfit snapshots in the refine state so "go back to the original
 shoes" works — deferred until a real undo moment),
