@@ -19,6 +19,7 @@ import html
 import logging
 from datetime import datetime, timezone
 from typing import Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
@@ -26,14 +27,26 @@ from postgrest.exceptions import APIError
 from pydantic import BaseModel
 
 from db.supabase import client as supabase
-from services.feedback_token import TokenError, verify_token
+from services.feedback_token import TokenError, verify_refine_token, verify_token
 from services.outfit_history import AttributionError, record_attribution
+from services.outfit_refine import RefineError, refine
 
 log = logging.getLogger("wardrobe.feedback")
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 VERDICT_LABELS = {1: "👍 Thumbs up", -1: "👎 Thumbs down"}
+
+# The message each canned link (#144) feeds into the refine pipeline — worded
+# exactly as a user would type it into the web refine box, because it lands in
+# the same prompt slot. Keys must mirror feedback_token.REFINE_KINDS (a test
+# enforces it).
+REFINE_MESSAGES = {
+    "swap_shoes": "Swap the shoes for a different pair.",
+    "more_casual": "Make this outfit more casual.",
+    "warmer": "This outfit is too cold for today — make it warmer.",
+    "cooler": "This outfit is too warm for today — swap in lighter, cooler pieces.",
+}
 
 
 class AttributionBody(BaseModel):
@@ -101,6 +114,75 @@ def record_feedback(token: str) -> HTMLResponse:
         "Changed your mind? Click the other thumb in the email — the latest "
         "click wins.",
         extra_html=extra,
+    )
+
+
+@router.get("/refine/{token}", response_class=HTMLResponse)
+def refine_from_email(token: str) -> HTMLResponse:
+    """One-tap canned refinement from a daily-email link (#144).
+
+    Token-authed like GET /feedback/{token} — same posture on the mutating
+    GET (Gmail-only recipient; Gmail proxies images but doesn't auto-click
+    links). Each click is one independent refinement hop through the #145
+    pipeline: the canned message runs through the same graph as the web
+    refine box, so the deterministic guards and final-version-only persist
+    (verdict cleared, config stamped refined) all apply. The refine
+    pipeline's own scope guard — today's outfits only — is what retires the
+    link, well before the token's 14-day expiry.
+
+    No conversation state (the #144 decision): a unique thread_id keeps each
+    click out of the web UI's checkpointer thread for this row, so the
+    candidate pool is rebuilt per click against current item availability
+    and no prior instructions carry over.
+    """
+    try:
+        history_id, kind = verify_refine_token(token)
+    except TokenError as e:
+        log.warning("refine token rejected: %s", e)
+        return _page(
+            "Link not valid",
+            "This refine link is invalid or has expired (links last 14 days).",
+            status_code=400,
+        )
+
+    try:
+        outfit = refine(
+            history_id,
+            REFINE_MESSAGES[kind],
+            thread_id=f"email-{history_id}-{uuid4()}",
+        )
+    except RefineError as e:
+        return _page("Can't refine this outfit", str(e), status_code=e.status)
+    except Exception:
+        log.error("email refine failed for history_id=%s", history_id, exc_info=True)
+        return _page(
+            "Something went wrong",
+            "Couldn't refine the outfit — try the link again in a minute.",
+            status_code=500,
+        )
+
+    return _page(
+        "Outfit updated",
+        f"{html.escape(outfit.get('reasoning') or 'Here is the revised outfit.')} "
+        "The 👍/👎 links in the email still work and now rate this version.",
+        extra_html=_outfit_grid(outfit.get("items") or []),
+    )
+
+
+def _outfit_grid(items: list[dict]) -> str:
+    """The revised outfit, email-card style: photo + name per item."""
+    cells = "".join(f"""<td style="padding:4px;text-align:center;vertical-align:top;">
+          <img src="{html.escape(item.get('photo_url') or '')}"
+               alt="{html.escape(item.get('name') or '')}"
+               style="width:100%;max-width:140px;aspect-ratio:1/1;object-fit:cover;
+                      border-radius:6px;background:#eee;display:block;margin:0 auto;" />
+          <div style="font-size:12px;margin-top:4px;line-height:1.3;">
+            {html.escape(item.get('name') or '')}
+          </div>
+        </td>""" for item in items)
+    return (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        f'style="border-collapse:collapse;margin-top:16px;"><tr>{cells}</tr></table>'
     )
 
 

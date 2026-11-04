@@ -392,14 +392,20 @@ def _hydrate(history_id: str, row: dict, final: dict) -> dict:
 
 
 @op  # Weave trace root (#85); the graph's Anthropic calls nest under it.
-def refine(history_id: str, message: str) -> dict:
+def refine(history_id: str, message: str, thread_id: str | None = None) -> dict:
     """One refinement turn against today's outfit row. Returns the revised
     outfit in the same hydrated shape as one recommend() entry, plus the
-    route taken."""
+    route taken.
+
+    `thread_id` defaults to the row id — the web UI's multi-turn
+    conversation. A caller wanting a stateless hop (#144's email links: each
+    click independent, pool rebuilt against current availability) passes a
+    unique thread_id instead, keeping the guards and persist shared without
+    joining the web conversation."""
     row, message = _load_row(history_id, message)
     final = _APP.invoke(
         _graph_input(history_id, row, message),
-        config={"configurable": {"thread_id": history_id}},
+        config={"configurable": {"thread_id": thread_id or history_id}},
     )
     return _hydrate(history_id, row, final)
 

@@ -73,6 +73,7 @@ def _render_outfit(index: int, outfit: dict) -> str:
   <table cellpadding="0" cellspacing="0" border="0" width="100%"
          style="border-collapse:collapse;"><tr>{items_html}</tr></table>
   {_render_feedback_links(outfit.get("feedback_urls"))}
+  {_render_refine_links(outfit.get("refine_urls"))}
 </div>
 """
 
@@ -92,4 +93,36 @@ def _render_feedback_links(urls: dict | None) -> str:
 <div style="margin-top:10px;">
     <a href="{escape(urls['up'])}" style="{link_style}">👍 Good pick</a>
     <a href="{escape(urls['down'])}" style="{link_style}">👎 Not for me</a>
+  </div>"""
+
+
+# Order and labels of the canned refine links (#144). Keys are
+# feedback_token.REFINE_KINDS entries; a missing URL just skips that chip.
+REFINE_LINK_LABELS = (
+    ("swap_shoes", "🔁 Swap the shoes"),
+    ("more_casual", "More casual"),
+    ("warmer", "Too cold"),
+    ("cooler", "Too warm"),
+)
+
+
+def _render_refine_links(urls: dict | None) -> str:
+    """Canned one-tap refine anchors (#144), same posture as the thumbs:
+    plain styled <a> tags, empty string when the job attached none."""
+    if not urls:
+        return ""
+    link_style = (
+        "display:inline-block;padding:6px 14px;margin:0 8px 6px 0;"
+        "border:1px solid #ccc;border-radius:16px;text-decoration:none;"
+        "color:#333;font-size:13px;background:#fff;"
+    )
+    anchors = "".join(
+        f'\n    <a href="{escape(urls[kind])}" style="{link_style}">{label}</a>'
+        for kind, label in REFINE_LINK_LABELS
+        if kind in urls
+    )
+    if not anchors:
+        return ""
+    return f"""\
+<div style="margin-top:8px;">{anchors}
   </div>"""

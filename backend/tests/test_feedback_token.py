@@ -9,8 +9,11 @@ import pytest
 
 from services.feedback_token import (
     DEFAULT_TTL_DAYS,
+    REFINE_KINDS,
     TokenError,
+    sign_refine_token,
     sign_token,
+    verify_refine_token,
     verify_token,
 )
 
@@ -70,3 +73,39 @@ def test_wrong_or_missing_secret(monkeypatch):
 def test_invalid_verdicts_cannot_be_signed():
     with pytest.raises(ValueError):
         sign_token(HID, 0)
+
+
+# ------------------------------------------------------------ refine tokens (#144)
+
+
+def test_refine_round_trip_all_kinds():
+    for kind in REFINE_KINDS:
+        token = sign_refine_token(HID, kind)
+        assert verify_refine_token(token) == (HID, kind)
+        assert all(c.isalnum() or c in "-_." for c in token), token
+
+
+def test_refine_kind_is_whitelisted():
+    with pytest.raises(ValueError):
+        sign_refine_token(HID, "add_hat")
+
+
+def test_token_domains_are_disjoint():
+    # A verdict token must never verify as a refine token or vice versa,
+    # even though both are signed with the same secret.
+    with pytest.raises(TokenError):
+        verify_refine_token(sign_token(HID, 1))
+    with pytest.raises(TokenError):
+        verify_token(sign_refine_token(HID, "swap_shoes"))
+
+
+def test_refine_expiry_and_tampering():
+    t0 = 1_700_000_000.0
+    token = sign_refine_token(HID, "warmer", _now=t0)
+    assert verify_refine_token(token, _now=t0 + 86400) == (HID, "warmer")
+    with pytest.raises(TokenError, match="expired"):
+        verify_refine_token(token, _now=t0 + (DEFAULT_TTL_DAYS + 1) * 86400)
+    payload, _ = token.split(".")
+    _, other_sig = sign_refine_token(HID, "cooler", _now=t0).split(".")
+    with pytest.raises(TokenError, match="signature"):
+        verify_refine_token(f"{payload}.{other_sig}")

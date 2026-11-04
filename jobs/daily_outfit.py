@@ -29,7 +29,11 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 from services.calendar import calendar_modes  # noqa: E402
 from services.email import send_html_email  # noqa: E402
 from services.email_template import render_outfit_email  # noqa: E402
-from services.feedback_token import sign_token  # noqa: E402
+from services.feedback_token import (  # noqa: E402
+    REFINE_KINDS,
+    sign_refine_token,
+    sign_token,
+)
 from services.modes import DAILY_MODES  # noqa: E402
 from services.recommend import recommend  # noqa: E402
 
@@ -86,6 +90,13 @@ def _attach_feedback_links(outfits: list[dict]) -> None:
         outfit["feedback_urls"] = {
             "up": f"{base_url}/feedback/{sign_token(history_id, 1)}",
             "down": f"{base_url}/feedback/{sign_token(history_id, -1)}",
+        }
+        # Canned one-tap refine links (#144). Signed here like the thumbs;
+        # the backend's refine scope guard (today's outfits only) is what
+        # actually retires them, not the token TTL.
+        outfit["refine_urls"] = {
+            kind: f"{base_url}/feedback/refine/{sign_refine_token(history_id, kind)}"
+            for kind in REFINE_KINDS
         }
 
 
