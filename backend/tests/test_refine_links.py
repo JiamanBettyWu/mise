@@ -52,7 +52,8 @@ def test_every_refine_kind_has_a_canned_message():
 def test_refine_link_happy_path(monkeypatch):
     calls = []
 
-    def fake_refine(history_id, message):
+    def fake_refine(history_id, message, thread_id=None):
+        assert thread_id and thread_id.startswith("email-")  # stateless hop
         calls.append((history_id, message))
         return {
             "history_id": history_id,
@@ -75,7 +76,7 @@ def test_refine_link_happy_path(monkeypatch):
 
 def test_refine_link_bad_token_is_400(monkeypatch):
     monkeypatch.setattr(
-        feedback_mod, "refine", lambda *a: pytest.fail("refine must not run")
+        feedback_mod, "refine", lambda *a, **k: pytest.fail("refine must not run")
     )
     resp = _client().get("/feedback/refine/not-a-token")
     assert resp.status_code == 400
@@ -83,7 +84,7 @@ def test_refine_link_bad_token_is_400(monkeypatch):
 
 
 def test_refine_link_maps_refine_error_status(monkeypatch):
-    def stale(history_id, message):
+    def stale(history_id, message, thread_id=None):
         raise RefineError("refinement is only available for today's outfits", 409)
 
     monkeypatch.setattr(feedback_mod, "refine", stale)
@@ -93,12 +94,75 @@ def test_refine_link_maps_refine_error_status(monkeypatch):
 
 
 def test_refine_link_unexpected_failure_is_500(monkeypatch):
-    def boom(history_id, message):
+    def boom(history_id, message, thread_id=None):
         raise RuntimeError("api down")
 
     monkeypatch.setattr(feedback_mod, "refine", boom)
     resp = _client().get(f"/feedback/refine/{sign_refine_token(HID, 'cooler')}")
     assert resp.status_code == 500
+
+
+def test_email_clicks_are_stateless_hops(monkeypatch):
+    """Review follow-up on #144: an email click must NOT resume the web
+    conversation keyed by history_id — each click rebuilds the candidate
+    pool against current availability and starts with no prior turns.
+    Exercised through the real refine() + graph (MemorySaver intact), with
+    the row load, nodes, and hydration patched offline."""
+    import services.outfit_refine as refine_mod
+
+    row = {
+        "id": HID,
+        "recommended_on": "2026-01-01",
+        "mode": "Smart casual",
+        "item_ids": ["top1", "shoe1"],
+        "weather": WEATHER,
+        "notes": "",
+    }
+    # Wardrobe availability as of each pool build; shoe1 goes unavailable
+    # between the two clicks.
+    available = [[{"id": "top1"}, {"id": "shoe1"}, {"id": "shoe2"}]]
+    builds, seen = [], []
+
+    def fake_load(state):
+        if state.get("candidate_pool"):
+            return {}
+        builds.append(state["history_id"])
+        return {"candidate_pool": list(available[0])}
+
+    def fake_refine_node(state):
+        seen.append(
+            {"turns": list(state["turns"]), "pool": list(state["candidate_pool"])}
+        )
+        return {"current_item_ids": ["top1", "shoe2"], "reasoning": "ok"}
+
+    monkeypatch.setattr(refine_mod, "load_context_node", fake_load)
+    monkeypatch.setattr(refine_mod, "route_node", lambda s: {"route": "refine"})
+    monkeypatch.setattr(refine_mod, "refine_outfit_node", fake_refine_node)
+    monkeypatch.setattr(refine_mod, "persist_node", lambda s: {})
+    monkeypatch.setattr(refine_mod, "_APP", refine_mod.build_graph())
+    monkeypatch.setattr(refine_mod, "_load_row", lambda hid, msg: (row, msg))
+    monkeypatch.setattr(
+        refine_mod, "_hydrate", lambda hid, r, final: {"items": [], "reasoning": "ok"}
+    )
+
+    client = _client()
+    assert (
+        client.get(
+            f"/feedback/refine/{sign_refine_token(HID, 'swap_shoes')}"
+        ).status_code
+        == 200
+    )
+    available[0] = [{"id": "top1"}, {"id": "shoe2"}]  # shoe1 now unavailable
+    assert (
+        client.get(f"/feedback/refine/{sign_refine_token(HID, 'warmer')}").status_code
+        == 200
+    )
+
+    assert builds == [HID, HID]  # pool rebuilt on every click
+    assert [len(s["turns"]) for s in seen] == [1, 1]  # no accumulated turns
+    # The second click's pool reflects the availability change — nothing
+    # cached from the first click's conversation.
+    assert {i["id"] for i in seen[1]["pool"]} == {"top1", "shoe2"}
 
 
 # --------------------------------------------------------------------- email

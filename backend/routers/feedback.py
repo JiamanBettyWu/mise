@@ -19,6 +19,7 @@ import html
 import logging
 from datetime import datetime, timezone
 from typing import Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
@@ -128,6 +129,11 @@ def refine_from_email(token: str) -> HTMLResponse:
     (verdict cleared, config stamped refined) all apply. The refine
     pipeline's own scope guard — today's outfits only — is what retires the
     link, well before the token's 14-day expiry.
+
+    No conversation state (the #144 decision): a unique thread_id keeps each
+    click out of the web UI's checkpointer thread for this row, so the
+    candidate pool is rebuilt per click against current item availability
+    and no prior instructions carry over.
     """
     try:
         history_id, kind = verify_refine_token(token)
@@ -140,7 +146,11 @@ def refine_from_email(token: str) -> HTMLResponse:
         )
 
     try:
-        outfit = refine(history_id, REFINE_MESSAGES[kind])
+        outfit = refine(
+            history_id,
+            REFINE_MESSAGES[kind],
+            thread_id=f"email-{history_id}-{uuid4()}",
+        )
     except RefineError as e:
         return _page("Can't refine this outfit", str(e), status_code=e.status)
     except Exception:
