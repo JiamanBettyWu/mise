@@ -26,9 +26,11 @@ from services.trip_planner import (
     _build_purchase_query_prompt,
     build_graph,
     check_gaps,
+    collect_purchases_node,
+    dispatch_gap_searches,
     fallback_purchase_query,
     plan_purchase_queries_node,
-    search_purchases_node,
+    search_one_gap_node,
 )
 
 A_GAP = Gap(item="rain jacket", rationale="daily rain", category="outerwear")
@@ -87,7 +89,8 @@ def test_graph_shape():
         "get_catalog",
         "reason_and_select",
         "plan_purchase_queries",
-        "search_purchases",
+        "search_one_gap",
+        "collect_purchases",
         "generate_output",
     } <= nodes
     edges = {(e.source, e.target) for e in g.edges}
@@ -98,12 +101,15 @@ def test_graph_shape():
     # ...and both branches join before reason_and_select.
     assert ("infer_weather_if_needed", "reason_and_select") in edges
     assert ("get_catalog", "reason_and_select") in edges
-    assert ("plan_purchase_queries", "search_purchases") in edges
+    # #111: plan_purchase_queries fans out via Send to search_one_gap, which
+    # joins at collect_purchases.
+    assert ("plan_purchase_queries", "search_one_gap") in edges
+    assert ("search_one_gap", "collect_purchases") in edges
     # #124: generate_output now runs right after reason_and_select (it's pure
     # Python and never needed purchase results), and the has_gaps/no_gaps fork
     # moves from reason_and_select to generate_output.
     assert ("reason_and_select", "generate_output") in edges
-    assert ("search_purchases", "__end__") in edges
+    assert ("collect_purchases", "__end__") in edges
     fork_targets = {t for s, t in edges if s == "generate_output"}
     assert {"plan_purchase_queries", "__end__"} <= fork_targets
 
@@ -178,7 +184,7 @@ def test_reason_and_select_reads_parsed_output(monkeypatch):
     assert out["essentials"] == ["sunscreen"]
 
 
-def test_search_purchases_node_skips_search_when_env_set(monkeypatch):
+def test_search_one_gap_node_skips_search_when_env_set(monkeypatch):
     # Dev convenience so manual testing doesn't spend SerpAPI quota.
     called = []
     monkeypatch.setattr(
@@ -187,13 +193,15 @@ def test_search_purchases_node_skips_search_when_env_set(monkeypatch):
     )
     monkeypatch.setenv("SKIP_PURCHASE_SEARCH", "1")
 
-    out = search_purchases_node({"gaps": [A_GAP]})
+    out = search_one_gap_node({"gap_index": 0, "gap": A_GAP, "query": "rain jacket"})
 
     assert called == [], "search_products must not be called"
-    assert out["purchase_suggestions"] == [PurchaseSuggestion(gap=A_GAP, results=[])]
+    assert out["purchase_search_results"] == [
+        (0, PurchaseSuggestion(gap=A_GAP, results=[]))
+    ]
 
 
-def test_search_purchases_node_builds_suggestions(monkeypatch):
+def test_search_one_gap_node_builds_suggestion(monkeypatch):
     # The node imported search_products via `from services.search import ...`,
     # which binds the name in trip_planner's namespace — so patch it there,
     # not in services.search (patching the source module wouldn't reach this
@@ -209,26 +217,34 @@ def test_search_purchases_node_builds_suggestions(monkeypatch):
         "services.trip_planner.search_products",
         lambda query, num=4: [fake],
     )
-    out = search_purchases_node({"gaps": [A_GAP]})
-    assert "purchase_suggestions" in out, "node must return the state key"
-    sugg = out["purchase_suggestions"]
-    assert len(sugg) == 1
-    assert sugg[0].gap.item == "rain jacket"
-    assert sugg[0].results == [fake]
+    out = search_one_gap_node({"gap_index": 2, "gap": A_GAP, "query": "rain jacket"})
+    index, sugg = out["purchase_search_results"][0]
+    assert index == 2, "gap_index must ride through for order reassembly"
+    assert sugg.gap.item == "rain jacket"
+    assert sugg.results == [fake]
 
 
-def test_search_purchases_node_uses_planned_query(monkeypatch):
-    calls = []
+def test_search_one_gap_node_keeps_gap_on_failure_or_empty(monkeypatch):
+    # Best-effort: a raising or empty search still surfaces the gap with
+    # results=[] instead of sinking it.
+    monkeypatch.setattr(
+        "services.trip_planner.search_products",
+        lambda query, num=4: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    out = search_one_gap_node({"gap_index": 0, "gap": A_GAP, "query": "rain jacket"})
+    _, sugg = out["purchase_search_results"][0]
+    assert sugg.gap.item == "rain jacket"
+    assert sugg.results == []
 
-    def _fake_search(query, num=4):
-        calls.append(query)
-        return []
 
-    monkeypatch.setattr("services.trip_planner.search_products", _fake_search)
-
-    out = search_purchases_node(
+def test_dispatch_uses_planned_query_with_fallback():
+    # Gap 0 has a planned query; gap 1 doesn't and must get the deterministic
+    # department fallback. Each gap becomes one Send to search_one_gap.
+    other_gap = Gap(item="sun hat", rationale="strong sun", category="accessories")
+    sends = dispatch_gap_searches(
         {
-            "gaps": [A_GAP],
+            "gaps": [A_GAP, other_gap],
+            "shopping_department": "womens",
             "purchase_queries": [
                 PurchaseQuery(
                     gap_index=0,
@@ -237,59 +253,66 @@ def test_search_purchases_node_uses_planned_query(monkeypatch):
             ],
         }
     )
-
-    assert calls == ["women's lightweight neutral rain jacket city travel"]
-    assert out["purchase_suggestions"][0].gap == A_GAP
-
-
-def test_search_purchases_node_keeps_gaps_without_results(monkeypatch):
-    # Even when search yields nothing (no key, API down, or zero hits), the gap
-    # must still surface as a suggestion with an empty results list.
-    monkeypatch.setattr(
-        "services.trip_planner.search_products",
-        lambda query, num=4: [],
+    assert [s.node for s in sends] == ["search_one_gap", "search_one_gap"]
+    assert sends[0].arg["gap_index"] == 0
+    assert sends[0].arg["query"] == (
+        "women's lightweight neutral rain jacket city travel"
     )
-    out = search_purchases_node({"gaps": [A_GAP]})
-    sugg = out["purchase_suggestions"]
-    assert len(sugg) == 1
-    assert sugg[0].gap.item == "rain jacket"
-    assert sugg[0].results == []
+    assert sends[1].arg["gap_index"] == 1
+    assert sends[1].arg["query"] == "sun hat"  # accessories skip the department
 
 
-def test_search_purchases_node_isolates_per_query_failures(monkeypatch):
-    # #107: gap searches run concurrently; one raising search must not sink
-    # the siblings — the failed gap surfaces with results=[].
-    other_gap = Gap(item="sun hat", rationale="strong sun", category="accessories")
-    fake = PurchaseResult(title="Sun Hat", url="https://shop.example/sun-hat")
+def test_collect_purchases_reassembles_gap_order():
+    # The reducer appends in completion order, which the fan-out doesn't
+    # guarantee matches gap order — collect must sort by the carried index.
+    gaps = [
+        Gap(item=f"item {i}", rationale="r", category="accessories") for i in range(5)
+    ]
+    shuffled = [
+        (i, PurchaseSuggestion(gap=gaps[i], results=[])) for i in (3, 0, 4, 2, 1)
+    ]
+    out = collect_purchases_node({"purchase_search_results": shuffled})
+    assert [s.gap.item for s in out["purchase_suggestions"]] == [g.item for g in gaps]
+
+
+def test_purchase_fanout_through_graph_isolates_failures_and_keeps_order(
+    monkeypatch,
+):
+    # #111 end-to-end through the real compiled graph: Send fan-out runs one
+    # node per gap, a raising search doesn't sink siblings, and the final
+    # purchase_suggestions line up with the gaps.
+    gaps = [
+        A_GAP,
+        Gap(item="sun hat", rationale="strong sun", category="accessories"),
+        Gap(item="swim suit", rationale="beach days", category="tops"),
+    ]
+    fake = PurchaseResult(title="Hit", url="https://shop.example/hit")
 
     def _fake_search(query, num=4):
         if "rain" in query:
             raise RuntimeError("boom")
         return [fake]
 
+    _patch_front_half(monkeypatch, gaps=gaps)
+    monkeypatch.setattr(
+        "services.trip_planner.plan_purchase_queries_node",
+        lambda s: {"purchase_queries": [], "shopping_department": "womens"},
+    )
     monkeypatch.setattr("services.trip_planner.search_products", _fake_search)
 
-    out = search_purchases_node({"gaps": [A_GAP, other_gap]})
-    sugg = out["purchase_suggestions"]
-    assert len(sugg) == 2
-    assert sugg[0].gap == A_GAP and sugg[0].results == []
-    assert sugg[1].gap == other_gap and sugg[1].results == [fake]
-
-
-def test_search_purchases_node_preserves_gap_order(monkeypatch):
-    # Concurrent execution must not reorder suggestions relative to gaps.
-    gaps = [
-        Gap(item=f"item {i}", rationale="r", category="accessories") for i in range(5)
-    ]
-    monkeypatch.setattr(
-        "services.trip_planner.search_products",
-        lambda query, num=4: [PurchaseResult(title=query, url="https://x.example/")],
+    final = build_graph().invoke(
+        {
+            "destination": "Paris, France",
+            "start_date": date(2026, 7, 10),
+            "end_date": date(2026, 7, 12),
+            "additional_notes": "",
+        }
     )
-    out = search_purchases_node({"gaps": gaps})
-    assert [s.gap.item for s in out["purchase_suggestions"]] == [g.item for g in gaps]
-    assert [s.results[0].title for s in out["purchase_suggestions"]] == [
-        g.item for g in gaps
-    ]
+    sugg = final["purchase_suggestions"]
+    assert [s.gap.item for s in sugg] == [g.item for g in gaps]
+    assert sugg[0].results == []  # the raising search, isolated
+    assert sugg[1].results == [fake]
+    assert sugg[2].results == [fake]
 
 
 def test_fallback_purchase_query_uses_department_for_apparel():
@@ -405,15 +428,15 @@ def test_purchase_query_prompt_carries_preferences_as_applicability_context():
 
 def test_stream_yields_plan_before_purchases_when_gaps(monkeypatch):
     # #124: generate_output's plan event must be observable before
-    # search_purchases's purchases event, and done is always last.
+    # collect_purchases's purchases event, and done is always last.
     _patch_front_half(monkeypatch, gaps=[A_GAP])
     monkeypatch.setattr(
         "services.trip_planner.plan_purchase_queries_node",
         lambda s: {"purchase_queries": [], "shopping_department": "womens"},
     )
+    # The fan-out nodes run for real; only the SerpAPI call is stubbed.
     monkeypatch.setattr(
-        "services.trip_planner.search_purchases_node",
-        lambda s: {"purchase_suggestions": [PurchaseSuggestion(gap=A_GAP, results=[])]},
+        "services.trip_planner.search_products", lambda query, num=4: []
     )
     _use_patched_graph(monkeypatch)
 
@@ -436,7 +459,7 @@ def test_stream_yields_plan_before_purchases_when_gaps(monkeypatch):
 
 
 def test_stream_ends_after_plan_when_no_gaps(monkeypatch):
-    # The no-gaps path skips plan_purchase_queries/search_purchases entirely,
+    # The no-gaps path skips the whole purchase leg entirely,
     # so no purchases event should ever fire.
     _patch_front_half(monkeypatch, gaps=[])
     _use_patched_graph(monkeypatch)
@@ -493,8 +516,7 @@ def test_plan_stream_route_orders_plan_before_purchases(monkeypatch):
         lambda s: {"purchase_queries": [], "shopping_department": "womens"},
     )
     monkeypatch.setattr(
-        "services.trip_planner.search_purchases_node",
-        lambda s: {"purchase_suggestions": [PurchaseSuggestion(gap=A_GAP, results=[])]},
+        "services.trip_planner.search_products", lambda query, num=4: []
     )
     _use_patched_graph(monkeypatch)
 

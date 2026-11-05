@@ -18,12 +18,13 @@ Useful existing utilities to reuse inside your graph:
 
 import json
 import logging
+import operator
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Send
 
 from db.supabase import client as supabase
 from schemas import (
@@ -79,6 +80,13 @@ class PackingState(TypedDict, total=False):
     essentials: list[str]
     gaps: list[Gap]
     purchase_queries: list[PurchaseQuery]
+    # #111: reducer key for the Send fan-out — each search_one_gap execution
+    # appends one (gap_index, suggestion) tuple, and LangGraph merges the
+    # parallel writes via operator.add. Append order across parallel nodes is
+    # not guaranteed to match gap order, hence the explicit index.
+    purchase_search_results: Annotated[
+        list[tuple[int, PurchaseSuggestion]], operator.add
+    ]
     purchase_suggestions: list[PurchaseSuggestion]
     shopping_department: ShoppingDepartment
     user_preferences: list[str]
@@ -557,52 +565,74 @@ def _clean_purchase_query(query: str) -> str:
     return " ".join(query.strip().split()[:12])
 
 
-def search_purchases_node(state: PackingState) -> dict:
-    gaps = state["gaps"]
-    if not gaps:
-        return {"purchase_suggestions": []}
+class GapSearchPayload(TypedDict):
+    # The Send payload: search_one_gap_node receives THIS dict as its state,
+    # not the full PackingState — Send carries a custom payload per dispatch.
+    gap_index: int
+    gap: Gap
+    query: str
+
+
+def dispatch_gap_searches(state: PackingState) -> list[Send]:
+    """#111: dynamic fan-out — one search_one_gap execution per gap.
+
+    Replaces the #107 ThreadPoolExecutor inside the old search_purchases_node:
+    the queries are independent and network-bound, and LangGraph runs every
+    Send in the same superstep, so the leg still costs the slowest search, not
+    the sum. The win over the pool is per-gap visibility — each search is its
+    own traced node (Weave span) instead of one opaque batch. Conscious
+    trade-off: unlike the pool's max_workers=8, Send has no concurrency cap;
+    N = gap count, small in practice.
+    """
+    gaps = state.get("gaps", [])
+    queries_by_index = {q.gap_index: q for q in state.get("purchase_queries", [])}
+    shopping_department = state.get("shopping_department", DEFAULT_SHOPPING_DEPARTMENT)
+
+    sends = []
+    for i, gap in enumerate(gaps):
+        fallback = PurchaseQuery(
+            gap_index=i,
+            query=fallback_purchase_query(gap, shopping_department),
+        )
+        query = queries_by_index.get(i, fallback).query
+        sends.append(
+            Send("search_one_gap", GapSearchPayload(gap_index=i, gap=gap, query=query))
+        )
+    return sends
+
+
+def search_one_gap_node(payload: GapSearchPayload) -> dict:
+    gap = payload["gap"]
+    query = payload["query"]
 
     if os.environ.get("SKIP_PURCHASE_SEARCH"):
         # Dev convenience: SerpAPI has a tight quota, and this leg is the one
         # part of the pipeline that spends it. Same best-effort shape as a
         # real per-query failure (results=[]) — exercises the rest of the
         # streaming pipeline (including the `purchases` SSE event) for free.
-        return {
-            "purchase_suggestions": [
-                PurchaseSuggestion(gap=gap, results=[]) for gap in gaps
-            ]
-        }
-
-    queries_by_index = {q.gap_index: q for q in state.get("purchase_queries", [])}
-    shopping_department = state.get("shopping_department", DEFAULT_SHOPPING_DEPARTMENT)
-
-    queries = []
-    for i, gap in enumerate(gaps):
-        fallback = PurchaseQuery(
-            gap_index=i,
-            query=fallback_purchase_query(gap, shopping_department),
-        )
-        queries.append(queries_by_index.get(i, fallback).query)
-
-    def _search_one(query: str) -> list[PurchaseResult]:
+        results: list[PurchaseResult] = []
+    else:
         # Best-effort per gap: any failure keeps the gap visible with
         # results=[] instead of sinking the sibling searches.
         try:
-            return search_products(query, 4)
+            results = search_products(query, 4)
         except Exception:
             log.warning("purchase search failed for %r", query, exc_info=True)
-            return []
-
-    # #107: the queries are independent and purely network-bound, so run them
-    # concurrently — the node costs the slowest search, not the sum.
-    with ThreadPoolExecutor(max_workers=min(8, len(gaps))) as pool:
-        results = list(pool.map(_search_one, queries))
+            results = []
 
     return {
-        "purchase_suggestions": [
-            PurchaseSuggestion(gap=gap, results=res) for gap, res in zip(gaps, results)
+        "purchase_search_results": [
+            (payload["gap_index"], PurchaseSuggestion(gap=gap, results=results))
         ]
     }
+
+
+def collect_purchases_node(state: PackingState) -> dict:
+    # Join node after the fan-out: the reducer's append order follows node
+    # completion, not gap order — sort by the carried gap_index so suggestions
+    # line up with `gaps` (same guarantee the #108 zip gave).
+    ordered = sorted(state.get("purchase_search_results", []), key=lambda t: t[0])
+    return {"purchase_suggestions": [suggestion for _, suggestion in ordered]}
 
 
 def build_graph():
@@ -615,7 +645,8 @@ def build_graph():
     g.add_node("get_catalog", get_catalog_node)
     g.add_node("reason_and_select", reason_and_select_node)
     g.add_node("plan_purchase_queries", plan_purchase_queries_node)
-    g.add_node("search_purchases", search_purchases_node)
+    g.add_node("search_one_gap", search_one_gap_node)
+    g.add_node("collect_purchases", collect_purchases_node)
 
     # #2: weather and catalog are independent — fan out from START so the
     # catalog fetch doesn't wait behind the weather branch (which includes a
@@ -641,8 +672,15 @@ def build_graph():
             "no_gaps": END,
         },
     )
-    g.add_edge("plan_purchase_queries", "search_purchases")
-    g.add_edge("search_purchases", END)
+    # #111: dynamic Send fan-out — dispatch_gap_searches returns one
+    # Send("search_one_gap", payload) per gap; they all run in one superstep
+    # and merge through the purchase_search_results reducer, then
+    # collect_purchases reassembles gap order.
+    g.add_conditional_edges(
+        "plan_purchase_queries", dispatch_gap_searches, ["search_one_gap"]
+    )
+    g.add_edge("search_one_gap", "collect_purchases")
+    g.add_edge("collect_purchases", END)
 
     return g.compile()
 
@@ -690,16 +728,17 @@ def run(req: TripPlanRequest) -> TripPlanResponse:
 
 # #124: node -> progress stage surfaced while the plan streams. get_weather
 # and infer_weather_if_needed both tick "weather" (harmless double-tick when
-# a full forecast skips inference); plan_purchase_queries and
-# search_purchases both tick "shopping" — the frontend only shows one spinner
-# per stage, not a running count of node completions.
+# a full forecast skips inference); plan_purchase_queries, every fanned-out
+# search_one_gap, and collect_purchases all tick "shopping" — the frontend
+# only shows one spinner per stage, not a running count of node completions.
 STAGE_BY_NODE = {
     "get_weather": "weather",
     "infer_weather_if_needed": "weather",
     "get_catalog": "catalog",
     "reason_and_select": "reasoning",
     "plan_purchase_queries": "shopping",
-    "search_purchases": "shopping",
+    "search_one_gap": "shopping",
+    "collect_purchases": "shopping",
 }
 
 
@@ -709,8 +748,13 @@ def stream(req: TripPlanRequest):
     This is node-progress streaming, not token streaming: `reason_and_select`
     emits structured JSON, so there is nothing readable to show token-by-token.
     Consumed by the SSE route in routers/trips.py. A plain sync generator —
-    FastAPI runs it in its threadpool, and search_purchases_node's own
-    ThreadPoolExecutor is unaffected.
+    FastAPI runs it in its threadpool; the Send fan-out's parallel
+    search_one_gap executions run inside LangGraph and are unaffected.
+
+    Note: final_state is a plain dict, so `update()` would clobber (not
+    reduce) the purchase_search_results tuples across the parallel
+    search_one_gap updates — that's fine, because collect_purchases reads the
+    properly reduced graph state and writes the final purchase_suggestions.
     """
     initial_state = _initial_state(req)
     final_state: PackingState = dict(initial_state)  # type: ignore[assignment]
@@ -730,7 +774,7 @@ def stream(req: TripPlanRequest):
             if node_name == "generate_output":
                 yield "plan", _build_response(req, final_state).model_dump(mode="json")
 
-            if node_name == "search_purchases":
+            if node_name == "collect_purchases":
                 yield "purchases", {
                     "purchase_suggestions": [
                         s.model_dump(mode="json")

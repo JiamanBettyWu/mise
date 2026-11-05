@@ -24,7 +24,8 @@ GRAPH = {
         "get_catalog",
         "reason_and_select",
         "plan_purchase_queries",
-        "search_purchases",
+        "search_one_gap",
+        "collect_purchases",
         "generate_output",
     ],
     "edges": [
@@ -36,8 +37,11 @@ GRAPH = {
         ["reason_and_select", "generate_output"],
         ["generate_output", "plan_purchase_queries"],
         ["generate_output", "__end__"],
-        ["plan_purchase_queries", "search_purchases"],
-        ["search_purchases", "__end__"],
+        # #111: Send fan-out — the replay shows one search_one_gap event per
+        # gap, all sharing this node box.
+        ["plan_purchase_queries", "search_one_gap"],
+        ["search_one_gap", "collect_purchases"],
+        ["collect_purchases", "__end__"],
     ],
     # check_gaps routes generate_output -> plan_purchase_queries (has_gaps) or END
     "conditional_edges": [
@@ -67,9 +71,11 @@ def summarize(name: str, outputs: dict) -> str:
         return f"LLM reasoned over wardrobe × climate: picked {c} items and flagged {g} gaps the closet can't cover."
     if name == "plan_purchase_queries":
         return "Turned each gap into a shopping search query, steered by stated + inferred style preferences."
-    if name == "search_purchases":
+    if name == "search_one_gap":
+        return "Ran one gap's query against SerpAPI (Google Shopping) — one fanned-out node per gap, in parallel."
+    if name == "collect_purchases":
         n = len(outputs.get("purchase_suggestions", []))
-        return f"Ran the queries against SerpAPI (Google Shopping), concurrently: {n} concrete product suggestions."
+        return f"Joined the fan-out and restored gap order: {n} concrete product suggestions."
     if name == "generate_output":
         n = len(outputs.get("packing_list", []))
         return f"Assembled the final packing list ({n} categories) plus the buy-list."

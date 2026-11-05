@@ -51,11 +51,13 @@ from services.trip_planner import (  # noqa: E402
     PACKING_SYSTEM_PROMPT,
     PackingState,
     check_gaps,
+    collect_purchases_node,
+    dispatch_gap_searches,
     generate_output_node,
     infer_weather_if_needed_node,
     plan_purchase_queries_node,
     reason_and_select_node,
-    search_purchases_node,
+    search_one_gap_node,
 )
 
 DATASET_PATH = Path(__file__).resolve().parent / "datasets" / "trips.json"
@@ -72,7 +74,8 @@ def build_eval_graph():
     g.add_node("infer_weather_if_needed", infer_weather_if_needed_node)
     g.add_node("reason_and_select", reason_and_select_node)
     g.add_node("plan_purchase_queries", plan_purchase_queries_node)
-    g.add_node("search_purchases", search_purchases_node)
+    g.add_node("search_one_gap", search_one_gap_node)
+    g.add_node("collect_purchases", collect_purchases_node)
     g.add_node("generate_output", generate_output_node)
 
     g.add_edge(START, "infer_weather_if_needed")
@@ -85,8 +88,13 @@ def build_eval_graph():
         check_gaps,
         {"has_gaps": "plan_purchase_queries", "no_gaps": END},
     )
-    g.add_edge("plan_purchase_queries", "search_purchases")
-    g.add_edge("search_purchases", END)
+    # #111: same Send fan-out as production — one search_one_gap per gap,
+    # reassembled in collect_purchases.
+    g.add_conditional_edges(
+        "plan_purchase_queries", dispatch_gap_searches, ["search_one_gap"]
+    )
+    g.add_edge("search_one_gap", "collect_purchases")
+    g.add_edge("collect_purchases", END)
     return g.compile()
 
 
