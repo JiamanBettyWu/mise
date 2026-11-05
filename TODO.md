@@ -14,9 +14,9 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 ## Current state
 
-**Shipped 2026-11-04 (latest session):**
+**Shipped 2026-11-05 (latest session):**
 
-- **[#144](https://github.com/JiamanBettyWu/mise/issues/144) → [PR #173](https://github.com/JiamanBettyWu/mise/pull/173)** — one-tap canned refine links in the daily email (swap shoes / more casual / too cold / too warm), riding the #39 tokens into the #145 refine pipeline.
+- **[#111](https://github.com/JiamanBettyWu/mise/issues/111) → [PR #175](https://github.com/JiamanBettyWu/mise/pull/175)** — per-gap purchase searches are now a LangGraph `Send` fan-out (`dispatch_gap_searches` → N× `search_one_gap` → `collect_purchases`); each gap search is its own Weave span.
 
 **Open manual follow-ups:**
 
@@ -95,9 +95,6 @@ live in [AGENTS.md](AGENTS.md), not here.
 Other tracked-but-not-urgent: [#1](https://github.com/JiamanBettyWu/mise/issues/1)
 (catalog by categories), [#136](https://github.com/JiamanBettyWu/mise/issues/136) (cross-family
 LLM judge + thumbs calibration, split from the now-shipped #118; learning-track),
-[#111](https://github.com/JiamanBettyWu/mise/issues/111) (LangGraph rep:
-`Send` fan-out for per-gap purchase searches — learning value + per-gap Weave
-spans, not perf),
 [#155](https://github.com/JiamanBettyWu/mise/issues/155)
 (per-turn outfit snapshots in the refine state so "go back to the original
 shoes" works — deferred until a real undo moment),
