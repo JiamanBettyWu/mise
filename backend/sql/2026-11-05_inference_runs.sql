@@ -13,8 +13,8 @@
 -- same as it leaves the heartbeat stale. The Profile UI reads only the newest
 -- row plus the newest wipe for its empty-state copy ("No patterns in the
 -- latest review (2 retired on Jul 6)"); the history is kept because it is
--- cheap and the Insights dashboard (#146) will want the trend. Preferred over two counters on `profile` for exactly
--- that reason.
+-- cheap and the Insights dashboard (#146) will want the trend. Preferred over
+-- two counters on `profile` for exactly that reason.
 --
 -- No user_id yet; it gets added with the multi-user migration like every
 -- other table.
