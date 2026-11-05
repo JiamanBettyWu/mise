@@ -107,6 +107,22 @@ class Profile(BaseModel):
     preferences_reviewed_at: Optional[datetime] = None
 
 
+class InferenceRun(BaseModel):
+    """One completed weekly inference run (#149) — a row of `inference_runs`.
+
+    Read-only, written only by jobs/infer_preferences.py. The Profile UI reads
+    the newest row to explain an empty "Learned from your feedback" section:
+    the heartbeat says *when* the job last ran, this says *what it did*.
+    """
+
+    id: str
+    ran_at: datetime
+    outcome: Literal["inferred", "empty", "insufficient"]
+    verdicts: int = 0
+    written: int = 0
+    removed: int = 0
+
+
 # ---- Trip planner ---------------------------------------------------------
 
 

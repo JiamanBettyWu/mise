@@ -144,6 +144,8 @@ export const api = {
 
   // Stats (#115); range = '7d' | '30d' | '90d' | 'all'
   getStats: (range = '30d') => request(`/profile/stats?range=${range}`),
+  // #149: newest-first log of weekly inference runs; the Profile empty state reads one.
+  listInferenceRuns: (limit = 1) => request(`/profile/inference-runs?limit=${limit}`),
 
   // Preferences
   listPreferences: () => request('/profile/preferences'),

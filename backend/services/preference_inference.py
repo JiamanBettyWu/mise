@@ -80,6 +80,7 @@ class InferenceState(TypedDict, total=False):
     # filled by infer_node, refined by validate_node
     inferred: list[dict]  # [{text, evidence_ids}]
     written: int  # how many rows upsert wrote (for logging/return)
+    removed: int  # how many prior inferred rows upsert deleted (#149)
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +243,7 @@ def upsert_node(state: InferenceState) -> dict:
         len(rows),
         len(prior_ids),
     )
-    return {"written": len(rows)}
+    return {"written": len(rows), "removed": len(prior_ids)}
 
 
 # ---------------------------------------------------------------------------
@@ -520,6 +521,70 @@ def _record_reviewed() -> None:
         supabase().table("profile").insert({"preferences_reviewed_at": now}).execute()
 
 
+# Outcome labels for the inference_runs log (#149). Mirrors the SQL check
+# constraint in backend/sql/2026-11-05_inference_runs.sql — keep in step.
+OUTCOME_INFERRED = "inferred"  # wrote >= 1 statement
+OUTCOME_EMPTY = "empty"  # enough evidence, kept nothing; prior set removed
+OUTCOME_INSUFFICIENT = "insufficient"  # below MIN_VERDICTS, table untouched
+
+
+def classify_outcome(written: int | None) -> str:
+    """Pure: the graph's final `written` → one of the three outcome labels.
+
+    `written` is absent (None) only when check_evidence routed to END, so that
+    is the insufficient case; 0 with the key present means the model and
+    validate_node genuinely kept nothing on enough evidence."""
+    if written is None:
+        return OUTCOME_INSUFFICIENT
+    return OUTCOME_INFERRED if written > 0 else OUTCOME_EMPTY
+
+
+def run_row(summary: dict) -> dict:
+    """Pure: a run() summary → the inference_runs row to insert.
+
+    Counts are always integers (0 on the insufficient path) so the UI and the
+    future Insights dashboard (#146) can sum them without null-guards; the
+    `outcome` column carries the distinction `written is None` used to."""
+    return {
+        "outcome": classify_outcome(summary.get("written")),
+        "verdicts": int(summary.get("verdicts") or 0),
+        "written": int(summary.get("written") or 0),
+        "removed": int(summary.get("removed") or 0),
+    }
+
+
+def empty_wipe_annotation(summary: dict) -> str | None:
+    """Pure: the GitHub Actions `::warning::` line for an alive-and-wiped run.
+
+    The 2026-07-06 run was the motivating case (#149): wrote 0, removed 2, and
+    the upsert_node log.warning sat unread inside a green run. A workflow
+    command on its own stdout line makes the run page show a yellow badge even
+    on success. None for every other outcome — "found nothing, had nothing" is
+    routine, not a red flag."""
+    row = run_row(summary)
+    if row["outcome"] != OUTCOME_EMPTY or row["removed"] == 0:
+        return None
+    return (
+        "::warning title=Inferred preferences re-derived to empty::"
+        f"wrote 0, removed {row['removed']} prior inferred preference(s) from "
+        f"{row['verdicts']} verdicts. Correct #62 semantics, but verify this "
+        "isn't a prompt/parse regression (#149)."
+    )
+
+
+def _record_run(summary: dict) -> None:
+    """Append one inference_runs row (#149) — the alive-and-wiped detector.
+
+    The heartbeat catches a run that never finished; this catches one that
+    finished and removed everything. Written right after the graph, before the
+    heartbeat: if the insert fails the exception propagates, the job exits
+    nonzero and the heartbeat goes stale — the designed alarm — rather than
+    the run passing with its only record missing. The inferred set itself was
+    already updated by upsert_node, so the data is correct either way.
+    """
+    supabase().table("inference_runs").insert(run_row(summary)).execute()
+
+
 def run() -> dict:
     """Run the weekly inference graph. Returns a small summary dict.
 
@@ -529,12 +594,15 @@ def run() -> dict:
     nonzero with the table untouched.
 
     A clean return — for ANY healthy outcome (wrote prefs, found none, or too
-    little evidence) — stamps the heartbeat last, so a failure is the only thing
-    that leaves it stale."""
+    little evidence) — logs the run (#149) and then stamps the heartbeat last,
+    so a failure is the only thing that leaves it stale."""
     final = _APP.invoke({})
-    _record_reviewed()
-    return {
+    summary = {
         "verdicts": len(final.get("verdicts", [])),
         "written": final.get("written"),
+        "removed": final.get("removed"),
         "inferred": final.get("inferred", []),
     }
+    _record_run(summary)
+    _record_reviewed()
+    return summary

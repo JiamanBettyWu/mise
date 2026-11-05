@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import { api, setStoredPassword } from '../services/api.js';
+import { inferredEmptyCopy } from '../services/inferenceCopy.js';
 
 // Relative "time ago" for the inference job's last-success heartbeat (#62).
 // Days is the largest unit on purpose: a weekly job reads clearest in days
@@ -116,6 +117,9 @@ export default function Profile() {
   const [deptSaving, setDeptSaving] = useState(false);
 
   const [prefs, setPrefs] = useState([]);
+  // #149: newest weekly inference run, so an empty "Learned" section can say
+  // WHY it's empty (wiped vs nothing found vs too few verdicts). null = no log.
+  const [lastRun, setLastRun] = useState(null);
   const [newText, setNewText] = useState('');
   const [adding, setAdding] = useState(false);
 
@@ -154,6 +158,11 @@ export default function Profile() {
     api.listPreferences()
       .then(setPrefs)
       .catch((err) => setLoadError(loadErrorMessage(err)));
+    // Best-effort: the run log only sharpens the empty-state copy, so a failure
+    // here falls back to the pre-#149 wording rather than blocking the page.
+    api.listInferenceRuns(1)
+      .then((runs) => setLastRun(runs?.[0] ?? null))
+      .catch(() => setLastRun(null));
   }, []);
 
   useEffect(() => {
@@ -437,9 +446,7 @@ export default function Profile() {
           </p>
           {inferredPrefs.length === 0 ? (
             <p className="profile__empty muted">
-              {profile?.preferences_reviewed_at
-                ? 'No patterns learned from your feedback yet.'
-                : 'These appear after the weekly review job first runs.'}
+              {inferredEmptyCopy({ reviewedAt: profile?.preferences_reviewed_at, lastRun })}
             </p>
           ) : (
             <div className="profile__pref-list">

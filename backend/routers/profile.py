@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth import require_password
 from db.supabase import client as supabase
 from schemas import (
+    InferenceRun,
     Preference,
     PreferenceCreate,
     PreferenceUpdate,
@@ -74,6 +75,29 @@ def upsert_profile(body: ProfileUpdate):
     if not res.data:
         raise HTTPException(status_code=500, detail="Profile write failed")
     return res.data[0]
+
+
+# ---------------------------------------------------------------------------
+# Inference runs (#149) — what the weekly job did, newest first
+# ---------------------------------------------------------------------------
+
+
+@router.get("/inference-runs", response_model=list[InferenceRun])
+def list_inference_runs(limit: int = Query(default=1, ge=1, le=52)):
+    """Newest-first log of completed weekly inference runs.
+
+    The Profile UI asks for one row (the default) to word its empty state;
+    the cap of 52 is a year of weekly runs, enough for the #146 trend view.
+    """
+    res = (
+        supabase()
+        .table("inference_runs")
+        .select("*")
+        .order("ran_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return res.data or []
 
 
 # ---------------------------------------------------------------------------

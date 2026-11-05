@@ -341,10 +341,16 @@ then delete exactly the prior ids captured in `fetch_node`. A mid-run crash
 then leaves a stale-but-present (or briefly duplicated, self-healing next week)
 set — never empty. That leaves the one genuine wipe — call succeeded, model
 returned `[]` — as correct re-derivation, logged loudly because nonempty→empty
-on *more* data is a red flag, not routine. *(now: "logged" means a
-`log.warning` in the Actions run log only. The heartbeat below still stamps
-fresh on that run, so the Profile UI can't tell a healthy run from one that
-wiped everything — open as #149.)*
+on *more* data is a red flag, not routine. *(shipped, #149: "logged" used to
+mean a `log.warning` in the Actions run log only, and the heartbeat below still
+stamped fresh on that run, so the Profile UI couldn't tell a healthy run from
+one that wiped everything — exactly what happened on 2026-07-06. Now every
+completed run also appends a row to `inference_runs` (outcome + verdict /
+written / removed counts), the Profile empty state reads the newest row — "No
+patterns this week (2 retired on Jul 6)" — and the job emits a GitHub Actions
+`::warning::` annotation for the wipe case. Re-derive-to-empty itself is
+unchanged: an empty result on growing evidence is correct output, it just
+isn't silent any more.)*
 
 **Heartbeat, not failure log.** The job stamps `profile.preferences_reviewed_at
 = now()` as the last action of a *successful* run (`run()` reaches that line
