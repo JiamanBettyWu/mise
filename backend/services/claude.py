@@ -127,7 +127,7 @@ def create_tracked(call_type: str, **kwargs):
 
     The single funnel for every Anthropic call in the app. Recording is
     best-effort — a failed insert must never break a recommendation, same
-    posture as search_purchases_node. Tokens + model only, never dollars:
+    posture as the purchase-search fan-out. Tokens + model only, never dollars:
     cost is derived at read time from a price map so history stays truthful
     when prices change.
     """

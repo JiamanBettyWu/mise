@@ -14,7 +14,7 @@ Anthropic calls) once init_weave() has run. This launcher exists to see whether
 that auto-trace is legible enough on its own before deciding if any surgical
 @op is warranted.
 
-⚠️ This is a REAL run: every node calls Claude and search_purchases_node hits
+⚠️ This is a REAL run: every node calls Claude and the search_one_gap fan-out hits
 SerpAPI (live quota). Unlike trace_daily.py there's no persist=False lever, but
 the planner writes nothing to the DB, so it only spends API budget.
 """

@@ -8,7 +8,7 @@ This file provides guidance to coding agents (e.g. Claude Code, Codex) when work
 ```bash
 uv sync                                          # install deps
 uv run uvicorn main:app --reload --port 8000     # dev server
-SKIP_PURCHASE_SEARCH=1 uv run uvicorn main:app --reload --port 8000  # + skip SerpAPI in search_purchases_node (tight quota; results=[] per gap)
+SKIP_PURCHASE_SEARCH=1 uv run uvicorn main:app --reload --port 8000  # + skip SerpAPI in the search_one_gap fan-out (tight quota; results=[] per gap)
 uv run pytest                                    # offline test suite in tests/ (free, no network)
 RUN_E2E=1 uv run pytest                          # + the full trip-planner pipeline (hits live APIs)
 uv run black . ../jobs && uv run isort . ../jobs  # format + sort imports (CI checks both, backend/ and jobs/)
@@ -52,8 +52,8 @@ A LangGraph `StateGraph` over a `PackingState` TypedDict:
 
 ```
 START ─┬→ get_weather → infer_weather_if_needed ─┐
-       └→ get_catalog ───────────────────────────┴→ reason_and_select → generate_output ──(has_gaps)──→ plan_purchase_queries → search_purchases ─┐
-                                                                                          ──(no_gaps )──────────────────────────────────────────────┴→ END
+       └→ get_catalog ───────────────────────────┴→ reason_and_select → generate_output ──(has_gaps)──→ plan_purchase_queries ─Send×N→ search_one_gap → collect_purchases ─┐
+                                                                                          ──(no_gaps )──────────────────────────────────────────────────────────────────────┴→ END
 ```
 
 - The graph is **compiled once at module load** (`_APP = build_graph()`) and reused across requests — see comment in `trip_planner.py`.
@@ -62,7 +62,7 @@ START ─┬→ get_weather → infer_weather_if_needed ─┐
 - `infer_weather_if_needed_node` only calls Claude for partial/missing forecast coverage; full forecasts pass through unchanged.
 - The weather and catalog branches **fan out from START** and have unequal lengths, so the join uses the list form `add_edge(["infer_weather_if_needed", "get_catalog"], "reason_and_select")` — naive per-edge joins would fire `reason_and_select` a superstep early (#2).
 - `plan_purchase_queries_node` makes one lightweight **Haiku** call per trip to turn gaps into concise Google Shopping queries, using `profile.shopping_department` plus applicable preferences. If planning fails, it falls back to deterministic `{department} + {gap.item}` queries. (The main `reason_and_select` call deliberately stays on Sonnet.)
-- `search_purchases_node` is best-effort and **concurrent** (per-gap searches run in a thread pool, #107): any per-query failure or empty result keeps that gap visible with `results=[]`, so the packing plan still renders.
+- Per-gap purchase search is a **LangGraph `Send` fan-out** (#111, replacing #107's in-node thread pool): `dispatch_gap_searches` returns one `Send("search_one_gap", payload)` per gap, all run in one superstep, and their `(gap_index, suggestion)` tuples merge through an `operator.add` reducer; `collect_purchases` sorts by index to restore gap order. Each search stays best-effort — any per-query failure or empty result keeps that gap visible with `results=[]`, so the packing plan still renders — and each is its own traced node in Weave. Conscious trade-off: no concurrency cap (the pool capped at 8); N = gap count, small in practice.
 - `generate_output` runs **right after `reason_and_select`**, before the has_gaps/no_gaps fork (#124) — it's pure Python (<50ms) categorizing `candidate_items` and never needed purchase results. `POST /trips/plan/stream` (SSE, node-progress streaming) relies on this ordering to render the full packing list before purchase suggestions land; `POST /trips/plan` (blocking JSON) is unaffected either way.
 
 **3. Multi-turn outfit refinement** — [`services/outfit_refine.py`](backend/services/outfit_refine.py)
