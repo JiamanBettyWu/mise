@@ -16,16 +16,16 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 **Shipped 2026-11-05 (latest session):**
 
+- **[#149](https://github.com/JiamanBettyWu/mise/issues/149) → [PR #178](https://github.com/JiamanBettyWu/mise/pull/178)** — `inference_runs` log table; `GET /profile` carries newest run + newest wipe; Profile empty state names the outcome ("No patterns in the latest review (2 retired on Jul 6)"); Actions `::warning::` on a wipe. Migration applied.
 - **[#111](https://github.com/JiamanBettyWu/mise/issues/111) → [PR #175](https://github.com/JiamanBettyWu/mise/pull/175)** — per-gap purchase searches are now a LangGraph `Send` fan-out (`dispatch_gap_searches` → N× `search_one_gap` → `collect_purchases`); each gap search is its own Weave span.
 - **`anthropic` 0.x → 1.x → [PR #176](https://github.com/JiamanBettyWu/mise/pull/176)** — pin lifted to `>=1,<2` (1.17.0); #120's `temperature` rides `claude.sampling_params` → `extra_body`, guarded by a real-signature test.
 
 **Open manual follow-ups:**
 
-- **Apply `backend/sql/2026-11-05_inference_runs.sql` in the Supabase SQL
-  Editor *before* merging #178 (#149).** The weekly job inserts into that
-  table after it has already re-derived the prefs; deploying first means every
-  Monday run mutates and then crashes, and the stale heartbeat would mean
-  "logging broke", not "inference broke".
+- **Glance at Monday's inference cron log after #178 (#149)** — the `[done]`
+  line should read `wrote N, removed M prior`, `select * from inference_runs`
+  should show its first row, and the Profile "Learned" empty state (if still
+  empty) should name an outcome instead of the bare sentence.
 - **Watch the first Anthropic call on Render after #176** (next trip plan or
   tomorrow's email). The SDK now verifies TLS via `truststore` (OS store, not
   certifi); an Anthropic-only certificate error while OWM/SerpAPI/Supabase
@@ -118,6 +118,12 @@ dashboard: drift trends + usage, multi-user-ready). See the
 
 Things I might do but aren't worth an issue yet. Move up to Issues when they
 firm up.
+
+- **"Undismiss" affordance for rejected inferred-pref tombstones** (from
+  #149's context): all 5 inferred prefs ever produced are `rejected`, several
+  likely from #61/#62 UI testing, which blocks re-emergence and keeps weekly
+  runs at 0. Today resurrection is a manual DB status flip. File if the empty
+  panel keeps nagging.
 
 - **Option A multi-photo upload** (select N photos, one item per photo) — sibling
   of [#24](https://github.com/JiamanBettyWu/mise/issues/24)'s B-lite path.
