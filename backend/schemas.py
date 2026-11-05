@@ -94,6 +94,24 @@ class ProfileUpdate(BaseModel):
     shopping_department: Optional[ShoppingDepartment] = None
 
 
+class InferenceRun(BaseModel):
+    """One completed weekly inference run (#149) — a row of `inference_runs`.
+
+    Read-only, written only by jobs/infer_preferences.py. Rides GET /profile
+    (newest run + newest wipe) so the Profile UI can explain an empty "Learned
+    from your feedback" section: the heartbeat says *when* the job last ran,
+    this says *what it did*. `removed` is the size of the prior active set the
+    run replaced, not a net-loss count — see the SQL migration comment.
+    """
+
+    id: str
+    ran_at: datetime
+    outcome: Literal["inferred", "empty", "insufficient"]
+    verdicts: int = 0
+    written: int = 0
+    removed: int = 0
+
+
 class Profile(BaseModel):
     id: Optional[str] = None
     home_location_text: Optional[str] = None
@@ -105,22 +123,12 @@ class Profile(BaseModel):
     # in the profile UI as relative time. Read-only — not in ProfileUpdate, so
     # the PUT /profile form can't clobber it.
     preferences_reviewed_at: Optional[datetime] = None
-
-
-class InferenceRun(BaseModel):
-    """One completed weekly inference run (#149) — a row of `inference_runs`.
-
-    Read-only, written only by jobs/infer_preferences.py. The Profile UI reads
-    the newest row to explain an empty "Learned from your feedback" section:
-    the heartbeat says *when* the job last ran, this says *what it did*.
-    """
-
-    id: str
-    ran_at: datetime
-    outcome: Literal["inferred", "empty", "insufficient"]
-    verdicts: int = 0
-    written: int = 0
-    removed: int = 0
+    # #149: what the last run did (newest row) and the newest run that retired
+    # a non-empty inferred set (written 0, removed > 0) — carried on the GET so
+    # the Profile page needs no extra round-trip. Read-only; PUT returns them
+    # as None and the frontend keeps the values from the initial load.
+    last_inference_run: Optional[InferenceRun] = None
+    last_inference_wipe: Optional[InferenceRun] = None
 
 
 # ---- Trip planner ---------------------------------------------------------

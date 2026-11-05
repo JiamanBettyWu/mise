@@ -346,9 +346,11 @@ mean a `log.warning` in the Actions run log only, and the heartbeat below still
 stamped fresh on that run, so the Profile UI couldn't tell a healthy run from
 one that wiped everything — exactly what happened on 2026-07-06. Now every
 completed run also appends a row to `inference_runs` (outcome + verdict /
-written / removed counts), the Profile empty state reads the newest row — "No
-patterns this week (2 retired on Jul 6)" — and the job emits a GitHub Actions
-`::warning::` annotation for the wipe case. Re-derive-to-empty itself is
+written / removed counts), `GET /profile` carries the newest row and the newest
+wipe, the Profile empty state reads them — "No patterns in the latest review (2
+retired on Jul 6)", and a week later "No patterns since 2 were retired on Jul
+6" — and the job emits a GitHub Actions `::warning::` annotation for the wipe
+case. Re-derive-to-empty itself is
 unchanged: an empty result on growing evidence is correct output, it just
 isn't silent any more.)*
 

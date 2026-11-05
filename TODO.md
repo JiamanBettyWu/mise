@@ -21,6 +21,11 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 
 **Open manual follow-ups:**
 
+- **Apply `backend/sql/2026-11-05_inference_runs.sql` in the Supabase SQL
+  Editor *before* merging #178 (#149).** The weekly job inserts into that
+  table after it has already re-derived the prefs; deploying first means every
+  Monday run mutates and then crashes, and the stale heartbeat would mean
+  "logging broke", not "inference broke".
 - **Watch the first Anthropic call on Render after #176** (next trip plan or
   tomorrow's email). The SDK now verifies TLS via `truststore` (OS store, not
   certifi); an Anthropic-only certificate error while OWM/SerpAPI/Supabase

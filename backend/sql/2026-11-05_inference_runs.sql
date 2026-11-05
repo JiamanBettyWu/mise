@@ -11,9 +11,9 @@
 -- One row per completed run (any healthy outcome — wrote prefs, found none, or
 -- short-circuited on insufficient evidence). A failed run writes nothing here,
 -- same as it leaves the heartbeat stale. The Profile UI reads only the newest
--- row for its empty-state copy ("No patterns this week — 2 retired Jul 6");
--- the history is kept because it is cheap and the Insights dashboard (#146)
--- will want the trend. Preferred over two counters on `profile` for exactly
+-- row plus the newest wipe for its empty-state copy ("No patterns in the
+-- latest review (2 retired on Jul 6)"); the history is kept because it is
+-- cheap and the Insights dashboard (#146) will want the trend. Preferred over two counters on `profile` for exactly
 -- that reason.
 --
 -- No user_id yet; it gets added with the multi-user migration like every
@@ -34,7 +34,12 @@ create table if not exists inference_runs (
   outcome   text not null check (outcome in ('inferred', 'empty', 'insufficient')),
   verdicts  integer not null default 0,  -- verdict rows the run saw
   written   integer not null default 0,  -- inferred rows inserted
-  removed   integer not null default 0   -- prior active inferred rows deleted
+  -- Size of the prior ACTIVE inferred set this run replaced (captured before
+  -- the Claude call), not a net-loss figure: re-derivation deletes and
+  -- re-inserts even unchanged statements, so `removed` ≈ prior set size every
+  -- healthy week and `written - removed` is the net change. The wipe case is
+  -- written = 0 with removed > 0.
+  removed   integer not null default 0
 );
 
 create index if not exists inference_runs_ran_at_idx

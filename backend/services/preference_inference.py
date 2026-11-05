@@ -69,6 +69,12 @@ MIN_EVIDENCE_PER_STATEMENT = 3
 # for brevity (dropping a slightly-long-but-correct statement loses signal).
 MAX_STATEMENT_LEN = 500
 
+# Outcome labels for the inference_runs log (#149). Mirrors the SQL check
+# constraint in backend/sql/2026-11-05_inference_runs.sql — keep in step.
+OUTCOME_INFERRED = "inferred"  # wrote >= 1 statement
+OUTCOME_EMPTY = "empty"  # enough evidence, kept nothing; prior set removed
+OUTCOME_INSUFFICIENT = "insufficient"  # below MIN_VERDICTS, table untouched
+
 
 class InferenceState(TypedDict, total=False):
     # filled by fetch_node
@@ -80,7 +86,8 @@ class InferenceState(TypedDict, total=False):
     # filled by infer_node, refined by validate_node
     inferred: list[dict]  # [{text, evidence_ids}]
     written: int  # how many rows upsert wrote (for logging/return)
-    removed: int  # how many prior inferred rows upsert deleted (#149)
+    removed: int  # size of the prior active inferred set upsert replaced (#149)
+    outcome: str  # OUTCOME_INFERRED / OUTCOME_EMPTY, set by upsert_node (#149)
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +250,23 @@ def upsert_node(state: InferenceState) -> dict:
         len(rows),
         len(prior_ids),
     )
-    return {"written": len(rows), "removed": len(prior_ids)}
+    # `removed` is the size of the prior active set this run REPLACED, as
+    # captured in fetch_node — not a count of the delete's returned rows. Two
+    # consequences worth knowing (#149 review): a pref the user dismisses
+    # during the Claude call is tombstoned by the router, skipped by the
+    # delete, and still counted here; and on the normal inferred path an
+    # unchanged statement is deleted and re-inserted every week, so summing
+    # `removed` over runs measures re-derivation churn, not net loss
+    # (`written - removed` is the net change). The wipe case — written 0,
+    # removed N — is exactly "N were active, none are now", which is what the
+    # UI reports. `outcome` is set explicitly here rather than reconstructed
+    # from counts downstream, so a future early-return can't masquerade as
+    # a healthy label.
+    return {
+        "written": len(rows),
+        "removed": len(prior_ids),
+        "outcome": OUTCOME_INFERRED if rows else OUTCOME_EMPTY,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -521,22 +544,27 @@ def _record_reviewed() -> None:
         supabase().table("profile").insert({"preferences_reviewed_at": now}).execute()
 
 
-# Outcome labels for the inference_runs log (#149). Mirrors the SQL check
-# constraint in backend/sql/2026-11-05_inference_runs.sql — keep in step.
-OUTCOME_INFERRED = "inferred"  # wrote >= 1 statement
-OUTCOME_EMPTY = "empty"  # enough evidence, kept nothing; prior set removed
-OUTCOME_INSUFFICIENT = "insufficient"  # below MIN_VERDICTS, table untouched
+def resolve_outcome(final: dict) -> str:
+    """The completed graph's state → one of the three outcome labels.
 
-
-def classify_outcome(written: int | None) -> str:
-    """Pure: the graph's final `written` → one of the three outcome labels.
-
-    `written` is absent (None) only when check_evidence routed to END, so that
-    is the insufficient case; 0 with the key present means the model and
-    validate_node genuinely kept nothing on enough evidence."""
-    if written is None:
+    upsert_node stamps `outcome` explicitly on the two paths that reach it.
+    The only legitimate way to finish WITHOUT one is check_evidence routing to
+    END below MIN_VERDICTS — a router can't write state, so that case is
+    recognised by the verdict count. Anything else (a future node returning
+    early without labelling itself) raises rather than being logged as
+    "insufficient": the job goes red and the heartbeat stays stale instead of
+    the UI confidently saying "not enough rated outfits" on 26 verdicts.
+    """
+    outcome = final.get("outcome")
+    if outcome in (OUTCOME_INFERRED, OUTCOME_EMPTY):
+        return outcome
+    n = len(final.get("verdicts", []))
+    if outcome is None and n < MIN_VERDICTS:
         return OUTCOME_INSUFFICIENT
-    return OUTCOME_INFERRED if written > 0 else OUTCOME_EMPTY
+    raise RuntimeError(
+        f"inference graph finished without a recognised outcome "
+        f"(outcome={outcome!r}, verdicts={n}); refusing to log it as healthy"
+    )
 
 
 def run_row(summary: dict) -> dict:
@@ -546,7 +574,7 @@ def run_row(summary: dict) -> dict:
     future Insights dashboard (#146) can sum them without null-guards; the
     `outcome` column carries the distinction `written is None` used to."""
     return {
-        "outcome": classify_outcome(summary.get("written")),
+        "outcome": summary["outcome"],
         "verdicts": int(summary.get("verdicts") or 0),
         "written": int(summary.get("written") or 0),
         "removed": int(summary.get("removed") or 0),
@@ -598,6 +626,7 @@ def run() -> dict:
     so a failure is the only thing that leaves it stale."""
     final = _APP.invoke({})
     summary = {
+        "outcome": resolve_outcome(final),
         "verdicts": len(final.get("verdicts", [])),
         "written": final.get("written"),
         "removed": final.get("removed"),
