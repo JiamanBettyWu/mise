@@ -122,6 +122,36 @@ def client() -> Anthropic:
     return Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 
+# Models that still honour the sampling parameters (`temperature`/`top_p`/
+# `top_k`) on API version 2023-06-01. anthropic 1.x removed them from the
+# SDK's create() signature, so they can only travel via `extra_body` — and
+# Opus 4.7+, Sonnet 5+, Haiku 5.5 and the 2026-10-21 API version reject them
+# with a 400 regardless of how they're sent. Prefix match on the model id.
+_SAMPLING_OK_MODEL_PREFIXES = (
+    "claude-sonnet-4-6",
+    "claude-opus-4-6",
+    "claude-sonnet-4-5",
+    "claude-opus-4-5",
+    "claude-haiku-4-5",
+    "claude-3-",
+)
+
+
+def sampling_params(model: str, temperature: float) -> dict:
+    """kwargs that set `temperature` for `model`, or {} if the model rejects it.
+
+    The single place that knows which models still accept sampling params
+    (#120 depends on a low temperature for trip_plan). Returns
+    `{"extra_body": {"temperature": t}}` for a model that honours it and `{}`
+    otherwise, so a MODEL bump degrades to the API default instead of a 400.
+    Call sites spread the result into create_tracked / create_tracked_parsed.
+    """
+    if model.startswith(_SAMPLING_OK_MODEL_PREFIXES):
+        return {"extra_body": {"temperature": temperature}}
+    log.info("%s rejects sampling params; dropping temperature=%s", model, temperature)
+    return {}
+
+
 def create_tracked(call_type: str, **kwargs):
     """messages.create + one llm_usage row (#114).
 
