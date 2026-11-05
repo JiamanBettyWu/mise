@@ -17,9 +17,14 @@ source of truth for tracked work; this file is the forward-looking scratchpad.
 **Shipped 2026-11-05 (latest session):**
 
 - **[#111](https://github.com/JiamanBettyWu/mise/issues/111) → [PR #175](https://github.com/JiamanBettyWu/mise/pull/175)** — per-gap purchase searches are now a LangGraph `Send` fan-out (`dispatch_gap_searches` → N× `search_one_gap` → `collect_purchases`); each gap search is its own Weave span.
+- **`anthropic` 0.x → 1.x → [PR #176](https://github.com/JiamanBettyWu/mise/pull/176)** — pin lifted to `>=1,<2` (1.17.0); #120's `temperature` rides `claude.sampling_params` → `extra_body`, guarded by a real-signature test.
 
 **Open manual follow-ups:**
 
+- **Watch the first Anthropic call on Render after #176** (next trip plan or
+  tomorrow's email). The SDK now verifies TLS via `truststore` (OS store, not
+  certifi); an Anthropic-only certificate error while OWM/SerpAPI/Supabase
+  work is the tell. Green = nothing to do.
 - **Click a refine chip in the next daily email (#144)** — confirm the landing
   page shows the revised outfit and the row's `config` gained `refined: true`.
 
@@ -109,15 +114,6 @@ dashboard: drift trends + usage, multi-user-ready). See the
 Things I might do but aren't worth an issue yet. Move up to Issues when they
 firm up.
 
-- **Deliberate `anthropic` 0.x → 1.x upgrade.** `backend/pyproject.toml` now
-  bounds it at `<1` (#165), so this is a conscious edit rather than something
-  `uv lock --upgrade` can do by accident. The one blocker is
-  `trip_planner.py:307`'s `temperature=0.2` (#120), which 1.x removed from
-  `messages.create()` — it moves to `extra_body={"temperature": 0.2}`, same
-  bytes on the wire. Caveat worth a comment there: the day `MODEL` leaves
-  `claude-sonnet-4-6`, `extra_body` turns that into a server-side 400 instead
-  of a local `TypeError`. There's a `/claude-api upgrade` guide for the rest
-  of the 1.x breaking changes. File as an issue if pursued.
 - **Option A multi-photo upload** (select N photos, one item per photo) — sibling
   of [#24](https://github.com/JiamanBettyWu/mise/issues/24)'s B-lite path.
   File separately if pursued.
