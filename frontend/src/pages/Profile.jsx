@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import DestinationCombobox from '../components/DestinationCombobox.jsx';
 import { api, setStoredPassword } from '../services/api.js';
+import { inferredEmptyCopy } from '../services/inferenceCopy.js';
 
 // Relative "time ago" for the inference job's last-success heartbeat (#62).
 // Days is the largest unit on purpose: a weekly job reads clearest in days
@@ -116,6 +117,14 @@ export default function Profile() {
   const [deptSaving, setDeptSaving] = useState(false);
 
   const [prefs, setPrefs] = useState([]);
+  // Gate for the #149 empty-state copy: `prefs.length === 0` is also true
+  // while the list is loading or after it failed, and a confident "were since
+  // dismissed" sentence in that gap would be a false diagnosis.
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  // #149: newest weekly inference run + newest wipe, from GET /profile. Held
+  // apart from `profile` because PUT responses replace that object and carry
+  // these as null (read-only fields); null here = no run log.
+  const [inferenceRuns, setInferenceRuns] = useState({ lastRun: null, lastWipe: null });
   const [newText, setNewText] = useState('');
   const [adding, setAdding] = useState(false);
 
@@ -145,6 +154,10 @@ export default function Profile() {
     api.getProfile()
       .then((p) => {
         setProfile(p);
+        setInferenceRuns({
+          lastRun: p?.last_inference_run ?? null,
+          lastWipe: p?.last_inference_wipe ?? null,
+        });
         setLocationText(p?.home_location_text || '');
         if (p?.home_lat != null && p?.home_lon != null) {
           setLocationCoords({ lat: p.home_lat, lon: p.home_lon });
@@ -152,7 +165,10 @@ export default function Profile() {
       })
       .catch((err) => setLoadError(loadErrorMessage(err)));
     api.listPreferences()
-      .then(setPrefs)
+      .then((ps) => {
+        setPrefs(ps);
+        setPrefsLoaded(true);
+      })
       .catch((err) => setLoadError(loadErrorMessage(err)));
   }, []);
 
@@ -437,9 +453,13 @@ export default function Profile() {
           </p>
           {inferredPrefs.length === 0 ? (
             <p className="profile__empty muted">
-              {profile?.preferences_reviewed_at
-                ? 'No patterns learned from your feedback yet.'
-                : 'These appear after the weekly review job first runs.'}
+              {inferredEmptyCopy({
+                reviewedAt: profile?.preferences_reviewed_at,
+                // Until prefs have really loaded, withhold the run so the
+                // helper falls back to the neutral pre-#149 wording.
+                lastRun: prefsLoaded ? inferenceRuns.lastRun : null,
+                lastWipe: prefsLoaded ? inferenceRuns.lastWipe : null,
+              })}
             </p>
           ) : (
             <div className="profile__pref-list">

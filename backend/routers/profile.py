@@ -52,9 +52,45 @@ def delete_disposition(source: str) -> str:
 @router.get("", response_model=Profile)
 def get_profile():
     res = supabase().table("profile").select("*").limit(1).execute()
-    if res.data:
-        return res.data[0]
-    return Profile()
+    row = dict(res.data[0]) if res.data else {}
+    row.update(_inference_status())
+    return row
+
+
+def _inference_status() -> dict:
+    """#149: the newest inference run, and the newest one that wiped the set.
+
+    Two indexed `limit 1` reads rather than a scan. The wipe is fetched on
+    its own because the UI must still explain an empty panel weeks after the
+    wipe, when the newest run is a routine "wrote 0, removed 0" — with only
+    the newest row, "never had any" and "wiped a month ago" look identical.
+    """
+    newest = (
+        supabase()
+        .table("inference_runs")
+        .select("*")
+        .order("ran_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    wipe = (
+        supabase()
+        .table("inference_runs")
+        .select("*")
+        .eq("outcome", "empty")
+        .gt("removed", 0)
+        .order("ran_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return {
+        "last_inference_run": newest[0] if newest else None,
+        "last_inference_wipe": wipe[0] if wipe else None,
+    }
 
 
 @router.put("", response_model=Profile)

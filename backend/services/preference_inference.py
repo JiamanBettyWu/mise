@@ -69,6 +69,12 @@ MIN_EVIDENCE_PER_STATEMENT = 3
 # for brevity (dropping a slightly-long-but-correct statement loses signal).
 MAX_STATEMENT_LEN = 500
 
+# Outcome labels for the inference_runs log (#149). Mirrors the SQL check
+# constraint in backend/sql/2026-11-05_inference_runs.sql — keep in step.
+OUTCOME_INFERRED = "inferred"  # wrote >= 1 statement
+OUTCOME_EMPTY = "empty"  # enough evidence, kept nothing; prior set removed
+OUTCOME_INSUFFICIENT = "insufficient"  # below MIN_VERDICTS, table untouched
+
 
 class InferenceState(TypedDict, total=False):
     # filled by fetch_node
@@ -80,6 +86,8 @@ class InferenceState(TypedDict, total=False):
     # filled by infer_node, refined by validate_node
     inferred: list[dict]  # [{text, evidence_ids}]
     written: int  # how many rows upsert wrote (for logging/return)
+    removed: int  # size of the prior active inferred set upsert replaced (#149)
+    outcome: str  # OUTCOME_INFERRED / OUTCOME_EMPTY, set by upsert_node (#149)
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +250,23 @@ def upsert_node(state: InferenceState) -> dict:
         len(rows),
         len(prior_ids),
     )
-    return {"written": len(rows)}
+    # `removed` is the size of the prior active set this run REPLACED, as
+    # captured in fetch_node — not a count of the delete's returned rows. Two
+    # consequences worth knowing (#149 review): a pref the user dismisses
+    # during the Claude call is tombstoned by the router, skipped by the
+    # delete, and still counted here; and on the normal inferred path an
+    # unchanged statement is deleted and re-inserted every week, so summing
+    # `removed` over runs measures re-derivation churn, not net loss
+    # (`written - removed` is the net change). The wipe case — written 0,
+    # removed N — is exactly "N were active, none are now", which is what the
+    # UI reports. `outcome` is set explicitly here rather than reconstructed
+    # from counts downstream, so a future early-return can't masquerade as
+    # a healthy label.
+    return {
+        "written": len(rows),
+        "removed": len(prior_ids),
+        "outcome": OUTCOME_INFERRED if rows else OUTCOME_EMPTY,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -520,6 +544,75 @@ def _record_reviewed() -> None:
         supabase().table("profile").insert({"preferences_reviewed_at": now}).execute()
 
 
+def resolve_outcome(final: dict) -> str:
+    """The completed graph's state → one of the three outcome labels.
+
+    upsert_node stamps `outcome` explicitly on the two paths that reach it.
+    The only legitimate way to finish WITHOUT one is check_evidence routing to
+    END below MIN_VERDICTS — a router can't write state, so that case is
+    recognised by the verdict count. Anything else (a future node returning
+    early without labelling itself) raises rather than being logged as
+    "insufficient": the job goes red and the heartbeat stays stale instead of
+    the UI confidently saying "not enough rated outfits" on 26 verdicts.
+    """
+    outcome = final.get("outcome")
+    if outcome in (OUTCOME_INFERRED, OUTCOME_EMPTY):
+        return outcome
+    n = len(final.get("verdicts", []))
+    if outcome is None and n < MIN_VERDICTS:
+        return OUTCOME_INSUFFICIENT
+    raise RuntimeError(
+        f"inference graph finished without a recognised outcome "
+        f"(outcome={outcome!r}, verdicts={n}); refusing to log it as healthy"
+    )
+
+
+def run_row(summary: dict) -> dict:
+    """Pure: a run() summary → the inference_runs row to insert.
+
+    Counts are always integers (0 on the insufficient path) so the UI and the
+    future Insights dashboard (#146) can sum them without null-guards; the
+    `outcome` column carries the distinction `written is None` used to."""
+    return {
+        "outcome": summary["outcome"],
+        "verdicts": int(summary.get("verdicts") or 0),
+        "written": int(summary.get("written") or 0),
+        "removed": int(summary.get("removed") or 0),
+    }
+
+
+def empty_wipe_annotation(summary: dict) -> str | None:
+    """Pure: the GitHub Actions `::warning::` line for an alive-and-wiped run.
+
+    The 2026-07-06 run was the motivating case (#149): wrote 0, removed 2, and
+    the upsert_node log.warning sat unread inside a green run. A workflow
+    command on its own stdout line makes the run page show a yellow badge even
+    on success. None for every other outcome — "found nothing, had nothing" is
+    routine, not a red flag."""
+    row = run_row(summary)
+    if row["outcome"] != OUTCOME_EMPTY or row["removed"] == 0:
+        return None
+    return (
+        "::warning title=Inferred preferences re-derived to empty::"
+        f"wrote 0, removed {row['removed']} prior inferred preference(s) from "
+        f"{row['verdicts']} verdicts. Correct #62 semantics, but verify this "
+        "isn't a prompt/parse regression (#149)."
+    )
+
+
+def _record_run(summary: dict) -> None:
+    """Append one inference_runs row (#149) — the alive-and-wiped detector.
+
+    The heartbeat catches a run that never finished; this catches one that
+    finished and removed everything. Written right after the graph, before the
+    heartbeat: if the insert fails the exception propagates, the job exits
+    nonzero and the heartbeat goes stale — the designed alarm — rather than
+    the run passing with its only record missing. The inferred set itself was
+    already updated by upsert_node, so the data is correct either way.
+    """
+    supabase().table("inference_runs").insert(run_row(summary)).execute()
+
+
 def run() -> dict:
     """Run the weekly inference graph. Returns a small summary dict.
 
@@ -529,12 +622,16 @@ def run() -> dict:
     nonzero with the table untouched.
 
     A clean return — for ANY healthy outcome (wrote prefs, found none, or too
-    little evidence) — stamps the heartbeat last, so a failure is the only thing
-    that leaves it stale."""
+    little evidence) — logs the run (#149) and then stamps the heartbeat last,
+    so a failure is the only thing that leaves it stale."""
     final = _APP.invoke({})
-    _record_reviewed()
-    return {
+    summary = {
+        "outcome": resolve_outcome(final),
         "verdicts": len(final.get("verdicts", [])),
         "written": final.get("written"),
+        "removed": final.get("removed"),
         "inferred": final.get("inferred", []),
     }
+    _record_run(summary)
+    _record_reviewed()
+    return summary

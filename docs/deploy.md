@@ -56,8 +56,8 @@ using ( bucket_id = 'clothes-photos' );
 
 > **The schema above is the original Phase-1 table.** The live schema has since
 > grown several columns (warmth, feedback attribution, etc.) plus the
-> `outfit_history`, `profile`, `preferences`, `llm_usage` and `trip_plans`
-> tables. After creating the base
+> `outfit_history`, `profile`, `preferences`, `llm_usage`, `trip_plans` and
+> `inference_runs` tables. After creating the base
 > table, run every file in [`backend/sql/`](../backend/sql/) in date order in the
 > SQL Editor — each is dated and idempotent. That directory is the source of
 > truth for the current schema.

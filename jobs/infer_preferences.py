@@ -29,7 +29,11 @@ from dotenv import load_dotenv
 # two entry points — see AGENTS.md, "Single .env at repo root").
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-from services.preference_inference import MIN_VERDICTS, run  # noqa: E402
+from services.preference_inference import (  # noqa: E402
+    MIN_VERDICTS,
+    empty_wipe_annotation,
+    run,
+)
 
 
 def main() -> int:
@@ -49,8 +53,15 @@ def main() -> int:
         print(f"[pref] {pref['text']}  (from {len(pref['evidence_ids'])} outfits)")
     print(
         f"[done] re-derived inferred preferences from {summary['verdicts']} "
-        f"verdicts: wrote {written}"
+        f"verdicts: wrote {written}, removed {summary.get('removed') or 0} prior"
     )
+
+    # #149: an alive-and-wiped run (wrote 0, removed >0) is correct re-derivation
+    # but must not pass silently. The `::warning::` workflow command puts a
+    # yellow badge on the run page even though the exit code stays 0.
+    annotation = empty_wipe_annotation(summary)
+    if annotation:
+        print(annotation)
     return 0
 
 
