@@ -312,7 +312,11 @@ def recommend_packing_plan(
         # default temperature 1.0; low temp narrows run-to-run spread. The
         # explicit quantity rule in the prompt moves the center — temp alone
         # would just make a borderline judgment consistently borderline.
-        temperature=0.2,
+        # anthropic 1.x dropped `temperature` from the create() signature;
+        # extra_body merges it into the request JSON as-is, and Sonnet 4.6 on
+        # API version 2023-06-01 still honours it. Opus 4.7+ / Sonnet 5+ (and
+        # the 2026-10-21 API version) reject it — drop this when MODEL moves.
+        extra_body={"temperature": 0.2},
         system=[
             {
                 "type": "text",

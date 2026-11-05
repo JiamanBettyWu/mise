@@ -9,11 +9,12 @@ dependencies = [
     "pydantic>=2.9",
     "python-multipart>=0.0.12",
     "supabase>=2.9",
-    # Upper bound is load-bearing (#165): anthropic 1.x removed `temperature`
-    # from messages.create(), which trip_planner.recommend_packing_plan still
-    # passes (#120). Lifting it IS the deliberate 0.x -> 1.x upgrade, not a
-    # side effect of `uv lock --upgrade`.
-    "anthropic>=0.39,<1",
+    # 1.x line (the deliberate 0.x -> 1.x upgrade). The `<2` bound is
+    # load-bearing: 2.x sends API version 2026-10-21, which rejects the
+    # `temperature` that trip_planner.recommend_packing_plan still sends via
+    # extra_body (#120); moving past it is its own migration, not a side
+    # effect of `uv lock --upgrade`.
+    "anthropic>=1,<2",
     "httpx>=0.27",
     "python-dotenv>=1.0",
     "pillow>=10.4",
